@@ -560,8 +560,10 @@ export function withQuantity(inventory: readonly CharacterInventoryItem[], index
 export function splitOneOff(inventory: readonly CharacterInventoryItem[], index: number): { inventory: CharacterInventoryItem[]; index: number } {
 	const row = inventory[index]
 	if (row.quantity <= 1) return { inventory: [...inventory], index }
+	// D408: the pact weapon mark stays on the stack, so at most one row ever holds it (D401).
+	const { pactWeapon: _mark, ...splitOff } = row
 	return {
-		inventory: [...inventory.slice(0, index), { ...row, quantity: row.quantity - 1 }, { ...row, quantity: 1 }, ...inventory.slice(index + 1)],
+		inventory: [...inventory.slice(0, index), { ...row, quantity: row.quantity - 1 }, { ...splitOff, quantity: 1 }, ...inventory.slice(index + 1)],
 		index: index + 1,
 	}
 }

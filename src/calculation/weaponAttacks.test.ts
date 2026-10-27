@@ -263,6 +263,39 @@ describe('computeWeaponAttacks — pact weapon (D401)', () => {
 		expect(damageTextOf(attackNamed(attacks, 'Longsword'))).toBe('1d8 + 3 slashing')
 		expect(toHitOf(attackNamed(attacks, 'Longsword'))).toBe(7)
 	})
+
+	it('Improved Pact Weapon and Lifedrinker together: +1 in the modifier, the 1d6 only in the text and the roll note (D408)', () => {
+		const sword = attackNamed(computeWeaponAttacks(character('Warlock', 9), [pact(longsword)], martialGrants, [], null, undefined, [], both), 'Longsword')
+		expect(toHitOf(sword)).toBe(8)
+		expect(damageTextOf(sword)).toBe('1d8 + 4 slashing + 1d6 Necrotic, Psychic, or Radiant')
+		expect(sword.damage.status === 'known' && sword.damage.value.rollNote).toBe('+ 1d6 Lifedrinker (roll separately)')
+	})
+
+	it('an unattuned weapon with its own bonus gets no Improved Pact Weapon +1 either (D401 g)', () => {
+		const bonus = resolveMagicBonus({ name: 'Longsword', itemBonus: 1, playerBonus: null, requiresAttunement: true, attuned: false })
+		const sword = attackNamed(computeWeaponAttacks(character('Warlock', 9), [pact(longsword, bonus)], martialGrants, [], null, undefined, [], both), 'Longsword +1')
+		expect(toHitOf(sword)).toBe(7)
+		expect(sword.toHit.status === 'known' && sword.toHit.breakdown.find((row) => row.source === 'Improved Pact Weapon')?.amount).toBe(0)
+	})
+
+	it('a marked Longbow with Improved Pact Weapon and Bracers of Archery adds both (+1 and +2)', () => {
+		const longbow: ResolvedWeapon = { ...shortbow, name: 'Longbow', weaponCategory: 'martial', dmg1: '1d8' }
+		const bracers = [{ source: 'Bracers of Archery', amount: 2 }]
+		const run = (marked: boolean) => attackNamed(computeWeaponAttacks(character('Warlock', 9), [marked ? pact(longbow) : held(longbow)], martialGrants, [], null, undefined, [], both, bracers), 'Longbow')
+		const plain = run(false)
+		const marked = run(true)
+		expect(marked.damage.status === 'known' && plain.damage.status === 'known' && marked.damage.value.modifier - plain.damage.value.modifier).toBe(1)
+		expect(marked.damage.status === 'known' && marked.damage.breakdown).toEqual(expect.arrayContaining([{ source: 'Bracers of Archery', amount: 2 }, { source: 'Improved Pact Weapon', amount: 1 }]))
+		expect(toHitOf(marked)).toBe(Number(toHitOf(plain)) + 1)
+	})
+
+	it('a marked ranged weapon is no pact weapon without Improved Pact Weapon, nor with it outside its four bows and crossbows (D408)', () => {
+		const sling: ResolvedWeapon = { ...shortbow, name: 'Sling', dmg1: '1d4', dmgTypeFull: 'bludgeoning' }
+		const noIpw = attackNamed(computeWeaponAttacks(character('Warlock', 9), [pact(shortbow)], martialGrants, [], null, undefined, [], { improvedPactWeapon: false, lifedrinker: true }), 'Shortbow')
+		expect(noIpw.damage.status === 'known' && noIpw.damage.value.extraDamage).toBeUndefined()
+		const slingAttack = attackNamed(computeWeaponAttacks(character('Warlock', 9), [pact(sling)], martialGrants, [], null, undefined, [], both), 'Sling')
+		expect(slingAttack.damage.status === 'known' && slingAttack.damage.breakdown.some((row) => row.source === 'Improved Pact Weapon' || row.source === 'Lifedrinker')).toBe(false)
+	})
 })
 
 describe('computeWeaponAttacks — Bracers of Archery (D402)', () => {

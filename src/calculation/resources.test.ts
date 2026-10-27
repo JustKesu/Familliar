@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, subLimitKeys, type CharacterResource, type ResourceFeature } from './resources'
 import type { Character } from '../storage/character'
 import { canSpendResource, freeCastCounter } from './freeCastResources'
+import { afterShortRest } from '../rest/rest'
 
 /** classes.json is only read for its table groups, so the fixtures carry nothing else. */
 const CLASSES = [
@@ -315,6 +316,12 @@ describe('one use where the text states only a recharge', () => {
 			['Natural Recovery (free spell)', 1, null],
 			['Natural Recovery (slot recovery)', 1, null],
 		])
+	})
+
+	it('a Short Rest returns Aberrant Dragonmark (spell) and leaves (benefit) spent (D405)', () => {
+		const resources = computeCharacterResources(character('Druid', 6), CLASSES, [ABERRANT_DRAGONMARK])
+		const play = { resourceUses: { 'Aberrant Dragonmark (spell)': 1, 'Aberrant Dragonmark (benefit)': 1 } }
+		expect(afterShortRest(10, play, resources, null).resourceUses).toEqual({ 'Aberrant Dragonmark (benefit)': 1 })
 	})
 
 	it('names the sub-limit keys only for the three two-limit features', () => {

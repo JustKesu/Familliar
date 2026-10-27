@@ -13,6 +13,8 @@ export interface RollReport {
 	label: string
 	text: string
 	detail?: RollDetail
+	/** D408: dice the button did not throw, said after the result ("+ 1d6 Lifedrinker (roll separately)"). */
+	note?: string
 }
 
 export interface RollHistoryEntry extends RollReport {
@@ -38,6 +40,7 @@ export function RollHistory({ entries }: { entries: RollHistoryEntry[] }): React
 			{entries.map((entry) => (
 				<li key={entry.id}>
 					{capitalized(entry.label)}: {entry.text}
+					{entry.note && ` ${entry.note}`}
 				</li>
 			))}
 		</ol>

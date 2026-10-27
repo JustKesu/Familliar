@@ -19,6 +19,15 @@ export function pactWeaponInvocations(character: Pick<Character, 'optionalFeatur
 	return { pactOfTheBlade: holds(PACT_OF_THE_BLADE), improvedPactWeapon: holds(IMPROVED_PACT_WEAPON), lifedrinker: holds(LIFEDRINKER) }
 }
 
+/** D408: the inventory with no row marked — written when the character no longer holds Pact of the Blade. */
+export function withoutPactWeapon(inventory: readonly CharacterInventoryItem[]): CharacterInventoryItem[] {
+	return inventory.map((row) => {
+		if (!row.pactWeapon) return row
+		const { pactWeapon: _dropped, ...rest } = row
+		return rest
+	})
+}
+
 /** Marks row `index` (or unmarks it when it is the marked one); marking clears every other row, so at most one row holds the flag. */
 export function togglePactWeapon(inventory: readonly CharacterInventoryItem[], index: number): CharacterInventoryItem[] {
 	const marking = inventory[index]?.pactWeapon !== true

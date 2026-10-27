@@ -70,7 +70,9 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    bez trackingu kampaně). GN-1 (D407): The Genie — `Character.genieKind`
    (schema 68, `src/genie/`), volba v kroku Proficiencies (wizard, level up
    na úrovni podtřídy, Edit); rank kouzla s1..s5 jen zvoleného druhu, Wish
-   ne; bez volby poznámka na záložce Spells.
+   ne; bez volby poznámka na záložce Spells. F-Q (D408): uložená Genie bez
+   druhu dostane volbu při každém level upu (`languagesStepGain`, část
+   „Genie kind (not chosen yet)“).
 6c. [done] Kouzla z rasy (D89, D90) — `src/spells/raceSpells.ts`, pátý
     konzument `additionalSpells`. Granty se dohledávají přímo na uložené
     (už vyřešené) variantě rasy, řadí se do téže složené množiny jako
@@ -1347,6 +1349,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   lone Soulknife has a maximum and Psi Warrior + Soulknife split into "Psionic Energy Die (Fighter)" / "(Rogue)" by the D336
   mechanism, unchanged. `e2e/psionicPools.spec.ts` a–c. D399 records the A-1b ASI chip wording.
 - PW-1 (D401): pact weapon flag, Improved Pact Weapon and Lifedrinker on the marked weapon only. `e2e/pactWeapon.spec.ts` a–f.
+- F-Q (D408): `splitOneOff` keeps `pactWeapon` on the stack only; ranged pact weapon only with Improved Pact Weapon and only
+  Shortbow/Longbow/Light/Heavy Crossbow (`canBePactWeapon`, toggle and sheet effects); `RollReport.note` shows
+  "+ 1d6 Lifedrinker (roll separately)" in the roll toast and history; `buildCharacter` drops every `pactWeapon` without Pact of
+  the Blade; level up offers the Genie kind whenever it is missing. `e2e/reviewFixesQ.spec.ts` a, b1, b2, c, d, e.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose

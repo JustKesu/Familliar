@@ -39,7 +39,7 @@ import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { ELEGANT_COURTIER_LEVEL, hasElegantCourtier, kenseiSlotsFor } from '../kensei/kensei'
-import { GENIE_SUBCLASS } from '../genie/genie'
+import { GENIE_SUBCLASS, isGenieClass } from '../genie/genie'
 import { CLASS_TOOL_CHOICE_GRANTS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import { SUBCLASS_SKILL_GRANTS, subclassSkillChoiceCount, subclassSkillGrantOwner, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
@@ -250,7 +250,7 @@ export function levelGainsFor(character: Character, target: LevelUpClass, parsed
 			background: never('A background, its ability-bonus distribution and its tool proficiency are all chosen at creation.'),
 			expertise: expertiseStepGain(resolverData, className, classSource, classLevel, previous),
 			// D172: the creation picks never grow; a class feature's free picks (Deft Explorer at Ranger 2) arrive with its level.
-			languages: languagesStepGain(className, classSource, classLevel, subclassGrantLevel, characterClass.subclass, isNewClass, parsedClasses),
+			languages: languagesStepGain(className, classSource, classLevel, subclassGrantLevel, characterClass.subclass, isNewClass, parsedClasses, character.genieKind === undefined),
 			abilities: never('Ability scores are set at creation. A later level raises them only through the featAsi step, never through this one.'),
 			spells: spellsStepGain(before, now, parsedClasses, classLevel, previous, {
 				subclassGrantLevel,
@@ -282,6 +282,7 @@ function languagesStepGain(
 	subclass: string | null,
 	isNewClass: boolean,
 	parsedClasses: unknown[],
+	genieKindMissing: boolean,
 ): LevelGain {
 	const start = { className, classSource, level, subclass }
 	// D328: a class's own (non-subclass) tool picks are its starting proficiencies (D170), which a class joined later never gets.
@@ -304,6 +305,8 @@ function languagesStepGain(
 		// D344: Kensei's 6/11/17 weapon; level 3's pair rides on the Kensei tool grant's subclass pending below.
 		{ name: 'Kensei weapon', count: kenseiSlotsFor([start]).filter((slot) => slot.level === level).length },
 		{ name: 'Elegant Courtier save (only if Wisdom saves are already proficient)', count: level === ELEGANT_COURTIER_LEVEL && hasElegantCourtier([start]) ? 1 : 0 },
+		// D408: a Genie stored before GN-1 has no kind; any level up asks for it.
+		{ name: 'Genie kind (not chosen yet)', count: genieKindMissing && isGenieClass(start) ? 1 : 0 },
 	]
 	const gain = adds(parts)
 	if (gain.status === 'adds' || subclass !== null || subclassGrantLevel !== level) return gain

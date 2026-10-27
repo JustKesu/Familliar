@@ -155,6 +155,15 @@ describe('levelGainsFor', () => {
 		expect(gainsAt(fighter, 3, CLASSES, RESOLVER).steps.languages.status).toBe('none')
 	})
 
+	it('D408: a held Genie with no kind is asked for it on any level up; with a kind, not', () => {
+		const genie = character([{ className: 'Warlock', classSource: 'XPHB', subclass: 'The Genie', level: 3 }])
+		const classes = [...CLASSES, { entryType: 'class', name: 'Warlock', source: 'XPHB' }]
+		const missing = gainsAt(genie, 4, classes, RESOLVER).steps.languages
+		expect(missing).toMatchObject({ status: 'adds', parts: [{ name: 'Genie kind (not chosen yet)', count: 1 }] })
+		expect(levelUpStepConditions(gainsAt(genie, 4, classes, RESOLVER)).levelUpSteps?.has('languages')).toBe(true)
+		expect(gainsAt({ ...genie, genieKind: 'Dao' }, 4, classes, RESOLVER).steps.languages.status).toBe('none')
+	})
+
 	describe('D176: the languages step at the subclass level', () => {
 		const withClass = (name: string, source: string) => ({
 			classes: [...CLASSES, { entryType: 'class', name, source, subclassTitle: `${name} Subclass`, hd: { number: 1, faces: 8 }, classFeatureIds: [], classFeatures: [] }],

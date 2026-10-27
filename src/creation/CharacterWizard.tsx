@@ -1402,8 +1402,8 @@ export function CharacterWizard({
 	useEffect(() => {
 		if (wisdomSaveHeld === false && state.data.elegantCourtierSave !== null) dispatch({ type: 'setElegantCourtierSave', save: null })
 	}, [wisdomSaveHeld, state.data.elegantCourtierSave])
-	// D407: a level up asks only when it brings the subclass; creation and Edit always ask.
-	const genieOffered = courtierClass !== null && isGenieClass(courtierClass) && (held === null || held.subclass === null)
+	// D407: a level up asks only when it brings the subclass; creation and Edit always ask. D408: or when the stored Genie has no kind yet.
+	const genieOffered = courtierClass !== null && isGenieClass(courtierClass) && (held === null || held.subclass === null || character?.genieKind === undefined)
 
 	/** D160: everything the character has apart from the feat at `key` — the other feats' picks included. */
 	function heldForFeat(key: FeatInstanceKey): FeatChoiceHeld {

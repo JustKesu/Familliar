@@ -271,6 +271,12 @@ describe('splitOneOff / returnToStack (D188)', () => {
 		expect(splitOneOff([dagger(0)], 0)).toEqual({ inventory: [dagger(0)], index: 0 })
 	})
 
+	it('keeps the pact weapon mark on the stack only, never on the split-off row (D408)', () => {
+		const { inventory } = splitOneOff([{ ...dagger(2), pactWeapon: true as const }], 0)
+		expect(inventory).toEqual([{ ...dagger(1), pactWeapon: true }, dagger(1)])
+		expect('pactWeapon' in inventory[1]).toBe(false)
+	})
+
 	it('merges a put-down row into its matching stack, and leaves an unmatched one', () => {
 		expect(returnToStack([dagger(1), torch, dagger(1)], [2])).toEqual([dagger(2), torch])
 		expect(returnToStack([dagger(1), torch, dagger(1)], [0])).toEqual([torch, dagger(2)])

@@ -91,6 +91,15 @@ export interface PactWeaponEffects {
 
 /** XPHB Lifedrinker: extra damage on a hit, not part of the modifier or the average. */
 const LIFEDRINKER_DAMAGE = '1d6 Necrotic, Psychic, or Radiant'
+const LIFEDRINKER_ROLL_NOTE = '+ 1d6 Lifedrinker (roll separately)'
+
+/** D408, XGE Improved Pact Weapon: "You can use any shortbow, longbow, light crossbow, or heavy crossbow as your pact weapon"; XPHB Pact of the Blade alone allows a melee weapon only. */
+const PACT_RANGED_WEAPONS = ['Shortbow', 'Longbow', 'Light Crossbow', 'Heavy Crossbow']
+
+export function canBePactWeapon(weapon: { name: string; typeCode?: string }, improvedPactWeapon: boolean): boolean {
+	if (weapon.typeCode !== RANGED_TYPE_CODE) return true
+	return improvedPactWeapon && PACT_RANGED_WEAPONS.includes(weapon.name)
+}
 
 export interface AttackDamage {
 	/** The dice expression, or null for an Unarmed Strike's flat 1. */
@@ -104,6 +113,8 @@ export interface AttackDamage {
 	breakdown: Contribution[]
 	/** Extra dice printed after the damage type ("1d6 Necrotic, Psychic, or Radiant"); never in `modifier`. */
 	extraDamage?: string
+	/** D408: appended to the damage roll's result — the extra dice the roll button does not throw. */
+	rollNote?: string
 }
 
 /**
@@ -358,9 +369,11 @@ export function computeWeaponAttacks(
 				? [{ source: 'Thrown Weapon Fighting (Fighting Style)', amount: 0, note: 'considered (+2) — not included: only on a ranged attack made by throwing it' }]
 				: []),
 		]
+		// D408: a ranged row marked before the rule (or after losing Improved Pact Weapon) is not a pact weapon.
+		const pactWeapon = row.pactWeapon === true && canBePactWeapon(weapon, pactEffects.improvedPactWeapon)
 		// XGE Improved Pact Weapon: "+1 bonus to its attack and damage rolls, unless it is a magic weapon that already has a bonus to those rolls."
 		const improved: Contribution[] =
-			row.pactWeapon && pactEffects.improvedPactWeapon
+			pactWeapon && pactEffects.improvedPactWeapon
 				? [
 						row.magicBonus.carried !== 0
 							? { source: 'Improved Pact Weapon', amount: 0, note: `considered (+1) — not applied: ${row.magicBonus.label} already has a magic bonus` }
@@ -368,8 +381,9 @@ export function computeWeaponAttacks(
 					]
 				: []
 		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...(BRACERS_BOWS.includes(weapon.name) && weapon.source === 'XPHB' ? bracers : []), ...styleDamage, ...improved], monkWeapon ? martialArtsDie : null)
-		if (row.pactWeapon && pactEffects.lifedrinker) {
+		if (pactWeapon && pactEffects.lifedrinker) {
 			damage.extraDamage = LIFEDRINKER_DAMAGE
+			damage.rollNote = LIFEDRINKER_ROLL_NOTE
 			damage.text = `${damage.text} + ${LIFEDRINKER_DAMAGE}`
 			damage.breakdown.push({ source: 'Lifedrinker', amount: 0, note: `+ ${LIFEDRINKER_DAMAGE}, once per turn — not in the average` })
 		}

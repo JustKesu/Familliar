@@ -75,6 +75,7 @@ export function RollToast({ showRef }: { showRef: MutableRefObject<((report: Rol
 					) : (
 						<div className="roll-toast__sum">{report.text}</div>
 					)}
+					{report.note && <div className="roll-toast__note">{report.note}</div>}
 				</div>
 			)}
 		</div>

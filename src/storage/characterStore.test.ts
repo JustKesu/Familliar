@@ -2985,8 +2985,42 @@ describe('every write validates the changed character (D353)', () => {
 	})
 })
 
+describe('pactWeapon and genieKind in storage (PW-1 D401, GN-1 D407, F-Q D408)', () => {
+	const warlock = { className: 'Warlock', classSource: 'XPHB', subclass: 'The Genie', level: 3 }
+	const blade = [{ featureType: 'EI', choices: [{ name: 'Pact of the Blade', source: 'XPHB' }] }]
+
+	function stored(extra: Record<string, unknown>): CharacterStore {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [warlock], ...extra }]))
+		return new CharacterStore(backing)
+	}
+
+	it('rejects pactWeapon other than true and an unknown genieKind', () => {
+		expectUnreadable(stored({ inventory: [{ name: 'Dagger', source: 'XPHB', quantity: 1, pactWeapon: false }] }))
+		expectUnreadable(stored({ genieKind: 'dao' }))
+		expect(stored({ genieKind: 'Dao' }).list()[0]?.genieKind).toBe('Dao')
+	})
+
+	it('round-trips both fields through export and import', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria', classes: [warlock], optionalFeatureChoices: blade, genieKind: 'Marid', inventory: [{ name: 'Dagger', source: 'XPHB', quantity: 1, pactWeapon: true }] })
+		const [imported] = new CharacterStore(new MemoryStorage()).import(store.exportCharacter(created.id))
+		expect(imported.genieKind).toBe('Marid')
+		expect(imported.inventory?.[0]?.pactWeapon).toBe(true)
+	})
+
+	it('a save without Pact of the Blade clears every pactWeapon mark; with it the mark stays (D408)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const inventory = [{ name: 'Dagger', source: 'XPHB', quantity: 1, pactWeapon: true as const }, { name: 'Torch', source: 'XPHB', quantity: 1 }]
+		const created = store.create({ name: 'Aria', classes: [warlock], optionalFeatureChoices: blade, inventory })
+		expect(store.list()[0].inventory?.[0]?.pactWeapon).toBe(true)
+		store.update(created.id, { name: 'Aria', classes: [warlock], inventory })
+		expect(store.list()[0].inventory?.some((row) => 'pactWeapon' in row)).toBe(false)
+	})
+})
+
 describe('unreadable saved characters (F-25b, D354)', () => {
-	const damaged = { schemaVersion: CURRENT_SCHEMA_VERSION, id: 'bad', name: 'Broken', classes: 'nope' }
+	const damaged ={ schemaVersion: CURRENT_SCHEMA_VERSION, id: 'bad', name: 'Broken', classes: 'nope' }
 	const newer = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, id: 'future', name: 'Tomorrow', anything: [1, 2] }
 
 	function seeded() {

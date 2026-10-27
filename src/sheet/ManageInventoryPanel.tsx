@@ -4,6 +4,7 @@ import { putDown, takeInHand, toggleEquip, type EquipResult } from '../inventory
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { type Calculated } from '../calculation/types'
 import { damageTypeLabel, DAMAGE_TYPES } from '../calculation/damageResponses'
+import { canBePactWeapon } from '../calculation/weaponAttacks'
 import { Entries } from '../markup'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/currency'
@@ -832,6 +833,7 @@ export function ManageInventoryPanel({
 	attunementLimit,
 	defaultSpellAbility = null,
 	pactOfTheBlade = false,
+	improvedPactWeapon = false,
 	onEditInventory: inventoryCallback,
 	onEditCurrency: currencyCallback,
 }: {
@@ -845,6 +847,8 @@ export function ManageInventoryPanel({
 	defaultSpellAbility?: CustomItemSpellAbility | null
 	/** D401: the Pact weapon toggle is offered only while the character holds Pact of the Blade. */
 	pactOfTheBlade?: boolean
+	/** D408: with Improved Pact Weapon the toggle is offered on its four ranged weapons too. */
+	improvedPactWeapon?: boolean
 	/** Either callback may be absent; its sections are then left out, as the tab's controls were before R10a. */
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
@@ -1129,7 +1133,7 @@ export function ManageInventoryPanel({
 												</select>
 											</label>
 										)}
-										{pactOfTheBlade && ref !== null && isWeapon(ref) && (
+										{pactOfTheBlade && ref !== null && isWeapon(ref) && canBePactWeapon(ref, improvedPactWeapon) && (
 											<button
 												type="button"
 												aria-pressed={item.pactWeapon === true}

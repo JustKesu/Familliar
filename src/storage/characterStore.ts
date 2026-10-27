@@ -43,6 +43,7 @@ import {
 import { isValidAbilityIncrease } from '../featAsi/featAsiData'
 import { manualFeatKey, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
+import { pactWeaponInvocations, withoutPactWeapon } from '../sheet/pactWeapon'
 import {
 	CharacterNotFoundError,
 	CorruptDataError,
@@ -455,6 +456,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 
 	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
 	const storedPlay = storedPlayState(storedCurrentHp, play)
+	// D408: a mark left behind by a lost Pact of the Blade would silently return with the invocation.
+	const storedInventory = inventory && !pactWeaponInvocations({ optionalFeatureChoices, inventory }).pactOfTheBlade ? withoutPactWeapon(inventory) : inventory
 
 	return {
 		id,
@@ -477,7 +480,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(subclassSpellChoices && subclassSpellChoices.length > 0 ? { subclassSpellChoices } : {}),
 		...(classFeatureChoices && classFeatureChoices.length > 0 ? { classFeatureChoices } : {}),
 		...(wildShapeForms && wildShapeForms.length > 0 ? { wildShapeForms } : {}),
-		...(inventory && inventory.length > 0 ? { inventory } : {}),
+		...(storedInventory && storedInventory.length > 0 ? { inventory: storedInventory } : {}),
 		...(currencyCopper ? { currencyCopper } : {}),
 		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
 		...(speciesCantrip ? { speciesCantrip } : {}),

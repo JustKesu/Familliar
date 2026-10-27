@@ -5704,3 +5704,15 @@ a v Edit Character. Bez volby: žádná Genie kouzla a jedna poznámka na zálo�
 jen zvoleného záznamu přidávají stejně jako u Hexblade/Fathomless (levelForPactSlotRank). Klíč "9" (Wish) se
 nepřidává. Změna podtřídy Warlocka pryč z The Genie a Remove level pod úroveň podtřídy pole maže; okno Remove level
 ho vypíše. Rozhodl Daniel 27. 10. 2026.
+
+## D408 — Opravy z review Q: pact weapon a druh džina (F-Q)
+
+Doplňuje D401 a D407. (1) Oddělení kusu ze stohu (`splitOneOff`, D188) nechá `pactWeapon` jen na stohu; oddělený kus ho
+nenese, takže příznak má vždy nejvýš jeden řádek. (2) Pact weapon smí být zbraň na blízko; střelná jen s invokací Improved
+Pact Weapon (XGE) a jen Shortbow, Longbow, Light Crossbow, Heavy Crossbow (podle jména, `canBePactWeapon` v
+`weaponAttacks.ts`). Přepínač v Manage Inventory se jiným střelným zbraním neukáže; řádek označený dříve nedostane na listu
+žádný efekt (IPW ani Lifedrinker). (3) Uložená Genie postava bez `genieKind` dostane volbu druhu při každém level upu
+(krok Proficiencies se projde a blokuje Next), nejen na úrovni podtřídy. (4) Hod damage zbraně s Lifedrinker připíše k
+výsledku (toast i historie) „+ 1d6 Lifedrinker (roll separately)“; matematika útoku beze změny. (5) Každý zápis přes
+`buildCharacter` (create/update: wizard, Edit, level up, Remove level) smaže `pactWeapon` ze všech řádků, když postava nemá
+Pact of the Blade. Rozhodl Daniel 27. 10. 2026.

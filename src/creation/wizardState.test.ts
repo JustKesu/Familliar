@@ -526,6 +526,19 @@ describe('wizardReducer navigation', () => {
 		expect(afterSubclass.data.wildShapeForms).toEqual([])
 	})
 
+	it('a Warlock leaving The Genie loses the genie kind; another class keeps it (D407)', () => {
+		const genie = { name: 'The Genie', source: 'TCE', featureType: null }
+		const warlock: WizardControllerState = {
+			step: 'class',
+			data: { ...emptyWizardData(), classChoice: { className: 'Warlock', classSource: 'XPHB', level: 3 }, subclass: genie, genieKind: 'Djinni' },
+		}
+		expect(wizardReducer(warlock, { type: 'setSubclass', subclass: genie }).data.genieKind).toBe('Djinni')
+		expect(wizardReducer(warlock, { type: 'setSubclass', subclass: { name: 'Fiend Patron', source: 'XPHB', featureType: null } }).data.genieKind).toBeNull()
+		expect(wizardReducer(warlock, { type: 'setSubclass', subclass: null }).data.genieKind).toBeNull()
+		const fighter: WizardControllerState = { ...warlock, data: { ...warlock.data, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 }, subclass: null } }
+		expect(wizardReducer(fighter, { type: 'setSubclass', subclass: { name: 'Champion', source: 'XPHB', featureType: null } }).data.genieKind).toBe('Djinni')
+	})
+
 	/* D338: the level that grants the subclass picks it for the first time; nothing chosen before depends on it. */
 	it('a first subclass pick keeps spells, subclass options and Wild Shape forms; a change still clears them', () => {
 		const spellChoices = [

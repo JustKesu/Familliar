@@ -387,6 +387,8 @@ function weaponAttackRow(
 	ammo?: { entries: AmmoEntry[]; onSpend?: (entry: AmmoEntry) => void },
 ): ActionTableRow {
 	const damageDice = attack.damage.status === 'known' && attack.damage.value.dice ? parseDiceExpression(attack.damage.value.dice) : null
+	const rollNote = attack.damage.status === 'known' ? attack.damage.value.rollNote : undefined
+	const onDamageRoll = (report: RollReport): void => onRoll(rollNote ? { ...report, note: rollNote } : report)
 	/* Slice 9d4: the to-hit roll (and only it) spends the weapon's one unambiguous ammunition, through the same onSpend as the manual −1. */
 	const onSpend = ammo?.onSpend
 	const autoSpend = ammo && onSpend ? autoSpendEntry(ammo.entries) : null
@@ -441,7 +443,7 @@ function weaponAttackRow(
 								sides={damageDice.sides}
 								modifier={attack.damage.value.modifier}
 								label={`${attack.name} damage`}
-								onRoll={onRoll}
+								onRoll={onDamageRoll}
 							>
 								{damageText(attack.damage.value.dice, attack.damage.value.modifier, '')}
 							</DamageRollButton>
@@ -3681,6 +3683,7 @@ function CharacterSheetBody({
 						attunementLimit={attunementLimit}
 						defaultSpellAbility={spellcastingEntries[0] ? itemSpellAbilityOf(spellcastingEntries[0].ability) : null}
 						pactOfTheBlade={pactInvocations.pactOfTheBlade}
+						improvedPactWeapon={pactInvocations.improvedPactWeapon}
 						onEditInventory={onEditInventory}
 						onEditCurrency={onEditCurrency}
 					/>
