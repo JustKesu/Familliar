@@ -1136,6 +1136,7 @@ export function ManageInventoryPanel({
 										{pactOfTheBlade && ref !== null && isWeapon(ref) && canBePactWeapon(ref, improvedPactWeapon) && (
 											<button
 												type="button"
+												className="toggle-pressed"
 												aria-pressed={item.pactWeapon === true}
 												aria-label={`Pact weapon: ${bonus.label}`}
 												onClick={() => onEditInventory(togglePactWeapon(inventory, index))}

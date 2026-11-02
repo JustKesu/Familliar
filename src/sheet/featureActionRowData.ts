@@ -26,7 +26,7 @@
  */
 
 import { type ActionType, classifyActionType, isActionTableFeature } from '../actions/actionTableFeatureData'
-import { resolveResourceName, speciesTraitUses } from '../calculation/resources'
+import { comparableText, plainText, resolveResourceName, speciesTraitUses } from '../calculation/resources'
 import { featDisplayName, featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import type { GrantedFeature } from './grantedClassFeatures'
@@ -84,6 +84,22 @@ export function resourceCandidateName(feature: { name: string; consumes?: unknow
 	return consumedResourceName(feature) ?? resolveResourceName(feature.name)
 }
 
+/**
+ * D409: a feature that carries no `consumes` but whose own text names a pool the
+ * character holds split per class (Psionic Power names the Psionic Energy Dice)
+ * is filed under its class's share of that pool, so two classes' same-named
+ * feature become two rows like D336's Channel Divinity. Otherwise `key` unchanged.
+ */
+export function poolKeyFromText(
+	key: string,
+	className: string | null,
+	record: { entries: unknown[] },
+	resources: readonly { name: string; pool?: string; className?: string }[],
+): string {
+	if (className === null || resources.some((resource) => resource.name === key)) return key
+	const text = comparableText(plainText(record.entries).join(' '))
+	return resources.find((resource) => resource.className === className && resource.pool !== undefined && text.includes(comparableText(resource.pool)))?.name ?? key
+}
 
 /**
  * Every usable feature as an actions-table entry: granted class and subclass
@@ -107,7 +123,7 @@ export function featureActionRows(
 	optionOrigin: (option: OptionalFeatureOption) => string | null = () => null,
 	speciesTraits: readonly SpeciesTrait[] = [],
 	speciesName: string | null = null,
-	resourceKey: (candidate: string, className: string | null) => string = (candidate) => candidate,
+	resourceKey: (candidate: string, className: string | null, record: { entries: unknown[] }) => string = (candidate) => candidate,
 ): FeatureActionData[] {
 	const rows: FeatureActionData[] = []
 	const seen = new Set<string>()
@@ -119,7 +135,7 @@ export function featureActionRows(
 		const qualifies = kind === 'species' ? actionType !== 'other' || speciesTraitUses(record) !== null : isActionTableFeature(record) || actionType !== 'other'
 		if (!qualifies) return
 		const candidate = resourceCandidateName(record)
-		const resourceName = resourceKey(candidate, className)
+		const resourceName = resourceKey(candidate, className, record)
 		// D336: two classes' Channel Divinity are two rows, one per pool.
 		const key = resourceName === candidate ? name.toLowerCase() : `${name.toLowerCase()}|${className?.toLowerCase()}`
 		if (seen.has(key)) return

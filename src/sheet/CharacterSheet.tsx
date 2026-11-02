@@ -140,7 +140,7 @@ import {
 	type SpellsTabActionSection,
 	type SpellsTabFilter,
 } from './spellsTabData'
-import { featureActionRows, type FeatureActionData } from './featureActionRowData'
+import { featureActionRows, poolKeyFromText, type FeatureActionData } from './featureActionRowData'
 import { agonizingBlastFor, casterAbilityModifier, hasAgonizingBlast, isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
@@ -2562,7 +2562,9 @@ function CharacterSheetBody({
 		freeCastResources(combinedSpells, abilityScores),
 	)
 	const resourceKey = (candidate: string, className: string | null) => resourceKeyFor(candidate, className, characterResources)
-	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, actionOptions, optionOrigin, speciesTraits, character.species?.name ?? null, resourceKey)
+	const actionResourceKey = (candidate: string, className: string | null, record: { entries: unknown[] }) =>
+		poolKeyFromText(resourceKey(candidate, className), className, record, characterResources)
+	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, actionOptions, optionOrigin, speciesTraits, character.species?.name ?? null, actionResourceKey)
 	// D219: an item spell's counter joins these maps under its per-render key; its spent count is read from, and written to, its inventory row.
 	const itemSpellCounters = itemSpells.filter((spell) => spell.max !== null)
 	const resourceMaxima = new Map([

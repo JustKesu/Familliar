@@ -82,6 +82,18 @@ test('PW-1 b, c, e, f: one marked weapon gets Improved Pact Weapon and Lifedrink
   await expect((await actionRow(page, 'Sickle')).getByRole('button', { name: 'Roll Sickle to hit' })).toHaveText('+8')
 })
 
+test('SM-3 a (D409): the pressed Pact weapon button looks different from the off one', async ({ page }) => {
+  await open(page, warlock('sm3-a', BLADE, [held('Mace')]))
+  const panel = await openManage(page)
+  const toggle = pactToggle(panel, 'Mace')
+  const border = (): Promise<string> => toggle.evaluate((el) => getComputedStyle(el).borderTopColor)
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  const off = await border()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  expect(await border()).not.toBe(off)
+})
+
 test('PW-1 d: a pact weapon with its own magic bonus gets no Improved Pact Weapon +1', async ({ page }) => {
   await open(page, warlock('pw1-d', BLADE, [held('Mace', { magicBonus: 1 })]))
   const panel = await openManage(page)

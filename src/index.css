@@ -1421,8 +1421,9 @@ label.wizard__field {
   resize: vertical;
 }
 
-/* Slice 9d1: the concentration toggle on a spell row. */
-.spell-list__concentrate[aria-pressed='true'] {
+/* Slice 9d1: the concentration toggle on a spell row; D409: shared with the Pact weapon toggle. */
+.spell-list__concentrate[aria-pressed='true'],
+.toggle-pressed[aria-pressed='true'] {
   font-weight: 600;
   color: var(--accent);
   background: var(--accent-soft);

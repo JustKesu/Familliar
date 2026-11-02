@@ -75,6 +75,23 @@ test('PSI-1 b: Fighter 3 Psi Warrior / Rogue 3 Soulknife has two pools of 4; eac
   await expect.poll(() => storedUses(page)).toEqual({ [FIGHTER]: 1, [ROGUE]: 1 })
 })
 
+test('SM-3 b (D409): Psi Warrior + Soulknife show two Psionic Power rows, one per class origin', async ({ page }) => {
+  await openActions(page, seeded('sm3-b', [['Fighter', 'Psi Warrior', 3], ['Rogue', 'Soulknife', 3]], 43))
+  const rows = actions(page).locator('.sheet__group-row', { hasText: 'Psionic Power' })
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(0)).toContainText('Fighter')
+  await expect(rows.nth(1)).toContainText('Rogue')
+})
+
+test('SM-3 c (D409): a lone Psi Warrior and a lone Soulknife each show one Psionic Power row', async ({ page }) => {
+  await openActions(page, seeded('sm3-c', [['Fighter', 'Psi Warrior', 3]], 25))
+  await expect(actions(page).locator('.sheet__group-row', { hasText: 'Psionic Power' })).toHaveCount(1)
+  await page.evaluate((key) => localStorage.setItem(key, JSON.stringify([{ ...JSON.parse(localStorage.getItem(key) ?? '[]')[0], classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: 'Soulknife', level: 3 }] }])), STORAGE_KEY)
+  await page.reload()
+  await page.getByRole('tab', { name: 'Actions' }).click()
+  await expect(actions(page).locator('.sheet__group-row', { hasText: 'Psionic Power' })).toHaveCount(1)
+})
+
 test('PSI-1 b2: a Short Rest returns one die to each of the two pools', async ({ page }) => {
   await openActions(page, seeded('psi1-b2', [['Fighter', 'Psi Warrior', 3], ['Rogue', 'Soulknife', 3]], 43, { play: { resourceUses: { [FIGHTER]: 3, [ROGUE]: 2 } } }))
   await expect(used(page, FIGHTER)).toHaveCount(3)

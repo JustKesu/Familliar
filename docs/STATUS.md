@@ -1353,6 +1353,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Shortbow/Longbow/Light/Heavy Crossbow (`canBePactWeapon`, toggle and sheet effects); `RollReport.note` shows
   "+ 1d6 Lifedrinker (roll separately)" in the roll toast and history; `buildCharacter` drops every `pactWeapon` without Pact of
   the Blade; level up offers the Genie kind whenever it is missing. `e2e/reviewFixesQ.spec.ts` a, b1, b2, c, d, e.
+- SM-3 (D409): the pressed Pact weapon button shares the `.spell-list__concentrate` pressed rule (`.toggle-pressed`); a no-`consumes`
+  action feature whose text names a pool split per class (Psionic Power) is keyed to its class's pool (`poolKeyFromText`), so
+  Psi Warrior + Soulknife get two Psionic Power rows. `e2e/pactWeapon.spec.ts` SM-3 a, `e2e/psionicPools.spec.ts` SM-3 b, c.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose

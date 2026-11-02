@@ -99,7 +99,7 @@ function consumedPoolName(feature: ResourceFeature): string | null {
 }
 
 /** Every string in an entries tree, with 5etools markup stripped down to its display text (DATA.md — a phrase search that skips this finds a fraction of the hits). */
-function plainText(node: unknown, out: string[] = []): string[] {
+export function plainText(node: unknown, out: string[] = []): string[] {
 	if (typeof node === 'string') out.push(node.replace(/\{@\w+\s+([^|}]*)[^}]*\}/g, '$1'))
 	else if (Array.isArray(node)) for (const child of node) plainText(child, out)
 	else if (isRecord(node)) for (const key of Object.keys(node)) plainText(node[key], out)
@@ -386,7 +386,7 @@ const REGAIN_THEN_REST = /\bregain\s+(all|one)\b[^.]{0,120}?\bfinish\s+an?\s+((?
 const REST_THEN_REGAIN = /\bfinish\s+an?\s+((?:Short|Long) Rest(?:\s+or\s+(?:Short|Long) Rest)?),?\s+at the end of which you regain\s+(all|one)\b/gi
 
 /** Letters only, with the data's Dice/Die plural folded together — Psi Warrior's pool is consumed as "Psionic Energy Die" and recovered as "Psionic Energy Dice" (DATA.md). */
-function comparableText(text: string): string {
+export function comparableText(text: string): string {
 	return text.toLowerCase().replace(/[^a-z]/g, '').replace(/dice/g, 'die')
 }
 

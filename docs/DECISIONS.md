@@ -5716,3 +5716,11 @@ Pact Weapon (XGE) a jen Shortbow, Longbow, Light Crossbow, Heavy Crossbow (podle
 výsledku (toast i historie) „+ 1d6 Lifedrinker (roll separately)“; matematika útoku beze změny. (5) Každý zápis přes
 `buildCharacter` (create/update: wizard, Edit, level up, Remove level) smaže `pactWeapon` ze všech řádků, když postava nemá
 Pact of the Blade. Rozhodl Daniel 27. 10. 2026.
+
+## D409 — Viditelný přepínač Pact weapon a Psionic Power po třídách (SM-3)
+
+Doplňuje D336, D398 a D401. (1) Zapnuté tlačítko „Pact weapon“ v Manage Inventory sdílí vzhled s přepínačem koncentrace
+(tučné písmo, barva akcentu, 2px rámeček); vypnuté beze změny. (2) Featura bez `consumes`, jejíž text jmenuje fond držený
+rozdělený po třídách (Psionic Power jmenuje Psionic Energy Dice), se na záložce Actions vede pod fondem své třídy
+(`poolKeyFromText`), takže Psi Warrior + Soulknife mají dva řádky „Psionic Power“, každý s vlastním fondem. Jedna třída, nebo
+nerozdělený fond: řádek jeden, beze změny. Deduplikace ostatních featur (Extra Attack ze dvou tříd = jeden řádek) se nemění.

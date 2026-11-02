@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { featureActionRows, grantedFeatureOrigin } from './featureActionRowData'
+import { featureActionRows, grantedFeatureOrigin, poolKeyFromText } from './featureActionRowData'
 import type { GrantedFeature } from './grantedClassFeatures'
 import type { FeatTextEntry } from './sheetData'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
@@ -186,6 +186,36 @@ describe('featureActionRows', () => {
 			['Lucky', 'Feat, level 4'],
 			['Precision Attack', 'Battle Master'],
 		])
+	})
+
+	describe('D409 Psionic Power per class', () => {
+		const POWER = ['You regain one of your expended Psionic Energy Dice when you finish a {@variantrule Short Rest|XPHB}, and you regain all of them when you finish a {@variantrule Long Rest|XPHB}.']
+		const fighterPower = granted('Psionic Power', { level: 3, kind: 'subclass', className: 'Fighter', subclassShortName: 'Psi Warrior', entries: POWER })
+		const roguePower = granted('Psionic Power', { level: 3, kind: 'subclass', className: 'Rogue', subclassShortName: 'Soulknife', entries: POWER })
+		const split = [
+			{ name: 'Psionic Energy Die (Fighter)', pool: 'Psionic Energy Die', className: 'Fighter' },
+			{ name: 'Psionic Energy Die (Rogue)', pool: 'Psionic Energy Die', className: 'Rogue' },
+		]
+		const plain = [{ name: 'Psionic Energy Die' }]
+		const rowsFor = (features: GrantedFeature[], resources: { name: string; pool?: string; className?: string }[]) =>
+			featureActionRows(features, [], [], [], undefined, [], null, (candidate, className, record) => poolKeyFromText(candidate, className, record, resources))
+
+		it('gives a multiclass character one row per class, each tied to its own pool', () => {
+			expect(rowsFor([fighterPower, roguePower], split).map((row) => [row.name, row.resourceName, row.origin])).toEqual([
+				['Psionic Power', 'Psionic Energy Die (Fighter)', 'Psi Warrior, Fighter 3'],
+				['Psionic Power', 'Psionic Energy Die (Rogue)', 'Soulknife, Rogue 3'],
+			])
+		})
+
+		it('keeps one row for a single Psi Warrior and for a single Soulknife', () => {
+			expect(rowsFor([fighterPower], plain)).toHaveLength(1)
+			expect(rowsFor([roguePower], plain)).toHaveLength(1)
+		})
+
+		it('still folds Extra Attack from two classes into one row', () => {
+			const attack = (className: string) => granted('Extra Attack', { className, entries: ['You can attack twice, and take the {@action Attack|XPHB} action.'] })
+			expect(rowsFor([attack('Fighter'), attack('Rogue')], split)).toHaveLength(1)
+		})
 	})
 })
 
