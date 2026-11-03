@@ -171,16 +171,18 @@ export function subLimitKeys(name: string): { label: string; key: string }[] | n
  * times at 17; Innate Sorcery: twice per Long Rest). A named exception, not a
  * prose parser (D120, D374).
  */
-const LEVEL_SCALED_USES: Record<string, { className: string; steps: [level: number, uses: number][] }> = {
+const LEVEL_SCALED_USES: Record<string, { className: string; subclass?: string; steps: [level: number, uses: number][] }> = {
 	'Action Surge': { className: 'Fighter', steps: [[2, 1], [17, 2]] },
 	Indomitable: { className: 'Fighter', steps: [[9, 1], [13, 2], [17, 3]] },
 	'Innate Sorcery': { className: 'Sorcerer', steps: [[1, 2]] },
+	// D410: XPHB's Battle Master has no subclass table, the dice count is only in the Combat Superiority prose.
+	'Superiority Die': { className: 'Fighter', subclass: 'Battle Master', steps: [[3, 4], [7, 5], [15, 6]] },
 }
 
 function levelScaledMax(name: string, character: Character): Calculated<number> | null {
 	const scaled = LEVEL_SCALED_USES[name]
 	if (!scaled) return null
-	const characterClass = character.classes.find((c) => c.className === scaled.className)
+	const characterClass = character.classes.find((c) => c.className === scaled.className && (scaled.subclass === undefined || (c.subclass === scaled.subclass && c.classSource === 'XPHB')))
 	if (!characterClass) return null
 	const step = scaled.steps.filter(([level]) => level <= characterClass.level).pop()
 	if (!step) return null
@@ -332,7 +334,7 @@ export function poolGrantingClassNames(pool: string, character: Character, parse
 
 /** D196: the pools the character's own tables count above zero at their level — a pool spent only in prose (Beasts of Ill Omen) has no `consumes` to find it by. */
 function tableGrantedPools(character: Character, parsedClasses: unknown[]): string[] {
-	return POOL_NAMES.filter((pool) => poolGrantingClasses(pool, character, parsedClasses).length > 0)
+	return POOL_NAMES.filter((pool) => poolGrantingClasses(pool, character, parsedClasses).length > 0 || (LEVEL_SCALED_USES[pool]?.subclass !== undefined && levelScaledMax(pool, character) !== null))
 }
 
 /** The maximum for one resource, from the first of the character's class/subclass tables that names it. */

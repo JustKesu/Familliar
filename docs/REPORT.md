@@ -1,20 +1,25 @@
-SP-1 follow-up ZASTAVENO: scénář c (Battle Master 3, 4 boxy na Combat Superiority) nelze splnit tabulkou D410. Nic necommitnuto ani nepushnuto. HEAD 39adf0b (ověřeno).
+SP-1 hotovo (D410). Commit a push viz níže.
 
-## Co je hotové v pracovním stromu (necommitnuto)
-- src/sheet/featureActionRowData.ts: `POOL_GRANTING_FEATURES` (Font of Magic -> Sorcery Point, Monk's Focus -> Focus Point, Combat Superiority -> Superiority Die); `add()` ji použije jen pro `kind === 'feature'` bez `consumes`, pak jde klíč dál přes `resourceKey` (D336/D409). `resourceCandidateName` beze změny, protože ho sdílí Features tab (featuresTabData) a ten se měnit neměl.
-- src/sheet/featureActionRowData.test.ts: blok "D410" (Font of Magic -> Sorcery Point; Sorcerous Restoration, Elder Champion, Extra Attack beze změny). Nespuštěno (npm test zatím neběželo).
-- e2e/poolGrantorTracker.spec.ts: a, b, d PROJDOU (Font of Magic 5 boxů; Monk's Focus 5 boxů a utracení se projeví i na Flurry of Blows; Long Rest vrátí boxy). c SELŽE.
+## Co se změnilo
+- src/sheet/featureActionRowData.ts: `POOL_GRANTING_FEATURES` (Font of Magic → Sorcery Point, Monk's Focus → Focus Point, Combat Superiority → Superiority Die). V `add()` platí jen pro `kind === 'feature'` bez `consumes`; dál přes `resourceKey` (D336/D409). `resourceCandidateName` beze změny, Features tab (sdílí ho) se nemění.
+- src/calculation/resources.ts: `LEVEL_SCALED_USES` dostal volitelné `subclass`; nový záznam `Superiority Die` (Fighter, Battle Master XPHB: 4 od 3, 5 od 7, 6 od 15). `levelScaledMax` u záznamu s podtřídou vyžaduje podtřídu a classSource XPHB. `tableGrantedPools` přidá takový fond i bez vybraného manévru. Rest: beze změny, bere se z textu featur (e2e e potvrzuje Short Rest). Velikost kostky se nepřidávala.
+- Zamítnuto pravidlo podle textu (Elder Champion, Flurry of Healing and Harm fond jen zmiňují). Prózou utrácející featury (Wild Companion, Heightened Focus, Land's Aid, Nature's Sanctuary, Wrath of the Sea, Revelation in Flesh) zůstávají bez počítadla; Psionic Power (D409) beze změny.
+- Změněných míst v kódu: 4 (2 soubory), pod limitem 10.
 
-## Proč c selhává
-Řádek Combat Superiority existuje, ale bez boxů. Battle Master v XPHB nemá `subclassTableGroups` (ověřeno skriptem: pole je prázdné), takže pool Superiority Die nemá spočitatelné maximum. Stejně nemají boxy ani řádky manévrů Riposte a Parry ani se třemi vybranými manévry (error-context.md). Je to stávající stav, ne důsledek D410: počet kostek (4 na úrovni 3) je jen v próze featury Combat Superiority.
+## Testy
+- Unit: featureActionRowData.test.ts (Font of Magic → Sorcery Point; Sorcerous Restoration, Elder Champion, Extra Attack beze změny), resources.test.ts (BM 3/7/15 → 4/5/6; Champion, Fighter bez podtřídy, BM 2 → bez fondu). `npm test`: 190 souborů, 3499 testů prošlo.
+- e2e/poolGrantorTracker.spec.ts a–e prošly (a Font of Magic 5 boxů; b Monk's Focus 5 boxů + sdílení s Flurry of Blows; c BM 3 → 4 boxy bez manévrů; d Long Rest; e výdaj na Riposte označí i Combat Superiority a Short Rest vrací).
+- `npm run typecheck` čistý. Plné `npm run e2e`: 757 testů prošlo, 6,9 min (pod 3 min limit NE: přes limit, hlásím).
 
-## K rozhodnutí
-Odkud brát maximum Superiority Die?
-1. Zapsat počet do ruční tabulky podle úrovně Battle Master (4 / 5 od 7. / 6 od 15.) vedle POOL_GRANTING_FEATURES. Zasáhne resources.ts, tj. i řádky manévrů (dostanou boxy také) a Resources panel.
-2. Parsovat próze "four Superiority Dice" (D21 parsování prózy omezuje).
-3. Scénář c vypustit; D410 pak pro Battle Mastera nic neudělá, jen pro Font of Magic a Monk's Focus.
-Odhad kódu u varianty 1: 1 místo v resources.ts + testy; pod limitem 10.
+## Další zdroje Superiority Die (mimo rozsah)
+Superior Technique (TCE, invokace): bez `consumes`, text jmenuje fond; vlastní tracker nemá, fond dostane jen Battle Master. Martial Adept: ve feats.json pod tímto názvem nenalezen. Starší knihy Battle Master (classSource jiný než XPHB): pool bez maxima jako dosud.
 
-Neuklizené (untracked): scripts/investigate-pool-grantors.js zmizel dříve, nově scripts/investigate-bm-table.js.
+## Decisions taken
+- Tabulka v `LEVEL_SCALED_USES` místo samostatné konstanty (stejný vzor, D120/D374).
+- `subclass` se porovnává s uloženým názvem podtřídy i classSource XPHB.
+- D410 zapsán do DECISIONS.md (rozhodnutí plánovacího chatu); STATUS.md doplněn.
 
-Manual browser check for the user: none - the planning chat checks the looks from screenshots. Změněná obrazovka: Actions tab (zatím nic k hodnocení).
+## Neuklizeno
+Untracked: scripts/investigate-bm-table.js (git clean zakázán).
+
+Manual browser check for the user: none - the planning chat checks the looks from screenshots. Změněná obrazovka: záložka Actions.

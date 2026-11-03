@@ -724,3 +724,18 @@ describe('clamping spent counts to the current maximum (slice 9b1)', () => {
 		expect(resourceUsesWithinMaxima(undefined, resources)).toBeUndefined()
 	})
 })
+
+describe('D410 Battle Master Superiority Die', () => {
+	const dice = (level: number, subclass: string | null) => {
+		const pool = computeCharacterResources(character('Fighter', level, subclass), CLASSES, []).find((resource) => resource.name === 'Superiority Die')
+		return pool?.max.status === 'known' ? pool.max.value : null
+	}
+
+	it('counts 4 from level 3, 5 from level 7 and 6 from level 15, with no maneuver picked', () => {
+		expect([dice(3, 'Battle Master'), dice(7, 'Battle Master'), dice(15, 'Battle Master')]).toEqual([4, 5, 6])
+	})
+
+	it('gives no pool to a Champion, a subclass-less Fighter or a Battle Master below level 3', () => {
+		expect([dice(3, 'Champion'), dice(5, null), dice(2, 'Battle Master')]).toEqual([null, null, null])
+	})
+})

@@ -1356,6 +1356,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - SM-3 (D409): the pressed Pact weapon button shares the `.spell-list__concentrate` pressed rule (`.toggle-pressed`); a no-`consumes`
   action feature whose text names a pool split per class (Psionic Power) is keyed to its class's pool (`poolKeyFromText`), so
   Psi Warrior + Soulknife get two Psionic Power rows. `e2e/pactWeapon.spec.ts` SM-3 a, `e2e/psionicPools.spec.ts` SM-3 b, c.
+- SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
+  (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
+  and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`
+  because XPHB has no subclass table; the pool exists without a picked maneuver and feeds the maneuver rows. Prose-only
+  spenders (Wild Companion, Heightened Focus, Land's Aid, ...) still have no tracker. `e2e/poolGrantorTracker.spec.ts` a–e.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose

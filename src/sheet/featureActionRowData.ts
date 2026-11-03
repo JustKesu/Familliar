@@ -85,6 +85,17 @@ export function resourceCandidateName(feature: { name: string; consumes?: unknow
 }
 
 /**
+ * D410: the features that grant a pool without spending it via `consumes`, so
+ * their row carries the pool's boxes. A hand table, not a text match: Elder
+ * Champion and Flurry of Healing and Harm name a pool without spending or granting it.
+ */
+export const POOL_GRANTING_FEATURES: Readonly<Record<string, string>> = {
+	'Font of Magic': 'Sorcery Point',
+	"Monk's Focus": 'Focus Point',
+	'Combat Superiority': 'Superiority Die',
+}
+
+/**
  * D409: a feature that carries no `consumes` but whose own text names a pool the
  * character holds split per class (Psionic Power names the Psionic Energy Dice)
  * is filed under its class's share of that pool, so two classes' same-named
@@ -134,7 +145,7 @@ export function featureActionRows(
 		// D186: a species trait needs an R-phrase group or a tracked use count; a bare rest mention (Trance) is not enough.
 		const qualifies = kind === 'species' ? actionType !== 'other' || speciesTraitUses(record) !== null : isActionTableFeature(record) || actionType !== 'other'
 		if (!qualifies) return
-		const candidate = resourceCandidateName(record)
+		const candidate = (kind === 'feature' && consumedResourceName(record) === null ? POOL_GRANTING_FEATURES[name] : undefined) ?? resourceCandidateName(record)
 		const resourceName = resourceKey(candidate, className, record)
 		// D336: two classes' Channel Divinity are two rows, one per pool.
 		const key = resourceName === candidate ? name.toLowerCase() : `${name.toLowerCase()}|${className?.toLowerCase()}`

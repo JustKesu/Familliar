@@ -5724,3 +5724,14 @@ Doplňuje D336, D398 a D401. (1) Zapnuté tlačítko „Pact weapon“ v Manage 
 rozdělený po třídách (Psionic Power jmenuje Psionic Energy Dice), se na záložce Actions vede pod fondem své třídy
 (`poolKeyFromText`), takže Psi Warrior + Soulknife mají dva řádky „Psionic Power“, každý s vlastním fondem. Jedna třída, nebo
 nerozdělený fond: řádek jeden, beze změny. Deduplikace ostatních featur (Extra Attack ze dvou tříd = jeden řádek) se nemění.
+
+## D410 — Počítadlo fondu na featuře, která fond uděluje (SP-1)
+
+Rozšiřuje D409. (1) Ruční tabulka `POOL_GRANTING_FEATURES` (featureActionRowData.ts) tři udělovatele: Font of Magic → Sorcery
+Point, Monk's Focus → Focus Point, Combat Superiority → Superiority Die. Řádek takové featury bez `consumes` dostane
+`resourceName` fondu přes stejný `resourceKey` (fond dělený po třídách se tedy řeší po třídách, D336/D409); Features tab se
+nemění. (2) Pravidlo podle textu („text jmenuje fond“) zamítnuto: zasáhlo by Elder Champion a Flurry of Healing and Harm,
+které fond jen zmiňují a neutrácí ani neuděluje. Featury, které fond utrácí jen v próze (Wild Companion, Heightened Focus,
+Land's Aid a další), počítadlo nemají. (3) Počet Superiority Die Battle Mastera je ruční tabulka v `LEVEL_SCALED_USES`
+(resources.ts): 4 od úrovně 3, 5 od 7, 6 od 15, jen pro Fightera s podtřídou Battle Master (XPHB), protože data XPHB nemají
+tabulku podtřídy; fond vzniká i bez vybraného manévru. Velikost kostky mimo rozsah. Rozhodl Daniel (plánovací chat) 3. 11. 2026.

@@ -217,6 +217,29 @@ describe('featureActionRows', () => {
 			expect(rowsFor([attack('Fighter'), attack('Rogue')], split)).toHaveLength(1)
 		})
 	})
+
+	describe('D410 pool-granting features', () => {
+		const REGAIN = ['You regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.']
+		const rows = featureActionRows(
+			[
+				granted('Font of Magic', { className: 'Sorcerer', entries: REGAIN }),
+				granted('Sorcerous Restoration', { className: 'Sorcerer', level: 5, entries: REGAIN }),
+				granted('Elder Champion', { className: 'Paladin', kind: 'subclass', entries: ['Enemies have Disadvantage against your Channel Divinity options. You regain all expended uses of Channel Divinity on a {@variantrule Long Rest|XPHB}.'] }),
+				granted('Extra Attack', { entries: ['You can attack twice, and take the {@action Attack|XPHB} action.'] }),
+			],
+			[],
+			[],
+			[],
+		)
+		const resourceOf = (name: string) => rows.find((row) => row.name === name)?.resourceName
+
+		it('files Font of Magic under the Sorcery Point pool', () => expect(resourceOf('Font of Magic')).toBe('Sorcery Point'))
+		it('leaves a feature that is its own resource, a pool-naming feature outside the table and Extra Attack unchanged', () => {
+			expect(resourceOf('Sorcerous Restoration')).toBe('Sorcerous Restoration')
+			expect(resourceOf('Elder Champion')).toBe('Elder Champion')
+			expect(resourceOf('Extra Attack')).toBe('Extra Attack')
+		})
+	})
 })
 
 describe('grantedFeatureOrigin', () => {
