@@ -2482,7 +2482,7 @@ export function CharacterWizard({
 							: formatSpeciesName(state.data.speciesChoice?.name ?? '', state.data.speciesChoice?.source)
 					}
 					levelUp={gains}
-					{...(multiclassLevelUp || multiclassEdit ? { classLine: draftClasses.map((entry) => `${entry.className} ${entry.level}`).join(' / ') } : {})}
+					{...(multiclassLevelUp || multiclassEdit ? { classLine: draftClasses.map((entry) => `${entry.className} ${entry.level}${entry.subclass ? ` (${entry.subclass})` : ''}`).join(' / ') } : {})}
 					unfinishedClasses={unfinishedClasses}
 					loadErrors={grantLoadMessages}
 					classOptionLabels={Object.fromEntries(classOptionalFeatureGroups.map((group) => [group.featureType, group.name]))}

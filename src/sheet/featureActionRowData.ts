@@ -26,7 +26,7 @@
  */
 
 import { type ActionType, classifyActionType, isActionTableFeature } from '../actions/actionTableFeatureData'
-import { comparableText, plainText, resolveResourceName, speciesTraitUses } from '../calculation/resources'
+import { comparableText, isTableCounted, plainText, resolveResourceName, speciesTraitUses } from '../calculation/resources'
 import { featDisplayName, featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import type { GrantedFeature } from './grantedClassFeatures'
@@ -143,7 +143,11 @@ export function featureActionRows(
 	function add(kind: 'feature' | 'feat' | 'option' | 'species',name: string, record: { name: string; consumes?: unknown; entries: unknown[] }, origin: string | null, className: string | null = null): void {
 		const actionType = classifyActionType(record)
 		// D186: a species trait needs an R-phrase group or a tracked use count; a bare rest mention (Trance) is not enough.
-		const qualifies = kind === 'species' ? actionType !== 'other' || speciesTraitUses(record) !== null : isActionTableFeature(record) || actionType !== 'other'
+		// D415: so does a feature whose count a hand table gives (TCE/XGE write the rest untagged).
+		const qualifies =
+			kind === 'species'
+				? actionType !== 'other' || speciesTraitUses(record) !== null
+				: isActionTableFeature(record) || actionType !== 'other' || isTableCounted(name, plainText(record.entries).join(' '))
 		if (!qualifies) return
 		const candidate = (kind === 'feature' && consumedResourceName(record) === null ? POOL_GRANTING_FEATURES[name] : undefined) ?? resourceCandidateName(record)
 		const resourceName = resourceKey(candidate, className, record)

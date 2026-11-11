@@ -5773,3 +5773,16 @@ TCE, 12 featů FRHoF/RHW/EFA), ne pravidlo podle prózy. Maximum = Proficiency B
 markupu „Proficiency“). Řádek tabulky dělá z featury zdroj i bez značky odpočinku (TCE píše „long rest“ bez značky).
 Krátký odpočinek se čte z textu jako dosud; všech 28 se vrací jen na Long Rest. Featury TCE bez značky se dál
 neukazují v záložce Actions (D86), počítadlo mají v záložce Features. Zadal plánovací chat (PB-1) 11. 11. 2026.
+
+## D415 — Featury počítané tabulkou mají řádek v Actions; Review ukazuje podtřídu (PB-1b)
+
+(1) Featura, feat nebo volitelná featura patří do záložky Actions i tehdy, když jí tabulka `PROFICIENCY_BONUS_USES` (D414)
+nebo `ABILITY_MODIFIER_USES` (D412) dává počet použití pro držený text (jméno v tabulce A věta v textu; helper
+`isTableCounted`, resources.ts). Vedle D86 (`consumes` nebo značka odpočinku) a D182 (R-phrase), stejně jako
+`speciesTraitUses` u rysů druhu (D186). Řádek s typem 'other' patří do skupiny Other. Věta D86/D414, že featury TCE bez
+značky mají počítadlo jen v záložce Features, tím přestává platit. (2) Stejný helper dělá ze záznamu zdroj bez značky
+odpočinku i pro `ABILITY_MODIFIER_USES` (dosud jen D414): 9 featur XGE/TCE/GS2 (Unwavering Mark, Warding Maneuver,
+Hunter's Sense, Unerring Eye, Hidden Paths, Infectious Inspiration, Embodiment of the Law, Fungal Infestation, Whispers
+of Knowledge) do té doby počítadlo neměly vůbec. (3) Řádek tříd na kroku Review (level up, Edit; u jedné třídy i
+tvorba) ukazuje zvolenou podtřídu: „Fighter 5 (Battle Master) / Rogue 3 (Arcane Trickster)“; třída bez podtřídy beze
+změny. Karty postav (characterSummary.ts) beze změny. Zadal plánovací chat (PB-1b) 11. 11. 2026.

@@ -626,6 +626,13 @@ on a Long Rest only. Short Rest tags that do appear are other clauses: Greater A
 Fortitude … Short Rest or Long Rest") and Mist Walker (a saving throw after a Short Rest in mist). Gathered Whispers and
 Mark of Sentinel also carry `additionalSpells` `daily."1"` free casts — a separate once-per-Long-Rest counter, not these uses.
 
+PB-1b (D415), `scripts/investigate-pb1b-table-rows.mjs` (not kept): every one of the 69 table names (41 ability modifier,
+28 Proficiency Bonus) matches at least one record. 25 matching records have no `consumes`, no rest tag and no R-phrase
+group (all 'other'): 16 PB (13 TCE subclass features, 3 TCE Talismans; the feats all carry the tag) and 9 ability-modifier
+ones in XGE/TCE/GriffonsSaddlebag2 written with untagged "long rest" (Infectious Inspiration, Embodiment of the Law,
+Fungal Infestation, Hidden Paths, Warding Maneuver, Unwavering Mark, Unerring Eye, Hunter's Sense, Whispers of
+Knowledge). Those 9 failed `isSelfLimitedFeature`'s rest-tag test, so D412 gave them no tracker.
+
 ### Pool maxima live in table groups, not on any feature record
 No feature record (class-features.json, subclass-features.json, feats.json,
 optional-features.json) carries a maximum for the pool it spends — confirmed

@@ -58,6 +58,26 @@ describe('featureActionRows', () => {
 		])
 	})
 
+	it('D415: adds an untagged feature, feat or option whose count a hand table gives, in the Other group, and not the same name without the phrase', () => {
+		const pb = 'You can use this feature a number of times equal to your proficiency bonus, and you regain all expended uses when you finish a long rest.'
+		const rows = featureActionRows(
+			[
+				granted("Giant's Might", { entries: [pb], subclassShortName: 'Rune Knight', level: 3 }),
+				granted('Unwavering Mark', { entries: ['You can make this special attack a number of times equal to your Strength modifier (minimum of once), and you regain all expended uses of it when you finish a long rest.'] }),
+				granted('Runic Shield', { entries: ['When another creature you can see within 60 feet of you is hit by an attack roll, you can react.'] }),
+			],
+			[asiFeat('Mythal Touched', 'FRHoF', 4)],
+			[{ name: 'Mythal Touched', source: 'FRHoF', entries: ['You can use this benefit a number of times equal to your {@variantrule Proficiency Bonus|XPHB}.'] }],
+			[option('Bond of the Talisman', { source: 'TCE', entries: [pb] })],
+		)
+		expect(rows.map((row) => [row.name, row.actionType, row.resourceName])).toEqual([
+			["Giant's Might", 'other', "Giant's Might"],
+			['Unwavering Mark', 'other', 'Unwavering Mark'],
+			['Mythal Touched', 'other', 'Mythal Touched'],
+			['Bond of the Talisman', 'other', 'Bond of the Talisman'],
+		])
+	})
+
 	it('collapses a feature the data restates at a later level into one row (Action Surge at 2 and 17), keeping the level first gained', () => {
 		const rows = featureActionRows(
 			[

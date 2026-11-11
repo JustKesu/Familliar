@@ -150,7 +150,7 @@ export function ReviewStep({
 	classOptionLabels?: Readonly<Record<string, string | null>>
 	/** D337: data a multiclass Edit could not load; any blocks the save. */
 	loadErrors?: readonly string[]
-	/** D329: every class with its level after a multiclass level up ("Warlock 6 / Sorcerer 4"); absent shows the wizard's one class. */
+	/** D329/D415: every class with its level and subclass after a multiclass level up ("Warlock 6 (Fiend Patron) / Sorcerer 4"); absent shows the wizard's one class. */
 	classLine?: string
 	/** D333: the held classes of a multiclass Edit whose own picks are unfinished; any blocks the save. */
 	unfinishedClasses?: readonly UnfinishedClass[]
@@ -198,7 +198,8 @@ export function ReviewStep({
 	const entries = useFeatureEntries(draft, levelUp !== undefined && levelUp.newFeatures.length > 0)
 
 	const classChoice = data.classChoice
-	const identity = [speciesLabel, classLine ?? (classChoice ? `${classChoice.className} ${classChoice.level}` : ''), data.backgroundChoice?.name ?? ''].filter((part) => part !== '')
+	const classLabel = classChoice ? `${classChoice.className} ${classChoice.level}${data.subclass ? ` (${data.subclass.name})` : ''}` : ''
+	const identity = [speciesLabel, classLine ?? classLabel, data.backgroundChoice?.name ?? ''].filter((part) => part !== '')
 
 	const pickKey = (pick: { name: string; source: string }) => `${pick.name}|${pick.source}`
 	const optionSpells = data.classOptionalFeatureChoices.flatMap((entry) => (entry.spellChoices ?? []).flatMap((choice) => [...choice.cantrips.map((spell) => ({ ...spell, level: 0 })), ...choice.spells.map((spell) => ({ ...spell, level: 1 }))]))

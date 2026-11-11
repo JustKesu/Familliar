@@ -25,7 +25,7 @@ function seeded(id: string, classes: [string, string | null, number][], extra: R
   }
 }
 
-// TCE writes no action or rest tag, so its features list only on the Features tab (D86); the feat also lists on Actions.
+// D415: TCE/XGE features counted by a hand table list on Actions too, in the Other group.
 type Tab = 'Features' | 'Actions'
 
 async function openSheet(page: Page, character: { id: string }, tab: Tab): Promise<void> {
@@ -41,7 +41,8 @@ async function openSheet(page: Page, character: { id: string }, tab: Tab): Promi
 
 const counter = (page: Page, name: string, tab: Tab = 'Features'): Locator => page.getByRole('tabpanel', { name: tab }).getByRole('group', { name: `${name} uses`, exact: true }).first()
 const boxes = (page: Page, name: string, tab: Tab = 'Features'): Locator => counter(page, name, tab).getByRole('button')
-const used = (page: Page, name: string): Locator => counter(page, name).locator('.sheet__use-box--used')
+const used = (page: Page, name: string, tab: Tab = 'Features'): Locator => counter(page, name, tab).locator('.sheet__use-box--used')
+const otherGroup = (page: Page): Locator => page.getByRole('tabpanel', { name: 'Actions' }).getByRole('region', { name: 'Other', exact: true })
 const GIANTS_MIGHT = "Giant's Might"
 
 test("PB-1 a: Fighter 5 Rune Knight shows 3 Giant's Might boxes per Long Rest; a Long Rest restores a used box", async ({ page }) => {
@@ -78,4 +79,23 @@ test('PB-1 d: Fighter 5 who took Fairy Trickster at level 4 shows 3 boxes', asyn
   await expect(counter(page, 'Fairy Trickster', 'Actions')).toContainText('/ Long Rest')
   await page.getByRole('tab', { name: 'Features' }).click()
   await expect(boxes(page, 'Fairy Trickster')).toHaveCount(3)
+})
+
+test("PB-1b a (D415): Fighter 5 Rune Knight has a Giant's Might row in Actions › Other with 3 boxes; using one shows 2 left in Features", async ({ page }) => {
+  await openSheet(page, seeded('pb1b-a', [['Fighter', 'Rune Knight', 5]], { optionalFeatureChoices: [RUNES], featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] }), 'Actions')
+  await expect(otherGroup(page).getByRole('group', { name: `${GIANTS_MIGHT} uses`, exact: true })).toHaveCount(1)
+  await expect(boxes(page, GIANTS_MIGHT, 'Actions')).toHaveCount(3)
+
+  await counter(page, GIANTS_MIGHT, 'Actions').getByRole('button', { name: `Use ${GIANTS_MIGHT}` }).first().click()
+  await expect(used(page, GIANTS_MIGHT, 'Actions')).toHaveCount(1)
+  await page.getByRole('tab', { name: 'Features' }).click()
+  await expect(boxes(page, GIANTS_MIGHT)).toHaveCount(3)
+  await expect(used(page, GIANTS_MIGHT)).toHaveCount(1)
+  await expect(counter(page, GIANTS_MIGHT).getByRole('button', { name: `Use ${GIANTS_MIGHT}` })).toHaveCount(2)
+})
+
+test('PB-1b b (D415): Fighter 3 Cavalier with Strength 15 has an Unwavering Mark row in Actions › Other with 2 boxes', async ({ page }) => {
+  await openSheet(page, seeded('pb1b-b', [['Fighter', 'Cavalier', 3]]), 'Actions')
+  await expect(otherGroup(page).getByRole('group', { name: 'Unwavering Mark uses', exact: true })).toHaveCount(1)
+  await expect(boxes(page, 'Unwavering Mark', 'Actions')).toHaveCount(2)
 })

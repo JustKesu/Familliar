@@ -1377,8 +1377,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - PB-1 (D414): 28 features/feats counted "a number of times equal to your Proficiency Bonus" (13 TCE subclass features,
   3 TCE Talisman options, 12 feats) get use boxes from the hand table `PROFICIENCY_BONUS_USES` (resources.ts): Proficiency
   Bonus from total character level, breakdown "Proficiency Bonus +3", Long Rest only. The table also makes the untagged TCE
-  rows resources (no rest tag). TCE rows show boxes on the Features tab only; they are not on the Actions tab (D86 needs a
-  rest tag or `consumes`). `e2e/proficiencyBonusUses.spec.ts` a–d.
+  rows resources (no rest tag). `e2e/proficiencyBonusUses.spec.ts` a–d.
+- PB-1b (D415): `isTableCounted` (resources.ts) — a feature/feat/option whose count `PROFICIENCY_BONUS_USES` or
+  `ABILITY_MODIFIER_USES` gives for its held text also gets an Actions row (`featureActionRows`), Other group, boxes shared
+  with the Features tab: 16 TCE PB rows and 9 untagged XGE/TCE/GS2 ability-modifier rows, the latter now resources too
+  (they had no tracker before). The wizard Review class line shows each class's subclass ("Fighter 5 / Rogue 3 (Arcane
+  Trickster)"; single class from the wizard's subclass, also in creation); character cards unchanged.
+  `e2e/proficiencyBonusUses.spec.ts` PB-1b a–b, `e2e/levelUpSubclassGains.spec.ts` LS-1 b.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose

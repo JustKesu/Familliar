@@ -128,6 +128,8 @@ test('LS-1 b: Fighter 5 / Rogue 2 → Rogue 3 Arcane Trickster walks the Rogue S
   const { spells } = await walkToReview(page, 8)
   expect(spells.length).toBeGreaterThan(0)
   await expect(whatsNew(page, 8)).toContainText('Mage Hand Legerdemain')
+  // D415: the Review class line names the subclass chosen on this level up.
+  await expect(page.locator('.review__line')).toContainText('Fighter 5 / Rogue 3 (Arcane Trickster)')
   await saveAndCheckSpells(page, 8, spells)
   await expect(page.locator('.sheet__classes')).toHaveText('Fighter 5 / Rogue 3 (Arcane Trickster)')
 })

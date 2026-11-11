@@ -780,6 +780,15 @@ describe('D412 uses counted by an ability modifier', () => {
 		const older = { ...BARDIC, entries: ['You can use this feature a number of times equal to your Proficiency Bonus. You regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'] }
 		expect(computeCharacterResources(character('Bard', 1), CLASSES, [older], [], scores(3))[0].max.status).toBe('unknown')
 	})
+
+	it('D415: an untagged XGE row is a resource too', () => {
+		const mark: ResourceFeature = {
+			name: 'Unwavering Mark',
+			entries: ['You can make this special attack a number of times equal to your Strength modifier (minimum of once), and you regain all expended uses of it when you finish a long rest.'],
+		}
+		const [resource] = computeCharacterResources(character('Fighter', 10), CLASSES, [mark], [], scores(2))
+		expect(resource).toMatchObject({ name: 'Unwavering Mark', max: { status: 'known', value: 2 }, shortRest: null })
+	})
 })
 
 describe('D414 uses counted by the Proficiency Bonus', () => {

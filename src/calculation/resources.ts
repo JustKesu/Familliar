@@ -119,8 +119,8 @@ const EXPENDED_USES =
 
 function isSelfLimitedFeature(feature: ResourceFeature): boolean {
 	const text = plainText(feature.entries).join(' ')
-	// D414: TCE writes "long rest" untagged, so the rest-tag test alone misses the table's TCE rows.
-	if (isProficiencyBonusCounted(feature.name, text)) return true
+	// D414/D415: TCE and XGE write "long rest" untagged, so the rest-tag test alone misses the tables' rows.
+	if (isTableCounted(feature.name, text)) return true
 	if (!hasRestTag(feature.entries)) return false
 	return EXPENDED_USES.test(text)
 }
@@ -248,12 +248,20 @@ export const ABILITY_MODIFIER_USES: Record<string, Ability> = {
 	'Wholeness of Body': 'wisdom',
 }
 
+function abilityLabel(ability: Ability): string {
+	return ability[0].toUpperCase() + ability.slice(1)
+}
+
+function isAbilityModifierCounted(name: string, text: string): boolean {
+	const ability = ABILITY_MODIFIER_USES[name]
+	// A same-named feature of another edition may count its uses differently.
+	return ability !== undefined && new RegExp(`number of times equal to your ${abilityLabel(ability)} modifier`, 'i').test(text)
+}
+
 function abilityModifierMax(name: string, text: string, abilityScores: AbilityScores | undefined): Calculated<number> | null {
 	const ability = ABILITY_MODIFIER_USES[name]
-	if (!ability || !abilityScores) return null
-	const label = ability[0].toUpperCase() + ability.slice(1)
-	// A same-named feature of another edition may count its uses differently.
-	if (!new RegExp(`number of times equal to your ${label} modifier`, 'i').test(text)) return null
+	if (!ability || !abilityScores || !isAbilityModifierCounted(name, text)) return null
+	const label = abilityLabel(ability)
 	const score = abilityScores[ability]
 	if (score.status === 'unknown') return unknown(score.reason)
 	const modifier = score.value.modifier
@@ -303,6 +311,11 @@ const PROFICIENCY_BONUS_COUNT = /number of times equal to your Proficiency(?: Bo
 
 function isProficiencyBonusCounted(name: string, text: string): boolean {
 	return PROFICIENCY_BONUS_USES.has(name) && PROFICIENCY_BONUS_COUNT.test(text)
+}
+
+/** D415: one of the two hand tables (D412, D414) gives this held text its use count. */
+export function isTableCounted(name: string, text: string): boolean {
+	return isProficiencyBonusCounted(name, text) || isAbilityModifierCounted(name, text)
 }
 
 function proficiencyBonusMax(name: string, text: string, character: Character): Calculated<number> | null {

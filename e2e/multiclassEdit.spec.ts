@@ -180,7 +180,7 @@ test('M9b a: Warlock 6 / Sorcerer 3 — swap an invocation and a Metamagic optio
   )
 
   await goToStep(page, /Review and save/)
-  await expect(page.locator('.review__line')).toContainText('Warlock 6 / Sorcerer 3')
+  await expect(page.locator('.review__line')).toContainText('Warlock 6 (Fiend Patron) / Sorcerer 3 (Wild Magic Sorcery)')
   await expect(page.getByRole('region', { name: 'Hit points' })).toContainText('6d8 + 3d6')
   await saveEdit(page, 'm9b-a')
 
