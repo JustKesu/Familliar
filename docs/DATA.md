@@ -1537,6 +1537,10 @@ The attack count is in prose only, no numeric field:
   Warlock (XPHB). Subclasses — "1/3" Eldritch Knight and Arcane Trickster (XPHB) only, each carrying
   `casterProgression`, `spellcastingAbility`, `preparedSpellsProgression` and a `subclassTableGroups` entry with
   `rowsSpellProgression`. No other value (e.g. "1/2") exists in the data.
+- Subclass `spellcastingAbility` (SC-1, `scripts/investigate-subclass-spellcasting-ability.js`): 3 of 116 subclasses —
+  Eldritch Knight "int", Arcane Trickster "int", Path of the Ancestral Guardian (Barbarian) "wis". Ancestral Guardian
+  has no `casterProgression` and no Spellcasting feature, so `spellcastingAbility` alone does not mean "has Spellcasting"
+  (D46, D413).
 - Wizard XPHB `rowsSpellProgression` has 20 rows of 9 numbers and is identical on all 20 levels to the XPHB
   Multiclass Spellcaster table (row 1 `2 0…`, row 5 `4 3 2 0…`, row 20 `4 3 3 3 3 2 2 1 1`); the app uses it as
   that table.

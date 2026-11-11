@@ -5753,3 +5753,13 @@ minimálně 1; rozpis „Charisma modifier +4“ (pod minimem navíc řádek „
 držené featury tu větu s tou vlastností opravdu obsahuje. Krátký odpočinek se čte z textu jako dosud (Bardic
 Inspiration od Barda 5 přes Font of Inspiration). Vynechány: Spell-Storing Item, Perfected Armor, Reanimator's Skill
 Set (DATA.md). Zadal plánovací chat (AU-1) 11. 11. 2026.
+
+## D413 — Podtřída s vlastním Spellcasting splňuje předpoklad „spellcasting“ (SC-1)
+
+Předpoklad `spellcasting2020` (War Caster, Spell Sniper, Elemental Adept, Boon of Spell Recall, Eldritch Adept,
+Metamagic Adept, Boon of the Furious Storm) splní i podtřída, kterou postava drží a jejíž záznam v classes.json má
+`spellcastingAbility` a zároveň `casterProgression` (Eldritch Knight, Arcane Trickster). Path of the Ancestral Guardian
+má `spellcastingAbility` bez `casterProgression` a featuru Spellcasting nemá, proto se nepočítá (stejně jako D46).
+Featy se nepočítají (D&D 2024: předpoklad je featura Spellcasting nebo Pact Magic). Platí ve wizardu (tvorba, level
+up, Edit, multiclass) i v Manage Feats; text „(needs a spellcasting class)“ zůstává. Zadal plánovací chat (SC-1)
+11. 11. 2026.

@@ -94,7 +94,7 @@ async function loadPanelData(character: Character): Promise<Loaded> {
 		Promise.all(
 			character.classes.map(async (c) => ({
 				className: c.className,
-				info: await loadClassPrereqInfo(c.className, c.classSource),
+				info: await loadClassPrereqInfo(c.className, c.classSource, c.subclass),
 				fightingStyle: await loadHasFightingStyleFeature(c.className, c.classSource, c.level),
 			})),
 		),

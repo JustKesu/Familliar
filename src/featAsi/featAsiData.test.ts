@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
+	classPrereqInfoFor,
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
 	extractSelectableFeats,
@@ -21,6 +22,25 @@ import {
  * data shape before this was written — scripts/investigate-feat-asi-
  * eligibility.js and scripts/investigate-feat-structured-fields.js).
  */
+
+describe('classPrereqInfoFor — D413 subclass Spellcasting', () => {
+	const classes = [
+		{ entryType: 'class', name: 'Fighter', source: 'XPHB', classFeatures: [] },
+		{ entryType: 'class', name: 'Barbarian', source: 'XPHB', classFeatures: [] },
+		{ entryType: 'class', name: 'Wizard', source: 'XPHB', classFeatures: [], spellcastingAbility: 'int' },
+		{ entryType: 'subclass', name: 'Eldritch Knight', source: 'XPHB', className: 'Fighter', classSource: 'XPHB', spellcastingAbility: 'int', casterProgression: '1/3' },
+		{ entryType: 'subclass', name: 'Champion', source: 'XPHB', className: 'Fighter', classSource: 'XPHB' },
+		{ entryType: 'subclass', name: 'Path of the Ancestral Guardian', source: 'XGE', className: 'Barbarian', classSource: 'XPHB', spellcastingAbility: 'wis' },
+	]
+	const has = (className: string, subclass: string | null) => classPrereqInfoFor(classes, className, 'XPHB', subclass)?.hasSpellcasting
+	it('a caster subclass counts', () => expect(has('Fighter', 'Eldritch Knight')).toBe(true))
+	it('no subclass or a non-caster subclass does not', () => {
+		expect(has('Fighter', null)).toBe(false)
+		expect(has('Fighter', 'Champion')).toBe(false)
+	})
+	it('a subclass with spellcastingAbility but no casterProgression does not (D46)', () => expect(has('Barbarian', 'Path of the Ancestral Guardian')).toBe(false))
+	it('a casting base class still counts without a subclass', () => expect(has('Wizard', null)).toBe(true))
+})
 
 const classFeatures = [
 	{ name: 'Ability Score Improvement', className: 'Fighter', classSource: 'XPHB', level: 4 },

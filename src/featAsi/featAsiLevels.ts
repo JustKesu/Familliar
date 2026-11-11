@@ -49,12 +49,14 @@ export async function loadFeatAsiStepData(
 	chosenSpeciesSize: string | null,
 	/** D329: a multiclass level up's draft (every class, the raised one included, and levelOrder with the new level). */
 	multiclass?: Pick<Character, 'classes' | 'levelOrder'>,
+	/** D413: the subclass chosen for this class, if any. */
+	subclass: string | null = null,
 ): Promise<FeatAsiStepData> {
 	if (multiclass && multiclass.classes.length > 1) return loadMulticlassFeatAsiStepData(multiclass, speciesName, speciesSource, chosenSpeciesSize)
 	const [grants, feats, classInfo, hasFightingStyleFeature, speciesInfo] = await Promise.all([
 		loadFeatAsiGrants(className, classSource, level),
 		loadFeats(),
-		loadClassPrereqInfo(className, classSource),
+		loadClassPrereqInfo(className, classSource, subclass),
 		loadHasFightingStyleFeature(className, classSource, level),
 		speciesName && speciesSource ? loadSpeciesPrereqInfo(speciesName, speciesSource) : Promise.resolve(null),
 	])
@@ -91,7 +93,7 @@ async function loadMulticlassFeatAsiStepData(
 		loadFeats(),
 		Promise.all(
 			character.classes.map(async (entry) => ({
-				info: await loadClassPrereqInfo(entry.className, entry.classSource),
+				info: await loadClassPrereqInfo(entry.className, entry.classSource, entry.subclass),
 				fightingStyle: await loadHasFightingStyleFeature(entry.className, entry.classSource, entry.level),
 			})),
 		),
@@ -123,6 +125,7 @@ export function useFeatAsiStepData(
 	speciesSource: string | null,
 	chosenSpeciesSize: string | null,
 	multiclass?: Pick<Character, 'classes' | 'levelOrder'>,
+	subclass: string | null = null,
 ): FeatAsiStepLoad {
 	const [state, setState] = useState<FeatAsiStepLoad>({ status: 'loading' })
 	const multiclassKey = multiclass ? JSON.stringify([multiclass.classes, multiclass.levelOrder]) : null
@@ -130,7 +133,7 @@ export function useFeatAsiStepData(
 		let cancelled = false
 		setState({ status: 'loading' })
 		if (className === null || classSource === null) return
-		loadFeatAsiStepData(className, classSource, level, speciesName, speciesSource, chosenSpeciesSize, multiclass)
+		loadFeatAsiStepData(className, classSource, level, speciesName, speciesSource, chosenSpeciesSize, multiclass, subclass)
 			.then((data) => {
 				if (!cancelled) setState({ status: 'ready', data })
 			})
@@ -142,7 +145,7 @@ export function useFeatAsiStepData(
 		}
 		// `multiclass` is read through multiclassKey; the draft object is rebuilt on every render.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [className, classSource, level, speciesName, speciesSource, chosenSpeciesSize, multiclassKey])
+	}, [className, classSource, level, speciesName, speciesSource, chosenSpeciesSize, multiclassKey, subclass])
 	return state
 }
 

@@ -1373,6 +1373,7 @@ export function CharacterWizard({
 		state.data.speciesChoice?.source ?? null,
 		state.data.speciesSize,
 		multiclassDraft,
+		wizardClassChoice?.subclass ?? null,
 	)
 	const featAsiEligibleLevelCount = multiclassLevelUp || multiclassEdit ? (featAsiLoad.status === 'ready' ? featAsiLoad.data.grants.length : 0) : featAsiGrantCount
 	const heldFeatAsiLevels = useMemo(() => (levelUp && character ? (character.featAsiChoices ?? []).map((choice) => choice.level) : undefined), [levelUp, character])

@@ -403,8 +403,25 @@ function toStringArray(value: unknown): string[] {
 	return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 }
 
+/**
+ * D413: a held subclass with its own Spellcasting (Eldritch Knight, Arcane Trickster) counts too. D46: Path of the
+ * Ancestral Guardian carries spellcastingAbility but no casterProgression and has no Spellcasting feature.
+ */
+function subclassHasSpellcasting(parsedClasses: unknown[], className: string, classSource: string, subclass: string): boolean {
+	return parsedClasses.some(
+		(candidate) =>
+			isRecord(candidate) &&
+			candidate['entryType'] === 'subclass' &&
+			candidate['name'] === subclass &&
+			candidate['className'] === className &&
+			candidate['classSource'] === classSource &&
+			candidate['spellcastingAbility'] !== undefined &&
+			candidate['casterProgression'] !== undefined,
+	)
+}
+
 /** `classFeatures` distinguishes a base class entry from a subclass entry sharing the same name (see classes.json). */
-export function classPrereqInfoFor(parsedClasses: unknown, className: string, classSource: string): ClassPrereqInfo | null {
+export function classPrereqInfoFor(parsedClasses: unknown, className: string, classSource: string, subclass: string | null = null): ClassPrereqInfo | null {
 	if (!Array.isArray(parsedClasses)) {
 		throw new Error('classes.json: expected a top-level array.')
 	}
@@ -416,13 +433,13 @@ export function classPrereqInfoFor(parsedClasses: unknown, className: string, cl
 	return {
 		armorProficiencies: toStringArray(entry.startingProficiencies?.armor),
 		weaponProficiencies: toStringArray(entry.startingProficiencies?.weapons),
-		hasSpellcasting: entry.spellcastingAbility !== undefined,
+		hasSpellcasting: entry.spellcastingAbility !== undefined || (subclass !== null && subclassHasSpellcasting(parsedClasses, className, classSource, subclass)),
 	}
 }
 
-export async function loadClassPrereqInfo(className: string, classSource: string): Promise<ClassPrereqInfo | null> {
+export async function loadClassPrereqInfo(className: string, classSource: string, subclass: string | null = null): Promise<ClassPrereqInfo | null> {
 	const parsed = await loadDataFile('data/classes.json')
-	return classPrereqInfoFor(parsed, className, classSource)
+	return classPrereqInfoFor(parsed, className, classSource, subclass)
 }
 
 /** Whether the class grants the "Fighting Style" class feature by `level` — reuses D12's existing lookup rather than a second one. */

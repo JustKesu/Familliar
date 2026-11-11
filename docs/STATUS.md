@@ -1370,6 +1370,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `computeAbilityScores` into `computeCharacterResources`. Level up/removal callers pass no scores (max stays unknown there,
   count not clamped). Not tracked: Spell-Storing Item, Perfected Armor, Reanimator's Skill Set; Flash of Genius gets no
   Short Rest return (DATA.md). `e2e/abilityUses.spec.ts` a–e.
+- SC-1 (D413): the `spellcasting2020` feat prerequisite is also met by a held subclass with `spellcastingAbility` and
+  `casterProgression` (Eldritch Knight, Arcane Trickster; not Ancestral Guardian): `classPrereqInfoFor(..., subclass)`,
+  fed by the wizard's chosen subclass (single class), each class's subclass (multiclass) and Manage Feats.
+  `e2e/subclassSpellcastingPrereq.spec.ts` a–d.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose
