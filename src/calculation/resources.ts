@@ -29,12 +29,15 @@
  * than guessed. Data-wide that is 8 resources with a table and ~90 without.
  * The exceptions: a feature whose text states only a recharge, with no count,
  * has one use (D119; isImplicitSingleUse), and Action Surge and Indomitable read
- * a hand-written level table (D120; LEVEL_SCALED_USES).
+ * a hand-written level table (D120; LEVEL_SCALED_USES), and a count stated as an
+ * ability modifier reads a hand table (D412; ABILITY_MODIFIER_USES).
  */
 
+import type { Ability } from '../abilities/abilityScores'
 import { hasRestTag } from '../actions/actionTableFeatureData'
 import type { Character, CharacterClass } from '../storage/character'
 import { compareText } from '../text/compareText'
+import type { AbilityScoreValue } from './abilityScores'
 import { classPoolKey } from './classPools'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
@@ -68,6 +71,9 @@ export interface CharacterResource {
 
 /** How much of a pool one rest returns — the two amounts the 2024 feature text uses, never a fraction. */
 export type RestRecovery = 'all' | 'one'
+
+/** The final scores the sheet shows (computeAbilityScores). */
+export type AbilityScores = Record<Ability, Calculated<AbilityScoreValue>>
 
 /*
  * The data calls the Monk pool "Ki" on the TCE subclasses this app still offers
@@ -187,6 +193,71 @@ function levelScaledMax(name: string, character: Character): Calculated<number> 
 	const step = scaled.steps.filter(([level]) => level <= characterClass.level).pop()
 	if (!step) return null
 	return known(step[1], [{ source: `${scaled.className} level ${characterClass.level}: ${name}`, amount: step[1] }])
+}
+
+/*
+ * D412: "a number of times equal to your <Ability> modifier (minimum of once)",
+ * read from the final score. Left out on purpose: Spell-Storing Item (twice the
+ * modifier, no rest), Perfected Armor (one count per armor model), Reanimator's
+ * Skill Set (no minimum stated).
+ */
+export const ABILITY_MODIFIER_USES: Record<string, Ability> = {
+	'Arcane Jolt': 'intelligence',
+	'Bardic Inspiration': 'charisma',
+	Bladesong: 'intelligence',
+	Bloodthirst: 'intelligence',
+	'Chilling Retribution': 'wisdom',
+	'Corona of Light': 'wisdom',
+	'Cosmic Omen': 'wisdom',
+	"Dark One's Own Luck": 'charisma',
+	'Dread Ambusher': 'wisdom',
+	Dreadnaught: 'intelligence',
+	'Elemental Rebuke': 'charisma',
+	'Embodiment of the Law': 'wisdom',
+	'Flash of Genius': 'intelligence',
+	'Flurry of Healing and Harm': 'wisdom',
+	'Form of Dread': 'charisma',
+	'Fungal Infestation': 'wisdom',
+	'Ghost Walker': 'wisdom',
+	'Glorious Defense': 'charisma',
+	'Hidden Paths': 'wisdom',
+	"Hunter's Sense": 'wisdom',
+	'Infectious Inspiration': 'charisma',
+	'Mapping Magic': 'intelligence',
+	'Misty Wanderer': 'wisdom',
+	'Money Talks': 'charisma',
+	'Moonlight Step': 'wisdom',
+	"Nature's Veil": 'wisdom',
+	'Restorative Reagents': 'intelligence',
+	'Restore Balance': 'charisma',
+	"Sentinel at Death's Door": 'wisdom',
+	'Star Map': 'wisdom',
+	'Steps of the Fey': 'charisma',
+	"Tinker's Magic": 'intelligence',
+	Tireless: 'wisdom',
+	'Unerring Eye': 'wisdom',
+	'Unwavering Mark': 'strength',
+	'Wails from the Grave': 'dexterity',
+	'War Priest': 'wisdom',
+	'Warding Flare': 'wisdom',
+	'Warding Maneuver': 'constitution',
+	'Whispers of Knowledge': 'wisdom',
+	'Wholeness of Body': 'wisdom',
+}
+
+function abilityModifierMax(name: string, text: string, abilityScores: AbilityScores | undefined): Calculated<number> | null {
+	const ability = ABILITY_MODIFIER_USES[name]
+	if (!ability || !abilityScores) return null
+	const label = ability[0].toUpperCase() + ability.slice(1)
+	// A same-named feature of another edition may count its uses differently.
+	if (!new RegExp(`number of times equal to your ${label} modifier`, 'i').test(text)) return null
+	const score = abilityScores[ability]
+	if (score.status === 'unknown') return unknown(score.reason)
+	const modifier = score.value.modifier
+	const value = Math.max(1, modifier)
+	const breakdown: Contribution[] = [{ source: `${label} modifier ${modifier >= 0 ? '+' : ''}${modifier}`, amount: modifier }]
+	if (value !== modifier) breakdown.push({ source: 'minimum of once', amount: value - modifier })
+	return known(value, breakdown)
 }
 
 function isImplicitSingleUse(name: string, text: string): boolean {
@@ -338,7 +409,14 @@ function tableGrantedPools(character: Character, parsedClasses: unknown[]): stri
 }
 
 /** The maximum for one resource, from the first of the character's class/subclass tables that names it. */
-function computeResourceMax(name: string, character: Character, parsedClasses: unknown[], impliedSingleUse: boolean): Calculated<number> {
+function computeResourceMax(
+	name: string,
+	character: Character,
+	parsedClasses: unknown[],
+	impliedSingleUse: boolean,
+	text = '',
+	abilityScores?: AbilityScores,
+): Calculated<number> {
 	const looked: string[] = []
 	for (const characterClass of character.classes) {
 		looked.push(characterClass.className)
@@ -360,7 +438,7 @@ function computeResourceMax(name: string, character: Character, parsedClasses: u
 			return known(count, breakdown)
 		}
 	}
-	const scaled = levelScaledMax(name, character)
+	const scaled = levelScaledMax(name, character) ?? abilityModifierMax(name, text, abilityScores)
 	if (scaled) return scaled
 	if (impliedSingleUse) return known(1, [{ source: `${name}: can't be used again until a rest, no count stated`, amount: 1 }])
 	const where = looked.length > 0 ? `${looked.join(', ')}'s per-level table${looked.length > 1 ? 's' : ''}` : 'any class table'
@@ -458,6 +536,7 @@ export function computeCharacterResources(
 	parsedClasses: unknown,
 	features: readonly ResourceFeature[],
 	speciesTraits: readonly ResourceFeature[] = [],
+	abilityScores?: AbilityScores,
 ): CharacterResource[] {
 	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
 
@@ -524,7 +603,7 @@ export function computeCharacterResources(
 				{
 					name,
 					dataNames,
-					max: computeResourceMax(name, character, parsedClasses, impliedSingleUse),
+					max: computeResourceMax(name, character, parsedClasses, impliedSingleUse, text, abilityScores),
 					shortRest: shortRestRecovery([name, ...dataNames], features) ?? (rechargesAsWhole && singleUseRechargesOnShortRest(text) ? 'all' : null),
 				},
 			]

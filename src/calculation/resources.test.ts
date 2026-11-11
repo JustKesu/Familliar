@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, subLimitKeys, type CharacterResource, type ResourceFeature } from './resources'
+import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, subLimitKeys, type AbilityScores, type CharacterResource, type ResourceFeature } from './resources'
+import { ABILITIES } from '../abilities/abilityScores'
+import { known } from './types'
 import type { Character } from '../storage/character'
 import { canSpendResource, freeCastCounter } from './freeCastResources'
 import { afterShortRest } from '../rest/rest'
@@ -737,5 +739,39 @@ describe('D410 Battle Master Superiority Die', () => {
 
 	it('gives no pool to a Champion, a subclass-less Fighter or a Battle Master below level 3', () => {
 		expect([dice(3, 'Champion'), dice(5, null), dice(2, 'Battle Master')]).toEqual([null, null, null])
+	})
+})
+
+describe('D412 uses counted by an ability modifier', () => {
+	const BARDIC: ResourceFeature = {
+		name: 'Bardic Inspiration',
+		entries: [
+			'You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.',
+		],
+	}
+	const FONT: ResourceFeature = { name: 'Font of Inspiration', entries: ['You now regain all your expended uses of Bardic Inspiration when you finish a {@variantrule Short Rest|XPHB} or Long Rest.'] }
+	const scores = (modifier: number): AbilityScores =>
+		Object.fromEntries(ABILITIES.map((ability) => [ability, known({ score: 10 + 2 * modifier, modifier }, [])])) as AbilityScores
+
+	it('takes the final modifier, with a breakdown line', () => {
+		const [bardic] = computeCharacterResources(character('Bard', 1), CLASSES, [BARDIC], [], scores(3))
+		expect(bardic.max).toMatchObject({ status: 'known', value: 3, breakdown: [{ source: 'Charisma modifier +3', amount: 3 }] })
+		expect(bardic.shortRest).toBeNull()
+	})
+
+	it('never goes below one use', () => {
+		const [bardic] = computeCharacterResources(character('Bard', 1), CLASSES, [BARDIC], [], scores(-1))
+		expect(bardic.max).toMatchObject({ status: 'known', value: 1 })
+	})
+
+	it('comes back on a Short Rest once Font of Inspiration is held', () => {
+		const bardic = computeCharacterResources(character('Bard', 5), CLASSES, [BARDIC, FONT], [], scores(3)).find((r) => r.name === 'Bardic Inspiration')
+		expect(bardic?.shortRest).toBe('all')
+	})
+
+	it('stays not in the data without ability scores, or when the text counts some other way', () => {
+		expect(computeCharacterResources(character('Bard', 1), CLASSES, [BARDIC])[0].max.status).toBe('unknown')
+		const older = { ...BARDIC, entries: ['You can use this feature a number of times equal to your Proficiency Bonus. You regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'] }
+		expect(computeCharacterResources(character('Bard', 1), CLASSES, [older], [], scores(3))[0].max.status).toBe('unknown')
 	})
 })

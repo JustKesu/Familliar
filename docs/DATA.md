@@ -603,6 +603,20 @@ Paladin, Ranger), "1/3" (Eldritch Knight, Arcane Trickster — carried on
 the subclass entry, see "Third-caster spell slots" above). Non-casters
 (Barbarian, Fighter, Monk, Rogue) have no `casterProgression` field at all.
 
+### Use counts stated as an ability modifier (AU-1, D412)
+`scripts/investigate-ability-mod-uses.js` (not kept): the phrase "number of times equal to your <Ability> modifier"
+(markup stripped) hits 6 class features and 39 subclass-feature texts (44 distinct features), none in feats.json or
+optional-features.json. 41 are the plain "(minimum of once)" + Long Rest shape (TGS2 writes "(a minimum of once)";
+Flurry of Healing and Harm says "a total number of times"). Three do not fit: Spell-Storing Item (EFA, "twice your
+Intelligence modifier (minimum of twice)", a count of an object's charges, no rest), Perfected Armor (EFA, two
+counts, one per armor model), Reanimator's Skill Set (RHW, no minimum stated). The other 29 "number of times equal to"
+texts are Proficiency Bonus (28) and Renown Score (Favored in House). Only two counted free casts come through
+`additionalSpells` daily ability sub-keys (Alchemist `int`, Archfey Patron `cha`); both are already shared with
+their feature (D190). Short Rest returns of these counts sit in other features: Font of Inspiration (Bardic
+Inspiration, all), Improved Warding Flare (all), Dread Incarnate (Bloodthirst, one); War Priest says it itself.
+EFA Advanced Artifice / Soul of Artifice phrase it "When you finish a Short Rest, you regain …" — an ordering the
+rest-recovery reader does not match, so Flash of Genius gets nothing back on a Short Rest.
+
 ### Pool maxima live in table groups, not on any feature record
 No feature record (class-features.json, subclass-features.json, feats.json,
 optional-features.json) carries a maximum for the pool it spends — confirmed

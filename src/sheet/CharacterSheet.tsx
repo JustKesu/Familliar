@@ -2558,7 +2558,7 @@ function CharacterSheetBody({
 	const resourceFeatures: ResourceFeature[] = [...grantedFeatures, ...chosenFeatTexts, ...actionOptions]
 	// D190: free-cast counters join the list, so spending clamps and Short Rest recovery run through the same path.
 	const characterResources = withFreeCastResources(
-		computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits),
+		computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits, abilityScores),
 		freeCastResources(combinedSpells, abilityScores),
 	)
 	const resourceKey = (candidate: string, className: string | null) => resourceKeyFor(candidate, className, characterResources)

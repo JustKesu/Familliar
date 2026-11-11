@@ -5743,3 +5743,13 @@ z kopie postavy s touto podtřídou (`levelGainsFor` s parametrem `chosenSubclas
 důvody „unknown“ kroků a karta Review „What's new“. Změna podtřídy je přepočítá (Eldritch Knight → Champion odebere krok
 Spells; D342 dál maže výběry kouzel). Seed wizardu dál používá zisky bez podtřídy. Dokud přepočet neskončí, Next na kroku
 Class čeká; když selže, platí zisky bez podtřídy (D43). Zadal plánovací chat (LS-1) 11. 11. 2026.
+
+## D412 — Počet použití rovný modifikátoru vlastnosti (AU-1)
+
+Featura, jejíž text říká „a number of times equal to your <Ability> modifier (minimum of once)“, dostane počítadlo.
+Ruční tabulka `ABILITY_MODIFIER_USES` (resources.ts) featura → vlastnost, 41 řádků ze všech knih v aplikaci, ne
+pravidlo podle prózy. Maximum = modifikátor KONEČNÉHO skóre (to, co ukazuje list: pozadí, ASI, featy, předměty),
+minimálně 1; rozpis „Charisma modifier +4“ (pod minimem navíc řádek „minimum of once“). Řádek platí, jen když text
+držené featury tu větu s tou vlastností opravdu obsahuje. Krátký odpočinek se čte z textu jako dosud (Bardic
+Inspiration od Barda 5 přes Font of Inspiration). Vynechány: Spell-Storing Item, Perfected Armor, Reanimator's Skill
+Set (DATA.md). Zadal plánovací chat (AU-1) 11. 11. 2026.

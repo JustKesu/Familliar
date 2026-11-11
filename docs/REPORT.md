@@ -1,40 +1,46 @@
-LS-1 hotovo (D411). HEAD na startu b0733fa.
+AU-1 hotovo (D412). HEAD na startu 711d9be.
 
-## STEP 1: kdo čte zisky level upu (LevelGains)
-| Místo | Co čte | Musí sledovat zvolenou podtřídu? |
+## STEP 1: featury s počtem „number of times equal to your <Ability> modifier“
+Skript `scripts/investigate-ability-mod-uses.js` (class/subclass features, feats, optional features; feats/optfeats 0 zásahů). Všechny přidané: minimum 1, obnova Long Rest; Short Rest jen kde uvedeno.
+
+| Vlastnost | Featury (zdroj) | Short Rest |
 |---|---|---|
-| CharacterWizard.tsx:224 `levelUpStepConditions` | `steps[*].status/swappable/owingSubclasses` → procházené kroky | ano |
-| CharacterWizard.tsx:225 `unknownLevelUpSteps` | `steps[*].reason` → poznámka „check it by hand“ (ř. 1901) | ano |
-| CharacterWizard.tsx:395 seed `levelUpStepConditions(levelUp)` | počáteční kroky při seedu | ne (podtřída ještě nezvolena; ř. 224 je přepisuje každý render přes ř. 1765) |
-| CharacterWizard.tsx:228–256, 711–749, 1024, 1357, 1382, 1400, 1781–1800, 1818–1915, 2236, 2428, 2481 | `level`, `classLevel`, `className`, `classSource` | ne (nezávisí na podtřídě) |
-| CharacterWizard.tsx:2461 → ReviewStep `levelUp` | `newFeatures` (ReviewStep.tsx:198, 296–299), `level` (247, 294) | ano (newFeatures) |
-| LevelUpButton.tsx / LevelUpClassDialog.tsx | volba třídy před wizardem | ne (podtřída se volí až v kroku Class) |
-| LevelUpWizardGate.tsx:48 | spočte základní zisky, `unresolved` | ne |
-| Počty ve Spells kroku | `computeSpellCounts(draftCharacterForSpells)` (ř. 1517), ne LevelGains | už sleduje draft s podtřídou |
+| CHA | Bardic Inspiration (XPHB) | vše od Barda 5 (Font of Inspiration) |
+| CHA | Glorious Defense, Dark One's Own Luck, Restore Balance, Steps of the Fey (XPHB); Infectious Inspiration (TCE); Elemental Rebuke (FRHoF); Form of Dread (RHW); Money Talks (TGS2) | – |
+| WIS | War Priest (XPHB) | vše (vlastní text) |
+| WIS | Warding Flare (XPHB) | vše od Improved Warding Flare |
+| WIS | Tireless, Nature's Veil, Corona of Light, Moonlight Step, Cosmic Omen, Flurry of Healing and Harm, Wholeness of Body, Misty Wanderer, Star Map, Dread Ambusher (XPHB); Embodiment of the Law, Fungal Infestation (TCE); Hidden Paths, Unerring Eye, Hunter's Sense (XGE); Sentinel at Death's Door (RHW); Chilling Retribution (FRHoF); Ghost Walker, Whispers of Knowledge (TGS2) | – |
+| INT | Bloodthirst (FRHoF) | jedno (Dread Incarnate) |
+| INT | Bladesong (FRHoF); Tinker's Magic, Flash of Genius, Restorative Reagents, Arcane Jolt, Mapping Magic, Dreadnaught (EFA) | – (viz níže Flash of Genius) |
+| STR / CON / DEX | Unwavering Mark, Warding Maneuver (XGE); Wails from the Grave (RHW) | – |
 
-Míst, která musí sledovat podtřídu: 3. Navržený mechanismus potvrzen bez přestavby wizardu.
+Celkem 41 (17 XPHB + 24 z dalších knih). Zastaveno pro jednotlivé featury, nepřidány:
+- Spell-Storing Item (EFA): „twice your Intelligence modifier (minimum of twice)“, náboje předmětu, bez odpočinku.
+- Perfected Armor (EFA): dva počty, jeden na každý model zbroje.
+- Reanimator's Skill Set (RHW): minimum není uvedeno (modifikátor 0 → 0 použití?).
+- 28× Proficiency Bonus, 1× Renown Score (Favored in House) — jiný vzor, mimo rozsah.
 
 ## Co se změnilo
-- src/levelUp/levelGains.ts: `levelGainsFor(..., chosenSubclass = null)` a `loadLevelGainsFor(..., chosenSubclass)`; s podtřídou počítá z kopie postavy, kde cílová třída (i nově vstupovaná) tu podtřídu nese.
-- src/creation/CharacterWizard.tsx: `newSubclass` = podtřída z kroku Class, pokud ji uložená cílová třída nemá; efekt přepočte zisky; `gains` nahrazuje `levelUp` v ř. 224/225 a v `ReviewStep levelUp`. Do konce přepočtu je `classPickRequirements` v `stepConditions` null → Next na kroku Class čeká. Selhání přepočtu → zisky bez podtřídy (D43).
-- Unit test: levelGains.test.ts D411 (Cleric 2→3 s Life Domain: Disciple of Life + Life Domain).
-- docs: D411, STATUS.md.
+- src/calculation/resources.ts: `ABILITY_MODIFIER_USES`, `abilityModifierMax` (před fallbackem „not in data“, za `LEVEL_SCALED_USES`); řádek platí jen, když text držené featury obsahuje větu s tou vlastností. `computeCharacterResources(..., abilityScores?)`, typ `AbilityScores`.
+- src/sheet/CharacterSheet.tsx: předává `abilityScores` (computeAbilityScores s featy a předměty) — jediné místo. levelRemoval/multiclassLevelUp skóre nepředávají: maximum tam zůstane unknown, počet se neořízne (zobrazení ořezává `remainingUses`).
+- Unit testy resources.test.ts „D412“ (4). e2e/abilityUses.spec.ts a–e.
+- docs: D412, STATUS.md, DATA.md (nová sekce „Use counts stated as an ability modifier“).
 
 ## Testy
-- `npm run typecheck` čistý. `npm test`: 190 souborů, 3500 testů prošlo.
-- e2e/levelUpSubclassGains.spec.ts a–d prošly (a EK: Spells 0/2 + 0/3, War Bond, kouzla na listu; b Fighter 5 / Rogue 2 → Arcane Trickster: Rogue Spells, Mage Hand Legerdemain; c Valor: Combat Inspiration, Martial Training; d EK → Champion: krok Spells zmizí, Improved Critical, bez War Bond).
-- Plné `npm run e2e`: 761 prošlo, 7,5 min (nad 3 min limitem, hlásím).
+- typecheck čistý; `npm test` 190 souborů / 3504 testů prošlo; validate-data 177/177.
+- e2e/abilityUses.spec.ts: a (CHA 14 + 2 z pozadí → 3 boxy „/ Long Rest“, Short Rest nechá použitý, Long Rest vrátí), b (Bard 5, Short Rest vrátí), c (CHA 8 → 1), d (Fighter 5 / Bard 6, CHA 18 → 4), e (Warlock 3 Archfey, CHA 16 → 3 Steps of the Fey).
+- Plné `npm run e2e`: 766 prošlo, 7,4 min (nad 3 min limitem, hlásím).
 
 ## Subagent
 Nepoužit.
 
 ## Decisions taken
-- Next na kroku Class je zablokovaný, dokud přepočet zisků neskončí (jinak by rychlé kliknutí přeskočilo Spells).
-- Přepočet běží i pro podtřídu zvolenou později, než je úroveň podtřídy (uložená třída bez podtřídy): rozdíl úrovní pak počítá podtřídu na obou stranách, takže starší featury podtřídy ve „What's new“ nejsou.
+- Pojistka proti stejnojmenné featuře jiné edice: tabulka se použije jen, když text featury tu frázi s danou vlastností obsahuje.
+- Pod minimem rozpis dva řádky („Charisma modifier -1“, „minimum of once“ +2).
+- Flash of Genius: Short Rest návrat z EFA Advanced Artifice („When you finish a Short Rest, you regain one…“) čtečka obnovy nezná (pořadí věty); ponecháno, otázka pro plánovací chat.
 
-## Otevřené / mimo rozsah
-- Podtitul Review („Bard 3“) podtřídu neukazuje ani při tvorbě postavy; nezměněno — rozhodnutí pro plánovací chat.
-- Netrackovaný `scripts/investigate-bm-table.js` z minulé session: necommitnut, `git clean` nespuštěn (zakázáno zadáním).
+## Otevřené
+- Netrackovaný `scripts/investigate-bm-table.js` z dřívější session a `scripts/investigate-ability-mod-uses.js`: necommitnuty, `git clean` nespuštěn (zakázáno zadáním).
 
 ## Manual browser check for the user
-None - the planning chat checks the looks from screenshots. Změněné obrazovky: level up wizard — krok Class (Next čeká na přepočet), krok Spells v level upu na úroveň podtřídy, Review „What's new“.
+None - the planning chat checks the looks from screenshots. Změněné obrazovky: Actions tab (nové počítadlo u 41 featur, např. Bardic Inspiration, Steps of the Fey), Features & Traits, kde se počítadla zdrojů zobrazují (netestováno e2e), rozpis maxima počítadla.

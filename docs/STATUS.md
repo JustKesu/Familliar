@@ -1365,6 +1365,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   (`levelGainsFor(..., chosenSubclass)`, async in CharacterWizard; the Class step's Next waits for it). Walked steps,
   unknown-step reasons and the Review "What's new" follow the chosen subclass (Eldritch Knight / Arcane Trickster Spells step,
   Valor features); switching subclass recomputes. `e2e/levelUpSubclassGains.spec.ts` a–d.
+- AU-1 (D412): 41 features counted "a number of times equal to your <Ability> modifier" get use boxes from the hand table
+  `ABILITY_MODIFIER_USES` (resources.ts): final modifier, minimum 1, breakdown "Charisma modifier +4"; the sheet passes
+  `computeAbilityScores` into `computeCharacterResources`. Level up/removal callers pass no scores (max stays unknown there,
+  count not clamped). Not tracked: Spell-Storing Item, Perfected Armor, Reanimator's Skill Set; Flash of Genius gets no
+  Short Rest return (DATA.md). `e2e/abilityUses.spec.ts` a–e.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose
