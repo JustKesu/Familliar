@@ -617,6 +617,15 @@ Inspiration, all), Improved Warding Flare (all), Dread Incarnate (Bloodthirst, o
 EFA Advanced Artifice / Soul of Artifice phrase it "When you finish a Short Rest, you regain …" — an ordering the
 rest-recovery reader does not match, so Flash of Genius gets nothing back on a Short Rest.
 
+PB-1 (D414), `scripts/investigate-pb-uses.mjs` (not kept): "times equal to … Proficiency" (markup stripped) hits 0 class
+features, 13 subclass features (all TCE), 12 feats (FRHoF, RHW, EFA) and 3 optional features (TCE Talismans) — all 28 are
+"a number of times equal to your Proficiency Bonus", none twice the bonus or a pool. TCE writes "proficiency bonus" and
+"long rest" in plain lowercase with NO rest tag, so `hasRestTag` misses them; the Talismans say "all expended uses are
+restored when you finish a long rest". The feats' XPHB tag strips to "your Proficiency," (no "Bonus"). Every one recovers
+on a Long Rest only. Short Rest tags that do appear are other clauses: Greater Aberrant Mark ("regain your use of Aberrant
+Fortitude … Short Rest or Long Rest") and Mist Walker (a saving throw after a Short Rest in mist). Gathered Whispers and
+Mark of Sentinel also carry `additionalSpells` `daily."1"` free casts — a separate once-per-Long-Rest counter, not these uses.
+
 ### Pool maxima live in table groups, not on any feature record
 No feature record (class-features.json, subclass-features.json, feats.json,
 optional-features.json) carries a maximum for the pool it spends — confirmed

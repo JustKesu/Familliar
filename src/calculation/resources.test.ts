@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, subLimitKeys, type AbilityScores, type CharacterResource, type ResourceFeature } from './resources'
+import { computeCharacterResources, PROFICIENCY_BONUS_USES, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, subLimitKeys, type AbilityScores, type CharacterResource, type ResourceFeature } from './resources'
 import { ABILITIES } from '../abilities/abilityScores'
 import { known } from './types'
 import type { Character } from '../storage/character'
@@ -629,9 +629,15 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 	// Umbral Form, Necrotic Husk, Survivor), -2 with their superseded subclasses (Telekinetic Master|TCE, Strength of the Grave|XGE).
 	// D201: +12 FRHoF (subclass features, Epic Boons, Genie Magic), 3 of them Short Rest (Boon of Terror, Boon of the Soul Drinker, Group Recovery).
 	// D367: +5 TGS2 (Improved Launch, Bloodbound, Hurricane on a Short Rest; Sight Beyond Sight, Arcane Conduit on a Long Rest).
-	it('holds 80 known maxima: 78 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197, +12 of D201, +5 of D367, the 6 sub-limits of D405) and the 2 level-table ones', () => {
-		expect(singleUse).toHaveLength(80)
+	it('holds 108 known maxima: 78 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197, +12 of D201, +5 of D367, the 6 sub-limits of D405), the 2 level-table ones and the 28 of D414', () => {
+		expect(singleUse).toHaveLength(108)
 		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(78)
+	})
+
+	it('counts every D414 row at the Fighter 20 Proficiency Bonus, Long Rest only', () => {
+		const rows = [...PROFICIENCY_BONUS_USES].map((name) => byName.get(name))
+		expect(rows.map((resource) => resource?.max.status === 'known' && resource.max.value)).toEqual(Array(28).fill(6))
+		expect(rows.filter((resource) => resource?.shortRest !== null)).toEqual([])
 	})
 
 	it('returns the whole pool on a Short Rest for exactly the ones whose recharge sentence names one', () => {
@@ -773,5 +779,49 @@ describe('D412 uses counted by an ability modifier', () => {
 		expect(computeCharacterResources(character('Bard', 1), CLASSES, [BARDIC])[0].max.status).toBe('unknown')
 		const older = { ...BARDIC, entries: ['You can use this feature a number of times equal to your Proficiency Bonus. You regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'] }
 		expect(computeCharacterResources(character('Bard', 1), CLASSES, [older], [], scores(3))[0].max.status).toBe('unknown')
+	})
+})
+
+describe('D414 uses counted by the Proficiency Bonus', () => {
+	// TCE: untagged rests, lowercase "proficiency bonus".
+	const GIANTS_MIGHT: ResourceFeature = {
+		name: "Giant's Might",
+		entries: ['You can use this feature a number of times equal to your proficiency bonus, and you regain all expended uses of it when you finish a long rest.'],
+	}
+	// XPHB-era feat: the stripped Proficiency Bonus tag reads "Proficiency".
+	const FAIRY_TRICKSTER: ResourceFeature = {
+		name: 'Fairy Trickster',
+		entries: ['You can use this benefit a number of times equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'],
+	}
+	const max = (resource: CharacterResource | undefined) => (resource?.max.status === 'known' ? resource.max.value : null)
+
+	it('counts the Proficiency Bonus with a breakdown line, Long Rest only, though TCE carries no rest tag', () => {
+		const [might] = computeCharacterResources(character('Fighter', 5, 'Rune Knight'), CLASSES, [GIANTS_MIGHT])
+		expect(might.max).toMatchObject({ status: 'known', value: 3, breakdown: [{ source: 'Proficiency Bonus +3', amount: 3 }] })
+		expect(might.shortRest).toBeNull()
+		expect(max(computeCharacterResources(character('Fighter', 9, 'Rune Knight'), CLASSES, [GIANTS_MIGHT])[0])).toBe(4)
+	})
+
+	it('reads the bonus from total character level across classes', () => {
+		const multiclass: Character = {
+			id: 'c1',
+			name: 'Test',
+			classes: [
+				{ className: 'Fighter', classSource: 'XPHB', subclass: 'Rune Knight', level: 3 },
+				{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 2 },
+			],
+		}
+		expect(max(computeCharacterResources(multiclass, CLASSES, [GIANTS_MIGHT]).find((r) => r.name === "Giant's Might"))).toBe(3)
+	})
+
+	it('reads the tagged feat phrasing', () => {
+		expect(max(computeCharacterResources(character('Fighter', 4), CLASSES, [FAIRY_TRICKSTER])[0])).toBe(2)
+	})
+
+	it('ignores a feature outside the table, and a table name whose text counts some other way', () => {
+		const other = { ...GIANTS_MIGHT, name: 'Some Other Might' }
+		expect(computeCharacterResources(character('Fighter', 5), CLASSES, [other])).toEqual([])
+		const reworded = { ...GIANTS_MIGHT, entries: ['You can use this feature twice, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'] }
+		expect(computeCharacterResources(character('Fighter', 5), CLASSES, [reworded])[0].max.status).toBe('unknown')
 	})
 })

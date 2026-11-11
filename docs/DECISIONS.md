@@ -5763,3 +5763,13 @@ má `spellcastingAbility` bez `casterProgression` a featuru Spellcasting nemá, 
 Featy se nepočítají (D&D 2024: předpoklad je featura Spellcasting nebo Pact Magic). Platí ve wizardu (tvorba, level
 up, Edit, multiclass) i v Manage Feats; text „(needs a spellcasting class)“ zůstává. Zadal plánovací chat (SC-1)
 11. 11. 2026.
+
+## D414 — Počet použití rovný Proficiency Bonusu (PB-1)
+
+Featura podtřídy, volitelná featura nebo feat, jejíž text říká „a number of times equal to your Proficiency Bonus“,
+dostane počítadlo. Ruční tabulka `PROFICIENCY_BONUS_USES` (resources.ts), 28 jmen (13 featur podtříd TCE, 3 Talismany
+TCE, 12 featů FRHoF/RHW/EFA), ne pravidlo podle prózy. Maximum = Proficiency Bonus z celkové úrovně postavy, rozpis
+„Proficiency Bonus +3“. Řádek platí, jen když text držené featury tu větu obsahuje (v XPHB značce zbude po odstranění
+markupu „Proficiency“). Řádek tabulky dělá z featury zdroj i bez značky odpočinku (TCE píše „long rest“ bez značky).
+Krátký odpočinek se čte z textu jako dosud; všech 28 se vrací jen na Long Rest. Featury TCE bez značky se dál
+neukazují v záložce Actions (D86), počítadlo mají v záložce Features. Zadal plánovací chat (PB-1) 11. 11. 2026.

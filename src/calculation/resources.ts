@@ -30,7 +30,7 @@
  * The exceptions: a feature whose text states only a recharge, with no count,
  * has one use (D119; isImplicitSingleUse), and Action Surge and Indomitable read
  * a hand-written level table (D120; LEVEL_SCALED_USES), and a count stated as an
- * ability modifier reads a hand table (D412; ABILITY_MODIFIER_USES).
+ * ability modifier or the Proficiency Bonus reads a hand table (D412, D414).
  */
 
 import type { Ability } from '../abilities/abilityScores'
@@ -118,8 +118,11 @@ const EXPENDED_USES =
 	/\bexpended uses?\b|\bregain\b[^.]{0,60}\buses?\b|number of times equal to|can't (?:do so|use it|use this feature|use this benefit) again until you finish/i
 
 function isSelfLimitedFeature(feature: ResourceFeature): boolean {
+	const text = plainText(feature.entries).join(' ')
+	// D414: TCE writes "long rest" untagged, so the rest-tag test alone misses the table's TCE rows.
+	if (isProficiencyBonusCounted(feature.name, text)) return true
 	if (!hasRestTag(feature.entries)) return false
-	return EXPENDED_USES.test(plainText(feature.entries).join(' '))
+	return EXPENDED_USES.test(text)
 }
 
 /*
@@ -258,6 +261,55 @@ function abilityModifierMax(name: string, text: string, abilityScores: AbilitySc
 	const breakdown: Contribution[] = [{ source: `${label} modifier ${modifier >= 0 ? '+' : ''}${modifier}`, amount: modifier }]
 	if (value !== modifier) breakdown.push({ source: 'minimum of once', amount: value - modifier })
 	return known(value, breakdown)
+}
+
+/*
+ * D414: "a number of times equal to your Proficiency Bonus", 28 features and
+ * feats; every one fits, none is twice the bonus or a pool (DATA.md).
+ */
+export const PROFICIENCY_BONUS_USES: ReadonlySet<string> = new Set([
+	'Bolstering Magic',
+	'Bond of the Talisman',
+	'Call the Hunt',
+	'Cauterizing Flames',
+	'Elemental Gift',
+	'Emboldening Bond',
+	'Fairy Trickster',
+	'Gathered Whispers',
+	"Giant's Might",
+	'Greater Aberrant Mark',
+	'Greater Mark of Handling',
+	'Greater Mark of Healing',
+	'Greater Mark of Warding',
+	'Infectious Fury',
+	'Living Shadow',
+	'Magic Awareness',
+	'Mark of Sentinel',
+	'Mist Walker',
+	'Mythal Touched',
+	'Pact of the Talisman',
+	'Protection of the Talisman',
+	'Runic Shield',
+	'Sharp Eye',
+	'Steps of Night',
+	'Swarming Dispersal',
+	'Symbiotic Being',
+	'Tentacle of the Deeps',
+	'Writhing Tide',
+])
+
+// The markup strip leaves XPHB's Proficiency Bonus tag as "Proficiency" (DATA.md).
+const PROFICIENCY_BONUS_COUNT = /number of times equal to your Proficiency(?: Bonus)?\b/i
+
+function isProficiencyBonusCounted(name: string, text: string): boolean {
+	return PROFICIENCY_BONUS_USES.has(name) && PROFICIENCY_BONUS_COUNT.test(text)
+}
+
+function proficiencyBonusMax(name: string, text: string, character: Character): Calculated<number> | null {
+	if (!isProficiencyBonusCounted(name, text)) return null
+	const proficiencyBonus = computeProficiencyBonus(character.classes)
+	if (proficiencyBonus.status === 'unknown') return proficiencyBonus
+	return known(proficiencyBonus.value, [{ source: `Proficiency Bonus +${proficiencyBonus.value}`, amount: proficiencyBonus.value }])
 }
 
 function isImplicitSingleUse(name: string, text: string): boolean {
@@ -438,7 +490,7 @@ function computeResourceMax(
 			return known(count, breakdown)
 		}
 	}
-	const scaled = levelScaledMax(name, character) ?? abilityModifierMax(name, text, abilityScores)
+	const scaled = levelScaledMax(name, character) ?? abilityModifierMax(name, text, abilityScores) ?? proficiencyBonusMax(name, text, character)
 	if (scaled) return scaled
 	if (impliedSingleUse) return known(1, [{ source: `${name}: can't be used again until a rest, no count stated`, amount: 1 }])
 	const where = looked.length > 0 ? `${looked.join(', ')}'s per-level table${looked.length > 1 ? 's' : ''}` : 'any class table'
