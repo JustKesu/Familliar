@@ -202,11 +202,20 @@ function subclassAtLevel(
  * `parsedClasses` is classes.json; `resolverData` carries class-features.json,
  * subclass-features.json, optional-features.json and feats.json.
  */
-export function levelGainsFor(character: Character, target: LevelUpClass, parsedClasses: unknown, resolverData: ResolverData): LevelGains {
+export function levelGainsFor(
+	stored: Character,
+	target: LevelUpClass,
+	parsedClasses: unknown,
+	resolverData: ResolverData,
+	chosenSubclass: string | null = null,
+): LevelGains {
 	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
 
 	const { className, classSource } = target
-	const held = character.classes.find((entry) => entry.className === className && entry.classSource === classSource)
+	const isTarget = (entry: CharacterClass) => entry.className === className && entry.classSource === classSource
+	// D411: the subclass the Class step chose at this level is read as if already held.
+	const character = chosenSubclass === null ? stored : { ...stored, classes: stored.classes.map((entry) => (isTarget(entry) ? { ...entry, subclass: chosenSubclass } : entry)) }
+	const held = character.classes.find(isTarget)
 	const level = totalCharacterLevel(character.classes) + 1
 	const classLevel = (held?.level ?? 0) + 1
 	const header = { level, classLevel, className, classSource }
@@ -217,7 +226,7 @@ export function levelGainsFor(character: Character, target: LevelUpClass, parsed
 	}
 
 	// D328: a class the character does not have yet joins at class level 1.
-	const characterClass: CharacterClass = held ?? { className, classSource, subclass: null, level: 0 }
+	const characterClass: CharacterClass = held ?? { className, classSource, subclass: chosenSubclass, level: 0 }
 	const isNewClass = held === undefined
 	const previous = classLevel - 1
 	const classEntry = findClassEntry(parsedClasses, className, classSource)
@@ -519,7 +528,7 @@ function hitPointsStepGain(level: number): LevelGain {
 }
 
 /** Fetches classes.json and the four resolver files and returns levelGainsFor's result. */
-export async function loadLevelGainsFor(character: Character, target: LevelUpClass): Promise<LevelGains> {
+export async function loadLevelGainsFor(character: Character, target: LevelUpClass, chosenSubclass: string | null = null): Promise<LevelGains> {
 	const [classes, resolverData] = await Promise.all([loadDataFile('data/classes.json'), loadResolverData()])
-	return levelGainsFor(character, target, classes, resolverData)
+	return levelGainsFor(character, target, classes, resolverData, chosenSubclass)
 }

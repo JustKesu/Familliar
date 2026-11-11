@@ -5735,3 +5735,11 @@ které fond jen zmiňují a neutrácí ani neuděluje. Featury, které fond utr�
 Land's Aid a další), počítadlo nemají. (3) Počet Superiority Die Battle Mastera je ruční tabulka v `LEVEL_SCALED_USES`
 (resources.ts): 4 od úrovně 3, 5 od 7, 6 od 15, jen pro Fightera s podtřídou Battle Master (XPHB), protože data XPHB nemají
 tabulku podtřídy; fond vzniká i bez vybraného manévru. Velikost kostky mimo rozsah. Rozhodl Daniel (plánovací chat) 3. 11. 2026.
+
+## D411 — Level up počítá s podtřídou zvolenou na této úrovni (LS-1)
+
+Když krok Class v level upu zvolí podtřídu, kterou uložená třída ještě nemá, zisky úrovně (`LevelGains`) se spočítají znovu
+z kopie postavy s touto podtřídou (`levelGainsFor` s parametrem `chosenSubclass`). Podle nich se řídí procházené kroky,
+důvody „unknown“ kroků a karta Review „What's new“. Změna podtřídy je přepočítá (Eldritch Knight → Champion odebere krok
+Spells; D342 dál maže výběry kouzel). Seed wizardu dál používá zisky bez podtřídy. Dokud přepočet neskončí, Next na kroku
+Class čeká; když selže, platí zisky bez podtřídy (D43). Zadal plánovací chat (LS-1) 11. 11. 2026.

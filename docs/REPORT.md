@@ -1,25 +1,40 @@
-SP-1 hotovo (D410). Commit a push viz níže.
+LS-1 hotovo (D411). HEAD na startu b0733fa.
+
+## STEP 1: kdo čte zisky level upu (LevelGains)
+| Místo | Co čte | Musí sledovat zvolenou podtřídu? |
+|---|---|---|
+| CharacterWizard.tsx:224 `levelUpStepConditions` | `steps[*].status/swappable/owingSubclasses` → procházené kroky | ano |
+| CharacterWizard.tsx:225 `unknownLevelUpSteps` | `steps[*].reason` → poznámka „check it by hand“ (ř. 1901) | ano |
+| CharacterWizard.tsx:395 seed `levelUpStepConditions(levelUp)` | počáteční kroky při seedu | ne (podtřída ještě nezvolena; ř. 224 je přepisuje každý render přes ř. 1765) |
+| CharacterWizard.tsx:228–256, 711–749, 1024, 1357, 1382, 1400, 1781–1800, 1818–1915, 2236, 2428, 2481 | `level`, `classLevel`, `className`, `classSource` | ne (nezávisí na podtřídě) |
+| CharacterWizard.tsx:2461 → ReviewStep `levelUp` | `newFeatures` (ReviewStep.tsx:198, 296–299), `level` (247, 294) | ano (newFeatures) |
+| LevelUpButton.tsx / LevelUpClassDialog.tsx | volba třídy před wizardem | ne (podtřída se volí až v kroku Class) |
+| LevelUpWizardGate.tsx:48 | spočte základní zisky, `unresolved` | ne |
+| Počty ve Spells kroku | `computeSpellCounts(draftCharacterForSpells)` (ř. 1517), ne LevelGains | už sleduje draft s podtřídou |
+
+Míst, která musí sledovat podtřídu: 3. Navržený mechanismus potvrzen bez přestavby wizardu.
 
 ## Co se změnilo
-- src/sheet/featureActionRowData.ts: `POOL_GRANTING_FEATURES` (Font of Magic → Sorcery Point, Monk's Focus → Focus Point, Combat Superiority → Superiority Die). V `add()` platí jen pro `kind === 'feature'` bez `consumes`; dál přes `resourceKey` (D336/D409). `resourceCandidateName` beze změny, Features tab (sdílí ho) se nemění.
-- src/calculation/resources.ts: `LEVEL_SCALED_USES` dostal volitelné `subclass`; nový záznam `Superiority Die` (Fighter, Battle Master XPHB: 4 od 3, 5 od 7, 6 od 15). `levelScaledMax` u záznamu s podtřídou vyžaduje podtřídu a classSource XPHB. `tableGrantedPools` přidá takový fond i bez vybraného manévru. Rest: beze změny, bere se z textu featur (e2e e potvrzuje Short Rest). Velikost kostky se nepřidávala.
-- Zamítnuto pravidlo podle textu (Elder Champion, Flurry of Healing and Harm fond jen zmiňují). Prózou utrácející featury (Wild Companion, Heightened Focus, Land's Aid, Nature's Sanctuary, Wrath of the Sea, Revelation in Flesh) zůstávají bez počítadla; Psionic Power (D409) beze změny.
-- Změněných míst v kódu: 4 (2 soubory), pod limitem 10.
+- src/levelUp/levelGains.ts: `levelGainsFor(..., chosenSubclass = null)` a `loadLevelGainsFor(..., chosenSubclass)`; s podtřídou počítá z kopie postavy, kde cílová třída (i nově vstupovaná) tu podtřídu nese.
+- src/creation/CharacterWizard.tsx: `newSubclass` = podtřída z kroku Class, pokud ji uložená cílová třída nemá; efekt přepočte zisky; `gains` nahrazuje `levelUp` v ř. 224/225 a v `ReviewStep levelUp`. Do konce přepočtu je `classPickRequirements` v `stepConditions` null → Next na kroku Class čeká. Selhání přepočtu → zisky bez podtřídy (D43).
+- Unit test: levelGains.test.ts D411 (Cleric 2→3 s Life Domain: Disciple of Life + Life Domain).
+- docs: D411, STATUS.md.
 
 ## Testy
-- Unit: featureActionRowData.test.ts (Font of Magic → Sorcery Point; Sorcerous Restoration, Elder Champion, Extra Attack beze změny), resources.test.ts (BM 3/7/15 → 4/5/6; Champion, Fighter bez podtřídy, BM 2 → bez fondu). `npm test`: 190 souborů, 3499 testů prošlo.
-- e2e/poolGrantorTracker.spec.ts a–e prošly (a Font of Magic 5 boxů; b Monk's Focus 5 boxů + sdílení s Flurry of Blows; c BM 3 → 4 boxy bez manévrů; d Long Rest; e výdaj na Riposte označí i Combat Superiority a Short Rest vrací).
-- `npm run typecheck` čistý. Plné `npm run e2e`: 757 testů prošlo, 6,9 min (pod 3 min limit NE: přes limit, hlásím).
+- `npm run typecheck` čistý. `npm test`: 190 souborů, 3500 testů prošlo.
+- e2e/levelUpSubclassGains.spec.ts a–d prošly (a EK: Spells 0/2 + 0/3, War Bond, kouzla na listu; b Fighter 5 / Rogue 2 → Arcane Trickster: Rogue Spells, Mage Hand Legerdemain; c Valor: Combat Inspiration, Martial Training; d EK → Champion: krok Spells zmizí, Improved Critical, bez War Bond).
+- Plné `npm run e2e`: 761 prošlo, 7,5 min (nad 3 min limitem, hlásím).
 
-## Další zdroje Superiority Die (mimo rozsah)
-Superior Technique (TCE, invokace): bez `consumes`, text jmenuje fond; vlastní tracker nemá, fond dostane jen Battle Master. Martial Adept: ve feats.json pod tímto názvem nenalezen. Starší knihy Battle Master (classSource jiný než XPHB): pool bez maxima jako dosud.
+## Subagent
+Nepoužit.
 
 ## Decisions taken
-- Tabulka v `LEVEL_SCALED_USES` místo samostatné konstanty (stejný vzor, D120/D374).
-- `subclass` se porovnává s uloženým názvem podtřídy i classSource XPHB.
-- D410 zapsán do DECISIONS.md (rozhodnutí plánovacího chatu); STATUS.md doplněn.
+- Next na kroku Class je zablokovaný, dokud přepočet zisků neskončí (jinak by rychlé kliknutí přeskočilo Spells).
+- Přepočet běží i pro podtřídu zvolenou později, než je úroveň podtřídy (uložená třída bez podtřídy): rozdíl úrovní pak počítá podtřídu na obou stranách, takže starší featury podtřídy ve „What's new“ nejsou.
 
-## Neuklizeno
-Untracked: scripts/investigate-bm-table.js (git clean zakázán).
+## Otevřené / mimo rozsah
+- Podtitul Review („Bard 3“) podtřídu neukazuje ani při tvorbě postavy; nezměněno — rozhodnutí pro plánovací chat.
+- Netrackovaný `scripts/investigate-bm-table.js` z minulé session: necommitnut, `git clean` nespuštěn (zakázáno zadáním).
 
-Manual browser check for the user: none - the planning chat checks the looks from screenshots. Změněná obrazovka: záložka Actions.
+## Manual browser check for the user
+None - the planning chat checks the looks from screenshots. Změněné obrazovky: level up wizard — krok Class (Next čeká na přepočet), krok Spells v level upu na úroveň podtřídy, Review „What's new“.

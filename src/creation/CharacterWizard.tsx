@@ -102,7 +102,7 @@ import type { ClassSpellCountData } from '../calculation/spellCounts'
 import { hasOwnSpellcasting, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { choiceNames, CUSTOM_BACKGROUND_SOURCE, type Character, type CharacterBackground, type CharacterClass, type CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
-import type { LevelGains } from '../levelUp/levelGains'
+import { loadLevelGainsFor, type LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, MAX_CHARACTER_LEVEL, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
 import { heldPicksFrom } from '../levelUp/heldPicks'
 import { classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, resourceUsesAfterLevelUp } from '../levelUp/multiclassLevelUp'
@@ -221,8 +221,29 @@ export function CharacterWizard({
 	onCancel: () => void
 }): ReactNode {
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
-	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp, state.data.subclass?.name ?? null) : {}
-	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp, state.data.subclass?.name ?? null) : {}
+	// D411: a subclass first chosen at this level changes what the level adds; the stored character cannot show it yet.
+	const newSubclass =
+		levelUp && character && !character.classes.some((entry) => isClass(entry, levelUp) && entry.subclass !== null) ? (state.data.subclass?.name ?? null) : null
+	const [subclassGains, setSubclassGains] = useState<{ subclass: string; gains: LevelGains } | null>(null)
+	useEffect(() => {
+		if (!levelUp || !character || newSubclass === null) return
+		let cancelled = false
+		loadLevelGainsFor(character, { className: levelUp.className, classSource: levelUp.classSource }, newSubclass)
+			.then((gains) => {
+				if (!cancelled) setSubclassGains({ subclass: newSubclass, gains })
+			})
+			.catch(() => {
+				// D43: the gains without the subclass stay in force; their 'unknown' steps are still walked.
+				if (!cancelled) setSubclassGains({ subclass: newSubclass, gains: levelUp })
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [levelUp, character, newSubclass])
+	const subclassGainsPending = newSubclass !== null && subclassGains?.subclass !== newSubclass
+	const gains = newSubclass !== null && subclassGains?.subclass === newSubclass ? subclassGains.gains : levelUp
+	const levelUpConditions = gains ? levelUpStepConditions(gains, state.data.subclass?.name ?? null) : {}
+	const unknownStepReasons = gains ? unknownLevelUpSteps(gains, state.data.subclass?.name ?? null) : {}
 	// D329: a level up of one class of a multiclass character — per-class picks belong to that class, character-wide ones to all.
 	// D330: entering a new class is a multiclass level up of that class from class level 0.
 	const enteringClass = levelUp !== undefined && character !== undefined && !character.classes.some((entry) => isClass(entry, levelUp))
@@ -1742,7 +1763,8 @@ export function CharacterWizard({
 		speciesSpellcastingAbilityComplete,
 		speciesCantripComplete,
 		wildShapeFormCount,
-		classPickRequirements,
+		// D411: the Class step waits until the level's gains with the chosen subclass are known.
+		classPickRequirements: subclassGainsPending ? null : classPickRequirements,
 		startingEquipmentCategoryPicksComplete,
 		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
 		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
@@ -2458,7 +2480,7 @@ export function CharacterWizard({
 							? `${speciesSelection.option.displayName}${speciesSelection.variant ? ` — ${speciesSelection.variant.optionName}` : ''}`
 							: formatSpeciesName(state.data.speciesChoice?.name ?? '', state.data.speciesChoice?.source)
 					}
-					levelUp={levelUp}
+					levelUp={gains}
 					{...(multiclassLevelUp || multiclassEdit ? { classLine: draftClasses.map((entry) => `${entry.className} ${entry.level}`).join(' / ') } : {})}
 					unfinishedClasses={unfinishedClasses}
 					loadErrors={grantLoadMessages}

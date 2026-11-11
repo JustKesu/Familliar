@@ -105,6 +105,15 @@ describe('levelGainsFor', () => {
 		expect(gains.newFeatures.map((feature) => feature.name).sort()).toEqual(['Disciple of Life', 'Life Domain'])
 	})
 
+	it('D411: a subclass chosen at this level adds its features; without it the stored character lists none', () => {
+		const unchosen = character([{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 2 }])
+		const target = { className: 'Cleric', classSource: 'XPHB' }
+		expect(levelGainsFor(unchosen, target, CLASSES, RESOLVER).newFeatures.map((feature) => feature.name)).toEqual([])
+		const chosen = levelGainsFor(unchosen, target, CLASSES, RESOLVER, 'Life Domain')
+		expect(chosen.newFeatures.map((feature) => feature.name).sort()).toEqual(['Disciple of Life', 'Life Domain'])
+		expect(partCount(chosen.steps.class, 'Cleric Subclass')).toBe(1)
+	})
+
 	it('does not credit a not-yet-chosen subclass\'s level-1 features to the level before the subclass is taken', () => {
 		const gains = gainsAt(cleric, 2, CLASSES, RESOLVER)
 		expect(gains.newFeatures).toEqual([])

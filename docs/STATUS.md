@@ -1361,6 +1361,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`
   because XPHB has no subclass table; the pool exists without a picked maneuver and feeds the maneuver rows. Prose-only
   spenders (Wild Companion, Heightened Focus, Land's Aid, ...) still have no tracker. `e2e/poolGrantorTracker.spec.ts` a–e.
+- LS-1 (D411): a level up whose Class step chooses a subclass the stored class lacks recomputes the gains with it
+  (`levelGainsFor(..., chosenSubclass)`, async in CharacterWizard; the Class step's Next waits for it). Walked steps,
+  unknown-step reasons and the Review "What's new" follow the chosen subclass (Eldritch Knight / Arcane Trickster Spells step,
+  Valor features); switching subclass recomputes. `e2e/levelUpSubclassGains.spec.ts` a–d.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose
