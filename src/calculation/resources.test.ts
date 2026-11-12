@@ -857,3 +857,37 @@ describe('D414 uses counted by the Proficiency Bonus', () => {
 		expect(computeCharacterResources(character('Fighter', 5), CLASSES, [reworded])[0].max.status).toBe('unknown')
 	})
 })
+
+describe('D418 Lay on Hands, a multiple of the Paladin level', () => {
+	const LAY_ON_HANDS: ResourceFeature = {
+		name: 'Lay on Hands',
+		className: 'Paladin',
+		entries: [
+			'You have a pool of healing power that replenishes when you finish a {@variantrule Long Rest|XPHB}. With that pool, you can restore a total number of Hit Points equal to five times your Paladin level.',
+		],
+	}
+	const hexadin: Character = {
+		id: 'c1',
+		name: 'Test',
+		classes: [
+			{ className: 'Paladin', classSource: 'XPHB', subclass: null, level: 7 },
+			{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 },
+		],
+	}
+
+	it('is 5 x Paladin level with a breakdown line, and Long Rest only', () => {
+		const [pool] = computeCharacterResources(character('Paladin', 1), CLASSES, [LAY_ON_HANDS])
+		expect(pool).toMatchObject({ name: 'Lay on Hands', max: { status: 'known', value: 5, breakdown: [{ source: 'Paladin level 1 x 5: Lay on Hands', amount: 5 }] }, shortRest: null })
+	})
+
+	it('counts the Paladin levels only in a multiclass', () => {
+		const [pool] = computeCharacterResources(hexadin, CLASSES, [LAY_ON_HANDS])
+		expect(pool.max).toMatchObject({ status: 'known', value: 35 })
+	})
+
+	it('needs the sentence in the held text, and a Paladin level', () => {
+		const reworded = { ...LAY_ON_HANDS, entries: ['You have a pool of healing power that replenishes when you finish a long rest.'] }
+		expect(computeCharacterResources(character('Paladin', 5), CLASSES, [reworded])).toEqual([])
+		expect(computeCharacterResources(character('Fighter', 5), CLASSES, [LAY_ON_HANDS])[0].max.status).toBe('unknown')
+	})
+})

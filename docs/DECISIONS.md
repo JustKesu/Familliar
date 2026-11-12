@@ -5806,3 +5806,13 @@ střelná) plus Charisma. Výchozí je nejvyšší modifikátor (shoda: dřívě
 ukazuje „charisma modifier (Pact of the Blade)“. Volba se ukládá do `attackAbility`, které nově připouští 'charisma'
 (schéma 69, migrace 68 → 69 jen přeznačí). Uložená Charisma na řádku bez platného označení se ignoruje (platí výchozí).
 Hex Warrior (XGE) bez paktu mimo rozsah. Zadal plánovací chat (HL) 12. 11. 2026.
+
+## D418 — Lay on Hands: fond = 5 × úroveň Paladina (LH-1)
+
+Lay on Hands (Paladin XPHB) nemá v datech ani sloupec tabulky, ani `consumes`, jen větu „five times your Paladin level“.
+Nová ruční tabulka `MULTIPLE_OF_CLASS_LEVEL` (resources.ts, vedle D412 a D414): jméno featury → třída a násobek, zatím
+jen Lay on Hands, Paladin, ×5. Maximum = násobek × úroveň té jedné třídy, ne celková úroveň (Paladin 7 / Warlock 5 = 35),
+rozpis „Paladin level 7 x 5“. Řádek platí, jen když text držené featury tu větu obsahuje. `isTableCounted` ji bere jako
+třetí tabulku (D415), takže featura má řádek v Actions i počítadlo ve Features. Fond nad 10 kreslí stávající počítadlo
+utraceno/maximum (krok 1), nový ovládací prvek není. Vrací se jen na Long Rest, Short Rest nic. Zadal plánovací chat (HL)
+12. 11. 2026.

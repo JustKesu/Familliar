@@ -321,9 +321,33 @@ function isProficiencyBonusCounted(name: string, text: string): boolean {
 	return PROFICIENCY_BONUS_USES.has(name) && PROFICIENCY_BONUS_COUNT.test(text)
 }
 
-/** D415: one of the two hand tables (D412, D414) gives this held text its use count. */
+/*
+ * D418: a pool counted as a multiple of ONE class's level, never total level.
+ * Lay on Hands (XPHB): "equal to five times your Paladin level"; the data has the
+ * prose only, no table column.
+ */
+export const MULTIPLE_OF_CLASS_LEVEL: Record<string, { className: string; factor: number }> = {
+	'Lay on Hands': { className: 'Paladin', factor: 5 },
+}
+
+function isClassLevelMultipleCounted(name: string, text: string): boolean {
+	const scaled = MULTIPLE_OF_CLASS_LEVEL[name]
+	// A same-named feature of another edition may count differently.
+	return scaled !== undefined && new RegExp(`\\bfive times your ${scaled.className} level\\b`, 'i').test(text)
+}
+
+function classLevelMultipleMax(name: string, text: string, character: Character): Calculated<number> | null {
+	const scaled = MULTIPLE_OF_CLASS_LEVEL[name]
+	if (!scaled || !isClassLevelMultipleCounted(name, text)) return null
+	const characterClass = character.classes.find((c) => c.className === scaled.className)
+	if (!characterClass) return null
+	const value = scaled.factor * characterClass.level
+	return known(value, [{ source: `${scaled.className} level ${characterClass.level} x ${scaled.factor}: ${name}`, amount: value }])
+}
+
+/** D415: one of the hand tables (D412, D414, LH-1) gives this held text its use count. */
 export function isTableCounted(name: string, text: string): boolean {
-	return isProficiencyBonusCounted(name, text) || isAbilityModifierCounted(name, text)
+	return isProficiencyBonusCounted(name, text) || isAbilityModifierCounted(name, text) || isClassLevelMultipleCounted(name, text)
 }
 
 function proficiencyBonusMax(name: string, text: string, character: Character): Calculated<number> | null {
@@ -511,7 +535,7 @@ function computeResourceMax(
 			return known(count, breakdown)
 		}
 	}
-	const scaled = levelScaledMax(name, character) ?? abilityModifierMax(name, text, abilityScores) ?? proficiencyBonusMax(name, text, character)
+	const scaled = levelScaledMax(name, character) ?? abilityModifierMax(name, text, abilityScores) ?? proficiencyBonusMax(name, text, character) ?? classLevelMultipleMax(name, text, character)
 	if (scaled) return scaled
 	if (impliedSingleUse) return known(1, [{ source: `${name}: can't be used again until a rest, no count stated`, amount: 1 }])
 	const where = looked.length > 0 ? `${looked.join(', ')}'s per-level table${looked.length > 1 ? 's' : ''}` : 'any class table'
