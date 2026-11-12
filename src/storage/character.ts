@@ -552,12 +552,13 @@ export type EquippedSlot = 'worn' | 'held'
 
 /**
  * The player's Strength-or-Dexterity pick for a Finesse weapon (build order
- * step 7, slice c). Absent means the default — whichever of the two is higher
- * — so the choice only ever appears in storage once the player has overridden
- * it. Spelled out rather than reusing `Ability`: no other ability can be
- * picked here, and storage stays free of a calculation-layer import.
+ * step 7, slice c), or Charisma for the pact weapon (D417). Absent means the
+ * default — whichever option is highest — so the choice only ever appears in
+ * storage once the player has overridden it. Spelled out rather than reusing
+ * `Ability`: no other ability can be picked here, and storage stays free of a
+ * calculation-layer import.
  */
-export type WeaponAttackAbility = 'strength' | 'dexterity'
+export type WeaponAttackAbility = 'strength' | 'dexterity' | 'charisma'
 
 /**
  * How a Versatile weapon is being held (build order step 7, slice b-fix).
@@ -1125,7 +1126,7 @@ export interface ConcentrationRef {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 68 for Character.genieKind (GN-1, D407); 67 for CharacterInventoryItem.pactWeapon (PW-1, D401); 64 for CharacterBackground.abilityChoices (CB-1, D383); 63 for CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380); 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 69 for the 'charisma' attackAbility value (PC-1, D417); 68 for Character.genieKind (GN-1, D407); 67 for CharacterInventoryItem.pactWeapon (PW-1, D401); 64 for CharacterBackground.abilityChoices (CB-1, D383); 63 for CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380); 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1149,7 +1150,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 68
+export const CURRENT_SCHEMA_VERSION = 69
 
 export interface CharacterLevelOrderEntry {
 	className: string

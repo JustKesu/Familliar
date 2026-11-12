@@ -69,7 +69,7 @@ export interface HeldWeapon {
 	source: string
 	/** Null when the item data has no entry under this (name, source) — D43: the attack is still listed, with a note. */
 	weapon: ResolvedWeapon | null
-	/** The player's stored Strength/Dexterity pick for a Finesse weapon; null means the default (the higher of the two). */
+	/** The player's stored pick for a Finesse weapon or the pact weapon; null means the default (the highest option). */
 	chosenAbility: Ability | null
 	/** How the weapon is being held (slice b-fix). Only a Versatile weapon does anything with it; the caller defaults an absent grip to one-handed. */
 	grip: WeaponGrip
@@ -135,7 +135,7 @@ export interface WeaponAttack {
 	damage: Calculated<AttackDamage>
 	/** Mastery, the other weapon properties, and anything that went wrong — readable lines, no codes. */
 	notes: string[]
-	/** Non-null only for a Finesse weapon: which ability is being used and what the player may switch to. */
+	/** Non-null only for a Finesse weapon or the pact weapon (D417): which ability is being used and what the player may switch to. */
 	abilityChoice: { using: Ability; options: Ability[]; isDefault: boolean } | null
 	/** Copied from the weapon so the sheet can pair it with ammunition; absent for every weapon that fires none. */
 	ammoType?: string
@@ -152,6 +152,8 @@ const MELEE_TYPE_CODE = 'M'
 
 /** Named in the breakdown when Dexterity is used because of the Monk's Martial Arts, not because of Finesse or a ranged weapon (D77). */
 const MARTIAL_ARTS_REASON = 'Martial Arts'
+/** XPHB Pact of the Blade: "you can use your Charisma modifier for the attack and damage rolls instead of Strength or Dexterity" (D417). */
+const PACT_OF_THE_BLADE_REASON = 'Pact of the Blade'
 
 function abilityLabel(ability: Ability, reason?: string): string {
 	return reason ? `${ability} modifier (${reason})` : `${ability} modifier`
@@ -196,25 +198,39 @@ function isMonkWeapon(weapon: ResolvedWeapon, kenseiWeapons: readonly string[]):
  *    Dexterity: no selector, because there is no choice to make (D77). An
  *    explicit stored pick still wins over that default.
  *  - Every other weapon has no choice at all: melee Strength, ranged Dexterity.
+ *  - The pact weapon adds Charisma to whatever the above allows and always
+ *    gets the selector, defaulting to the highest option (D417). A stored pick
+ *    outside the options (Charisma after the mark moved) is ignored.
  *
- * `reason` is set only when Dexterity is used because of Martial Arts, so the
- * breakdown can say why a non-Finesse weapon is not using Strength (D40).
+ * `reason` is set when Dexterity is used because of Martial Arts or Charisma
+ * because of the pact, so the breakdown can say why (D40).
  */
 function abilityFor(
 	weapon: ResolvedWeapon,
 	modifiers: Record<Ability, number>,
 	chosen: Ability | null,
 	monkWeapon: boolean,
+	pactWeapon: boolean,
 ): { using: Ability; choice: WeaponAttack['abilityChoice']; reason: string | null } {
 	const higher: Ability = modifiers.dexterity > modifiers.strength ? 'dexterity' : 'strength'
 
+	if (pactWeapon) {
+		const base: Ability[] = hasProperty(weapon, FINESSE) || monkWeapon ? ['strength', 'dexterity'] : [weapon.typeCode === RANGED_TYPE_CODE ? 'dexterity' : 'strength']
+		const options: Ability[] = [...base, 'charisma']
+		const valid = chosen !== null && options.includes(chosen)
+		const using = valid ? chosen : options.reduce((best, option) => (modifiers[option] > modifiers[best] ? option : best))
+		const reason = using === 'charisma' ? PACT_OF_THE_BLADE_REASON : monkWeapon && using === 'dexterity' && !hasProperty(weapon, FINESSE) ? MARTIAL_ARTS_REASON : null
+		return { using, choice: { using, options, isDefault: !valid }, reason }
+	}
+
+	const strOrDex = chosen === 'strength' || chosen === 'dexterity' ? chosen : null
 	if (hasProperty(weapon, FINESSE)) {
-		const using = chosen ?? higher
-		return { using, choice: { using, options: ['strength', 'dexterity'], isDefault: chosen === null }, reason: null }
+		const using = strOrDex ?? higher
+		return { using, choice: { using, options: ['strength', 'dexterity'], isDefault: strOrDex === null }, reason: null }
 	}
 
 	if (monkWeapon) {
-		const using = chosen ?? higher
+		const using = strOrDex ?? higher
 		return { using, choice: null, reason: using === 'dexterity' ? MARTIAL_ARTS_REASON : null }
 	}
 
@@ -331,6 +347,9 @@ export function computeWeaponAttacks(
 			modifiers[ability] = result.value.modifier
 		}
 	}
+	// D417: only the pact weapon reads Charisma, so an unknown Charisma removes that option rather than every attack line.
+	const charisma = computeAbilityScore('charisma', character, feats, itemAbilityGrants)
+	modifiers.charisma = charisma.status === 'known' ? charisma.value.modifier : 0
 	const proficiencyBonus = computeProficiencyBonus(character.classes)
 	// Same signal slice c reads for the die: a non-null die means at least one Monk level, so the ability clause and the die never disagree (D77).
 	const hasMartialArts = martialArtsDie !== null
@@ -351,7 +370,9 @@ export function computeWeaponAttacks(
 		const weapon = row.weapon
 		const proficient = isProficientWithWeapon(weapon, grants)
 		const monkWeapon = hasMartialArts && isMonkWeapon(weapon, kenseiWeapons)
-		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, monkWeapon)
+		// D408: a ranged row marked before the rule (or after losing Improved Pact Weapon) is not a pact weapon.
+		const pactWeapon = row.pactWeapon === true && canBePactWeapon(weapon, pactEffects.improvedPactWeapon)
+		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, monkWeapon, pactWeapon && charisma.status === 'known')
 		/*
 		 * Every weapon in items.json carries `dmg1`; only a custom one can be a
 		 * weapon with no dice on it (slice e2b). The attack line is still worth
@@ -369,8 +390,6 @@ export function computeWeaponAttacks(
 				? [{ source: 'Thrown Weapon Fighting (Fighting Style)', amount: 0, note: 'considered (+2) — not included: only on a ranged attack made by throwing it' }]
 				: []),
 		]
-		// D408: a ranged row marked before the rule (or after losing Improved Pact Weapon) is not a pact weapon.
-		const pactWeapon = row.pactWeapon === true && canBePactWeapon(weapon, pactEffects.improvedPactWeapon)
 		// XGE Improved Pact Weapon: "+1 bonus to its attack and damage rolls, unless it is a magic weapon that already has a bonus to those rolls."
 		const improved: Contribution[] =
 			pactWeapon && pactEffects.improvedPactWeapon

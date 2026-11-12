@@ -620,6 +620,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 68 adds Character.genieKind (GN-1, D407). A version-67 Genie character has not chosen a kind — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 68 }),
 	},
+	{
+		from: 68,
+		to: 69,
+		/* 69 adds the 'charisma' attackAbility value (PC-1, D417). A version-68 row holds only strength or dexterity — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 69 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

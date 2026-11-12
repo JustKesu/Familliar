@@ -298,6 +298,53 @@ describe('computeWeaponAttacks — pact weapon (D401)', () => {
 	})
 })
 
+describe('computeWeaponAttacks — pact weapon uses Charisma (D417)', () => {
+	/** STR 16 (+3), DEX 14 (+2), CHA 18 (+4) — the Hexadin. */
+	const hexadin: Character['abilityScores'] = {
+		method: 'standardArray',
+		scores: { strength: 16, dexterity: 14, constitution: 13, intelligence: 8, wisdom: 10, charisma: 18 },
+	}
+	const none = { improvedPactWeapon: false, lifedrinker: false }
+	const run = (row: HeldWeapon, abilityScores = hexadin) => attackNamed(computeWeaponAttacks(character('Warlock', 9, abilityScores), [row], martialGrants, [], null, undefined, [], none), row.name)
+	const pact = (weapon: ResolvedWeapon, chosen: HeldWeapon['chosenAbility'] = null): HeldWeapon => ({ ...held(weapon, chosen), pactWeapon: true })
+
+	it('a pact Longsword defaults to Charisma when it is highest: +7 becomes +8, and the breakdown names the pact', () => {
+		const sword = run(pact(longsword))
+		expect(sword.abilityChoice).toEqual({ using: 'charisma', options: ['strength', 'charisma'], isDefault: true })
+		expect(toHitOf(sword)).toBe(8)
+		expect(sword.toHit.status === 'known' && sword.toHit.breakdown[0]).toEqual({ source: 'charisma modifier (Pact of the Blade)', amount: 4 })
+		expect(damageTextOf(sword)).toBe('1d8 + 4 slashing')
+		expect(sword.damage.status === 'known' && sword.damage.breakdown).toContainEqual({ source: 'charisma modifier (Pact of the Blade)', amount: 4 })
+	})
+
+	it('a stored Strength pick switches back to Strength', () => {
+		const sword = run(pact(longsword, 'strength'))
+		expect(sword.abilityChoice).toEqual({ using: 'strength', options: ['strength', 'charisma'], isDefault: false })
+		expect(toHitOf(sword)).toBe(7)
+		expect(damageTextOf(sword)).toBe('1d8 + 3 slashing')
+	})
+
+	it('defaults to Strength when Strength is higher than Charisma', () => {
+		const sword = run(pact(longsword), scores)
+		expect(sword.abilityChoice).toEqual({ using: 'strength', options: ['strength', 'charisma'], isDefault: true })
+	})
+
+	it('a pact Finesse weapon offers all three', () => {
+		expect(run(pact(rapier)).abilityChoice?.options).toEqual(['strength', 'dexterity', 'charisma'])
+	})
+
+	it('the same Longsword without the mark has no choice, and a stored Charisma pick is ignored', () => {
+		expect(run(held(longsword)).abilityChoice).toBeNull()
+		expect(toHitOf(run(held(longsword, 'charisma')))).toBe(7)
+		const rapierAttack = run(held(rapier, 'charisma'))
+		expect(rapierAttack.abilityChoice).toEqual({ using: 'strength', options: ['strength', 'dexterity'], isDefault: true })
+	})
+
+	it('a marked ranged weapon that cannot be a pact weapon gets no Charisma (D408)', () => {
+		expect(run(pact(shortbow)).abilityChoice).toBeNull()
+	})
+})
+
 describe('computeWeaponAttacks — Bracers of Archery (D402)', () => {
 	const bracers = [{ source: 'Bracers of Archery', amount: 2 }]
 	const longbow: ResolvedWeapon = { ...shortbow, name: 'Longbow', weaponCategory: 'martial', dmg1: '1d8' }

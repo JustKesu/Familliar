@@ -5797,3 +5797,12 @@ is added to any superiority dice you have from another source“), rozpis „Sup
 není. (C) Když maximum klesne pod uložený počet utracených (Charisma po sundání předmětu), list všude kreslí
 min(utraceno, maximum); uložená hodnota se nemění, takže se vrátí, až maximum znovu vzroste. Zadal plánovací chat
 (F-PB) 12. 11. 2026.
+
+## D417 — Pact weapon útočí Charismou (PC-1)
+
+Doplňuje D401 a D408. Označená pact weapon (jen ta, kterou `canBePactWeapon` připustí) dostane na řádku Actions výběr
+vlastnosti „Attack with“ jako Finesse: běžné možnosti zbraně (Finesse nebo Monk weapon STR/DEX, jinak STR na blízko, DEX
+střelná) plus Charisma. Výchozí je nejvyšší modifikátor (shoda: dřívější v pořadí STR, DEX, CHA). Rozklad útoku i damage
+ukazuje „charisma modifier (Pact of the Blade)“. Volba se ukládá do `attackAbility`, které nově připouští 'charisma'
+(schéma 69, migrace 68 → 69 jen přeznačí). Uložená Charisma na řádku bez platného označení se ignoruje (platí výchozí).
+Hex Warrior (XGE) bez paktu mimo rozsah. Zadal plánovací chat (HL) 12. 11. 2026.

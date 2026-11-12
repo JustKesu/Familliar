@@ -987,11 +987,15 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 					id: '1',
 					name: 'Aria',
 					classes: [],
-					inventory: [{ name: 'Rapier', source: 'XPHB', quantity: 1, attackAbility: 'charisma' }],
+					inventory: [{ name: 'Rapier', source: 'XPHB', quantity: 1, attackAbility: 'wisdom' }],
 				},
 			]),
 		)
 		expectUnreadable(new CharacterStore(badAbility))
+
+		// D417: Charisma is a valid pick (the pact weapon).
+		store.setInventory(character.id, [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', pactWeapon: true, attackAbility: 'charisma' }])
+		expect(new CharacterStore(backing).list()[0].inventory?.[0].attackAbility).toBe('charisma')
 	})
 
 	/* D69: the 19 -> 20 bump ships a migration, so a version-19 save keeps its equipped state and picks no ability. */

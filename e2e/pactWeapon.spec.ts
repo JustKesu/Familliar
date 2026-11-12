@@ -94,6 +94,43 @@ test('SM-3 a (D409): the pressed Pact weapon button looks different from the off
   expect(await border()).not.toBe(off)
 })
 
+/* PC-1 (D417): the Hexadin — Paladin 5 / Warlock 4 (Longsword proficiency from the Paladin), STR 16 (+3), CHA 18 (+4), PB +4. */
+function hexadin(id: string, inventory: Record<string, unknown>[]) {
+  const base = warlock(id, [{ name: 'Pact of the Blade', source: XPHB }], inventory)
+  return {
+    ...base,
+    classes: [
+      { className: 'Paladin', classSource: XPHB, subclass: null, level: 5 },
+      { className: 'Warlock', classSource: XPHB, subclass: null, level: 4 },
+    ],
+    abilityScores: { method: 'standardArray', scores: { ...base.abilityScores.scores, charisma: 18 } },
+  }
+}
+
+test('PC-1 a, b: a pact Longsword attacks with Charisma by default and can switch back to Strength', async ({ page }) => {
+  await open(page, hexadin('pc1-a', [held('Longsword', { pactWeapon: true })]))
+  const sword = await actionRow(page, 'Longsword')
+  const select = sword.getByRole('combobox', { name: 'Attack ability for Longsword' })
+  await expect(select).toHaveValue('charisma')
+  await expect(sword.getByRole('button', { name: 'Roll Longsword to hit' })).toHaveText('+8')
+  await expect(sword.locator('.sheet__action-damage')).toHaveText(/1d8 \+ 4\s+Slashing/i)
+  await sword.getByRole('button', { name: 'Longsword breakdown', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText(/charisma modifier \(Pact of the Blade\)/i)
+  await page.keyboard.press('Escape')
+
+  await select.selectOption('strength')
+  await expect(select).toHaveValue('strength')
+  await expect(sword.getByRole('button', { name: 'Roll Longsword to hit' })).toHaveText('+7')
+  await expect(sword.locator('.sheet__action-damage')).toHaveText(/1d8 \+ 3\s+Slashing/i)
+})
+
+test('PC-1 c: the same Longsword without the pact mark has no Charisma option', async ({ page }) => {
+  await open(page, hexadin('pc1-c', [held('Longsword')]))
+  const sword = await actionRow(page, 'Longsword')
+  await expect(sword.getByRole('combobox', { name: 'Attack ability for Longsword' })).toHaveCount(0)
+  await expect(sword.getByRole('button', { name: 'Roll Longsword to hit' })).toHaveText('+7')
+})
+
 test('PW-1 d: a pact weapon with its own magic bonus gets no Improved Pact Weapon +1', async ({ page }) => {
   await open(page, warlock('pw1-d', BLADE, [held('Mace', { magicBonus: 1 })]))
   const panel = await openManage(page)

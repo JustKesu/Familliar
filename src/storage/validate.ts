@@ -913,8 +913,8 @@ export function describeInventoryError(value: unknown): string | null {
 			return `inventory[${i}].grip must be "one-handed" or "two-handed" when present`
 		}
 		const attackAbility = entry['attackAbility']
-		if (attackAbility !== undefined && attackAbility !== 'strength' && attackAbility !== 'dexterity') {
-			return `inventory[${i}].attackAbility must be "strength" or "dexterity" when present`
+		if (attackAbility !== undefined && attackAbility !== 'strength' && attackAbility !== 'dexterity' && attackAbility !== 'charisma') {
+			return `inventory[${i}].attackAbility must be "strength", "dexterity" or "charisma" when present`
 		}
 		const attuned = entry['attuned']
 		if (attuned !== undefined && attuned !== true) {
