@@ -5827,3 +5827,14 @@ přeznačí); průvodce, level up i Edit je vybírají stávajícím pickerem fi
 čeká na přesný počet (2). Změna stylu cantripy zahodí. Na Spells tabu se ukazují „from feat“ s vlastností featu (CHA
 Blessed, WIS Druidic). Uložené jméno stylu se k řádku featu i nadále váže podle D318 (všechny FS* kategorie, jména jsou
 unikátní). Manage Feats je jen ukazuje, upravit je tam nejde. Zadal plánovací chat (HL) 12. 11. 2026.
+
+## D420 — Hexblade's Curse jedno použití, Devil's Sight v Senses (WM-1, část C a D)
+
+(1) Hexblade's Curse (Warlock Hexblade XGE) má 1 použití, vrací se na Short i Long Rest. Text je bez značky a malými
+písmeny („until you finish a short or long rest“), proto nová ruční tabulka `UNTAGGED_SINGLE_USE` (resources.ts) jméno →
+věta a návrat na Short Rest; řádek platí, jen když text držené featury větu obsahuje. `isTableCounted` ji bere jako další
+tabulku (D415), takže featura má řádek v Actions i boxy ve Features. (2) Invokace Devil's Sight (XPHB) nemá v datech pole
+`senses`; ruční tabulka `OPTIONAL_FEATURE_TEXT_SENSES` (grantedSenses.ts) jí dává vlastní smysl „Devil's Sight“ 120 ft.,
+který se ukáže v Granted senses jako „Devil's Sight: 120 ft. — from invocation (Devil's Sight)“; není to darkvision a s
+ní se nesčítá. Spell Mastery a Signature Spells (části A a B úkolu WM-1) zatím jen text, samostatný úkol. Zadal plánovací
+chat (HL) 12. 11. 2026.

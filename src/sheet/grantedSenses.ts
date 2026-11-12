@@ -113,6 +113,11 @@ interface RawOptionalFeatureSenseEntry {
 	senses?: unknown
 }
 
+// D420: Devil's Sight|XPHB has no `senses` field, the 120 ft. is only in its text; it is its own sense, not darkvision.
+const OPTIONAL_FEATURE_TEXT_SENSES: Record<string, { senseType: string; range: number }[]> = {
+	"Devil's Sight": [{ senseType: "Devil's Sight", range: 120 }],
+}
+
 function isRawOptionalFeatureSenseEntry(value: unknown): value is RawOptionalFeatureSenseEntry {
 	return isRecord(value) && typeof value['name'] === 'string' && typeof value['source'] === 'string'
 }
@@ -160,7 +165,7 @@ export function extractOptionalFeatureGrantedSenses(parsedOptionalFeatures: unkn
 		for (const pick of stored.choices) {
 			const option = findPicked(scoped, pick)
 			if (!option) continue
-			for (const { senseType, range } of parseSenses(option.senses)) {
+			for (const { senseType, range } of [...parseSenses(option.senses), ...(OPTIONAL_FEATURE_TEXT_SENSES[option.name.replace(/’/g, "'")] ?? [])]) {
 				result.push({ senseType, range, origin: 'optionalFeature', name: option.name })
 			}
 		}

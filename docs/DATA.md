@@ -2188,3 +2188,16 @@ data/spells.json except two (planning-chat summary script, 2026-10-25):
   spells.json, so the exact-source match fails.
 Both now resolve through `findSpell`'s alias table (src/spells/subclassPreparedSpells.ts); before D406 they
 were skipped silently (D43).
+
+## Untagged recharges and text-only senses (WM-1, D420)
+
+scripts/investigate-wm1.js, 2026-11-12:
+- Hexblade's Curse|XGE (subclass-features.json, Hexblade level 1): no `consumes`, no rest tag; the recharge is
+  "You can't use this feature again until you finish a short or long rest" (lowercase, "short or long"), which
+  neither `hasRestTag` nor `SINGLE_USE_RECHARGE` matches. Tracked by the hand table `UNTAGGED_SINGLE_USE`.
+- Devil's Sight: one entry only, XPHB (EI), straight apostrophe; no `senses` field — the 120 feet is only in the text
+  ("see normally in Dim Light and Darkness … within 120 feet"). Hand table `OPTIONAL_FEATURE_TEXT_SENSES`.
+- Spell Mastery|XPHB (Wizard 18) and Signature Spells|XPHB (Wizard 20): no `consumes`. Signature Spells carries a rest
+  tag, but its limit sentence ("you can't cast them in this way again until you finish a Short Rest or Long Rest")
+  does not match `EXPENDED_USES`, so it is not a resource today. Spell Mastery's rest tag is only the Long Rest
+  swap sentence.

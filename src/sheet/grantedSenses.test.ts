@@ -57,6 +57,14 @@ describe('extractOptionalFeatureGrantedSenses', () => {
 		])
 	})
 
+	/* D420: the data has no `senses` field on Devil's Sight, only the text. */
+	it("Devil's Sight grants its own 120 ft. sense from the hand table", () => {
+		const devilsSight = { name: "Devil's Sight", source: 'XPHB', featureType: ['EI'] }
+		expect(extractOptionalFeatureGrantedSenses([...optionalFeatures, devilsSight], [{ featureType: 'EI', choices: [{ name: "Devil's Sight" }] }])).toEqual([
+			{ senseType: "Devil's Sight", range: 120, origin: 'optionalFeature', name: "Devil's Sight" },
+		])
+	})
+
 	/* D99: a level on the pick is provenance the sense calculation must ignore entirely. */
 	it('an invocation grants the same sense whether or not the pick records a level', () => {
 		const withoutLevel = extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: [{ name: 'Witch Sight' }] }])

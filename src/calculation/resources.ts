@@ -345,9 +345,25 @@ function classLevelMultipleMax(name: string, text: string, character: Character)
 	return known(value, [{ source: `${scaled.className} level ${characterClass.level} x ${scaled.factor}: ${name}`, amount: value }])
 }
 
-/** D415: one of the hand tables (D412, D414, LH-1) gives this held text its use count. */
+/*
+ * D420: XGE writes the recharge lowercase and untagged ("until you finish a short or
+ * long rest"), which neither the rest tag nor SINGLE_USE_RECHARGE matches. One use.
+ */
+export const UNTAGGED_SINGLE_USE: Record<string, { sentence: RegExp; shortRest: RestRecovery | null }> = {
+	"Hexblade's Curse": { sentence: /can't use this feature again until you finish a short or long rest/i, shortRest: 'all' },
+}
+
+function isUntaggedSingleUse(name: string, text: string): boolean {
+	return UNTAGGED_SINGLE_USE[name]?.sentence.test(text) ?? false
+}
+
+function untaggedSingleUseMax(name: string, text: string): Calculated<number> | null {
+	return isUntaggedSingleUse(name, text) ? known(1, [{ source: `${name}: once per rest`, amount: 1 }]) : null
+}
+
+/** D415: one of the hand tables (D412, D414, LH-1, D420) gives this held text its use count. */
 export function isTableCounted(name: string, text: string): boolean {
-	return isProficiencyBonusCounted(name, text) || isAbilityModifierCounted(name, text) || isClassLevelMultipleCounted(name, text)
+	return isProficiencyBonusCounted(name, text) || isAbilityModifierCounted(name, text) || isClassLevelMultipleCounted(name, text) || isUntaggedSingleUse(name, text)
 }
 
 function proficiencyBonusMax(name: string, text: string, character: Character): Calculated<number> | null {
@@ -535,7 +551,7 @@ function computeResourceMax(
 			return known(count, breakdown)
 		}
 	}
-	const scaled = levelScaledMax(name, character) ?? abilityModifierMax(name, text, abilityScores) ?? proficiencyBonusMax(name, text, character) ?? classLevelMultipleMax(name, text, character)
+	const scaled = levelScaledMax(name, character) ?? abilityModifierMax(name, text, abilityScores) ?? proficiencyBonusMax(name, text, character) ?? classLevelMultipleMax(name, text, character) ?? untaggedSingleUseMax(name, text)
 	if (scaled) return scaled
 	if (impliedSingleUse) return known(1, [{ source: `${name}: can't be used again until a rest, no count stated`, amount: 1 }])
 	const where = looked.length > 0 ? `${looked.join(', ')}'s per-level table${looked.length > 1 ? 's' : ''}` : 'any class table'
@@ -701,7 +717,10 @@ export function computeCharacterResources(
 					name,
 					dataNames,
 					max: computeResourceMax(name, character, parsedClasses, impliedSingleUse, text, abilityScores),
-					shortRest: shortRestRecovery([name, ...dataNames], features) ?? (rechargesAsWhole && singleUseRechargesOnShortRest(text) ? 'all' : null),
+					shortRest:
+						shortRestRecovery([name, ...dataNames], features) ??
+						(rechargesAsWhole && singleUseRechargesOnShortRest(text) ? 'all' : null) ??
+						(isUntaggedSingleUse(name, text) ? UNTAGGED_SINGLE_USE[name].shortRest : null),
 				},
 			]
 		})

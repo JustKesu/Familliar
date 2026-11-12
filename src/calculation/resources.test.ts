@@ -629,9 +629,10 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 	// Umbral Form, Necrotic Husk, Survivor), -2 with their superseded subclasses (Telekinetic Master|TCE, Strength of the Grave|XGE).
 	// D201: +12 FRHoF (subclass features, Epic Boons, Genie Magic), 3 of them Short Rest (Boon of Terror, Boon of the Soul Drinker, Group Recovery).
 	// D367: +5 TGS2 (Improved Launch, Bloodbound, Hurricane on a Short Rest; Sight Beyond Sight, Arcane Conduit on a Long Rest).
-	it('holds 108 known maxima: 78 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197, +12 of D201, +5 of D367, the 6 sub-limits of D405), the 2 level-table ones and the 28 of D414', () => {
-		expect(singleUse).toHaveLength(108)
-		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(78)
+	// D420: +1 Hexblade's Curse (untagged XGE recharge, Short Rest).
+	it("holds 109 known maxima: 79 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197, +12 of D201, +5 of D367, the 6 sub-limits of D405, Hexblade's Curse of D420), the 2 level-table ones and the 28 of D414", () => {
+		expect(singleUse).toHaveLength(109)
+		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(79)
 	})
 
 	it('counts every D414 row at the Fighter 20 Proficiency Bonus, Long Rest only', () => {
@@ -649,6 +650,7 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 				'Boon of Terror', 'Boon of the Soul Drinker', 'Group Recovery',
 				'Improved Launch', 'Bloodbound', 'Hurricane',
 				'Aberrant Dragonmark (spell)',
+				"Hexblade's Curse",
 			].sort(),
 		)
 	})
@@ -889,5 +891,27 @@ describe('D418 Lay on Hands, a multiple of the Paladin level', () => {
 		const reworded = { ...LAY_ON_HANDS, entries: ['You have a pool of healing power that replenishes when you finish a long rest.'] }
 		expect(computeCharacterResources(character('Paladin', 5), CLASSES, [reworded])).toEqual([])
 		expect(computeCharacterResources(character('Fighter', 5), CLASSES, [LAY_ON_HANDS])[0].max.status).toBe('unknown')
+	})
+})
+
+describe("D420 Hexblade's Curse, one use back on a short or long rest (untagged XGE text)", () => {
+	const HEXBLADES_CURSE: ResourceFeature = {
+		name: "Hexblade's Curse",
+		className: 'Warlock',
+		entries: [
+			'Starting at 1st level, you gain the ability to place a baleful curse on someone. As a bonus action, choose one creature you can see within 30 feet of you.',
+			{ type: 'list', items: ['You gain a bonus to damage rolls against the cursed target.'] },
+			"You can't use this feature again until you finish a short or long rest.",
+		],
+	}
+
+	it('has one use, and a Short Rest returns it', () => {
+		const [curse] = computeCharacterResources(character('Warlock', 3), CLASSES, [HEXBLADES_CURSE])
+		expect(curse).toMatchObject({ name: "Hexblade's Curse", max: { status: 'known', value: 1 }, shortRest: 'all' })
+	})
+
+	it('needs the recharge sentence in the held text', () => {
+		const reworded = { ...HEXBLADES_CURSE, entries: ['As a bonus action, choose one creature you can see within 30 feet of you.'] }
+		expect(computeCharacterResources(character('Warlock', 3), CLASSES, [reworded])).toEqual([])
 	})
 })
