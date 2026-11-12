@@ -445,6 +445,8 @@ export function describeFightingStylesError(value: unknown): string | null {
 		const owner = className === undefined ? '' : `${String(className)}|${String(classSource)}`
 		if (owners.has(owner)) return `fightingStyles has more than one entry for ${className === undefined ? 'no class' : String(className)}`
 		owners.add(owner)
+		const spellsError = describeFilterChoiceSpellsError(entry['filterChoiceSpells'])
+		if (spellsError) return `fightingStyles[${i}].${spellsError}`
 	}
 	return null
 }
@@ -456,6 +458,7 @@ function toCharacterFightingStyles(value: unknown[]): CharacterFightingStyle[] {
 			...(typeof record['className'] === 'string' ? { className: record['className'], classSource: record['classSource'] as string } : {}),
 			name: record['name'] as string,
 			...(typeof record['source'] === 'string' ? { source: record['source'] } : {}),
+			...(isRecord(record['filterChoiceSpells']) ? { filterChoiceSpells: toFilterChoiceSpellsChoice(record['filterChoiceSpells']) } : {}),
 		}
 	})
 }

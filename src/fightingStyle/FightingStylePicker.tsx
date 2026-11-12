@@ -4,6 +4,10 @@ import { Entries } from '../markup'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { ReplaceNamedPickControl } from '../optionalFeatures/ReplaceOptionControl'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
+import { FilterChoiceSpellSubPicker } from '../featAsi/FeatAsiPicker'
+import { isFilterChoiceFeat } from '../spells/featSpellChoiceData'
+import type { KnownSpell } from '../spells/knownSpells'
+import type { FilterChoiceSpellsChoice } from '../storage/character'
 
 /*
  * Fighting style picker. Its 10 options are the same feats.json category-FS
@@ -39,6 +43,10 @@ export function FightingStylePicker({
 	value,
 	onChange,
 	heldStyle = null,
+	spells = null,
+	onSpellsChange = () => {},
+	alreadyKnown = [],
+	characterLevel = level,
 }: {
 	className: string
 	classSource: string
@@ -47,6 +55,11 @@ export function FightingStylePicker({
 	onChange: (style: string | null) => void
 	/** D345: the style a level up already holds; the picker then offers "Replace one" and shows the list only while it is being replaced. */
 	heldStyle?: string | null
+	/** D419: the cantrips of a chosen style that teaches some (Blessed/Druidic Warrior). */
+	spells?: FilterChoiceSpellsChoice | null
+	onSpellsChange?: (spells: FilterChoiceSpellsChoice) => void
+	alreadyKnown?: readonly KnownSpell[]
+	characterLevel?: number
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -54,7 +67,7 @@ export function FightingStylePicker({
 	useEffect(() => {
 		let cancelled = false
 		setState({ status: 'loading' })
-		Promise.all([loadFightingStyleGrantLevel(className, classSource), fightingStyleOptions()])
+		Promise.all([loadFightingStyleGrantLevel(className, classSource), fightingStyleOptions(className, classSource)])
 			.then(([grantLevel, options]) => {
 				if (!cancelled) setState({ status: 'ready', grantLevel, options })
 			})
@@ -124,6 +137,18 @@ export function FightingStylePicker({
 					if (option) onChange(option.name)
 				}}
 			/>
+			)}
+			{chosenOption && isFilterChoiceFeat(chosenOption) && (
+				<FilterChoiceSpellSubPicker
+					featName={chosenOption.name}
+					featSource={chosenOption.source}
+					blockName={undefined}
+					characterLevel={characterLevel}
+					chosenAbility={undefined}
+					alreadyKnown={alreadyKnown}
+					filterChoiceSpells={spells}
+					onChange={onSpellsChange}
+				/>
 			)}
 		</div>
 	)

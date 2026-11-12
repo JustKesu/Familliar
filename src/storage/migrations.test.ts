@@ -815,7 +815,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
 				background: { name: 'Acolyte', source: 'XPHB', skillProficiencies: ['insight', 'religion'], toolProficiency: "Calligrapher's Supplies" },
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 69 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 70 })
 		})
 	})
 
@@ -829,7 +829,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 2 }],
 				subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 69 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 70 })
 		})
 	})
 
@@ -843,7 +843,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 3 }],
 				subclassSkills: [{ grantedBy: 'primalKnowledge', name: 'survival' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 69 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 70 })
 		})
 	})
 
@@ -857,7 +857,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
 				inventory: [{ name: 'Mace', source: 'XPHB', quantity: 1 }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 69 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 70 })
 		})
 	})
 
@@ -871,7 +871,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'The Genie', level: 3 }],
 			}
 			const migrated = migrateToCurrent(structuredClone(before)) as Record<string, unknown>
-			expect(migrated).toEqual({ ...before, schemaVersion: 69 })
+			expect(migrated).toEqual({ ...before, schemaVersion: 70 })
 			expect('genieKind' in migrated).toBe(false)
 		})
 	})
@@ -886,11 +886,26 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
 				inventory: [{ name: 'Rapier', source: 'XPHB', quantity: 1, attackAbility: 'dexterity', pactWeapon: true }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 69 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 70 })
+		})
+
+	})
+
+	/* FS-1 (D419): CharacterFightingStyle.filterChoiceSpells is new and optional, so the step only tags. */
+	describe('version 69 to 70', () => {
+		it('adds nothing and changes nothing else', () => {
+			const before = {
+				schemaVersion: 69,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Paladin', classSource: 'XPHB', subclass: null, level: 2 }],
+				fightingStyles: [{ className: 'Paladin', classSource: 'XPHB', name: 'Defense', source: 'XPHB' }],
+			}
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 70 })
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(69)
+			expect(CURRENT_SCHEMA_VERSION).toBe(70)
 		})
 	})
 

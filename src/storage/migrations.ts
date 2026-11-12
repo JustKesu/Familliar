@@ -626,6 +626,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 69 adds the 'charisma' attackAbility value (PC-1, D417). A version-68 row holds only strength or dexterity — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 69 }),
 	},
+	{
+		from: 69,
+		to: 70,
+		/* 70 adds CharacterFightingStyle.filterChoiceSpells (FS-1, D419). A version-69 style holds no cantrips — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 70 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

@@ -5816,3 +5816,14 @@ rozpis „Paladin level 7 x 5“. Řádek platí, jen když text držené featur
 třetí tabulku (D415), takže featura má řádek v Actions i počítadlo ve Features. Fond nad 10 kreslí stávající počítadlo
 utraceno/maximum (krok 1), nový ovládací prvek není. Vrací se jen na Long Rest, Short Rest nic. Zadal plánovací chat (HL)
 12. 11. 2026.
+
+## D419 — Blessed Warrior a Druidic Warrior ve volbě Fighting Style (FS-1, schéma 70)
+
+Doplňuje D12 a D318. Třídní Fighting Style nabízí kategorie featů z řádku „Fighting Style“ v `featProgression` třídy
+(classes.json): Paladin XPHB FS + FS:P (Blessed Warrior), Ranger XPHB FS + FS:R (Druidic Warrior), Fighter jen FS;
+třída bez toho řádku jen FS. College of Swords (FS:B) a Fighting Style feat z ASI dál jen FS. Dvě cantripy stylu se
+ukládají na položku `fightingStyles` jako `filterChoiceSpells` (stejný tvar jako u featu, schéma 70, migrace 69 → 70 jen
+přeznačí); průvodce, level up i Edit je vybírají stávajícím pickerem filter-choice featu pod seznamem stylů a krok Class
+čeká na přesný počet (2). Změna stylu cantripy zahodí. Na Spells tabu se ukazují „from feat“ s vlastností featu (CHA
+Blessed, WIS Druidic). Uložené jméno stylu se k řádku featu i nadále váže podle D318 (všechny FS* kategorie, jména jsou
+unikátní). Manage Feats je jen ukazuje, upravit je tam nejde. Zadal plánovací chat (HL) 12. 11. 2026.

@@ -2011,6 +2011,9 @@ export function CharacterWizard({
 									value={state.data.fightingStyle}
 									onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
 									heldStyle={held?.swappableFightingStyle ?? null}
+									spells={state.data.fightingStyleSpells}
+									onSpellsChange={(spells) => dispatch({ type: 'setFightingStyleSpells', spells })}
+									alreadyKnown={alreadyKnownSpells}
 								/>
 							)}
 							{/* D13 — a class feature's own "pick one version" choice belongs to the class step; none of the three depends on spells, so D64's exception does not apply. */}

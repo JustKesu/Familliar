@@ -35,6 +35,7 @@ import type {
 	FeatAsiChoice,
 	GenieKind,
 	LeveledChoice,
+	FilterChoiceSpellsChoice,
 } from '../storage/character'
 import { GENIE_SUBCLASS, hasGenie } from '../genie/genie'
 import { hasElegantCourtier, heldKenseiWeapons, kenseiSlotsFilled, kenseiSlotsFor, pairKenseiPicks, type KenseiSlot } from '../kensei/kensei'
@@ -67,7 +68,7 @@ import type { SpellCountLabel } from '../calculation/spellCounts'
 import { firstClass, isMulticlass, levelOrderAfterLevelUp, totalCharacterLevel } from '../calculation/characterLevel'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
-import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
+import { filterChoiceRequiredCounts, filterChoiceRequiredCountsByName, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { overwrittenHeldPicks } from '../levelUp/heldPicks'
 import { heldPickOwners, ownedPicks, withOwnedPicks, type HeldPickGrantData, type HeldPickOwners } from './heldClassPicks'
 import { checkNoClassRaised, checkOneClassRaised, classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
@@ -229,6 +230,13 @@ export interface ClassPickRequirements {
 	classFeatureNames: readonly string[] | null
 }
 
+/** D419: a style that teaches cantrips (Blessed/Druidic Warrior) needs exactly its count picked; every other style, or none, is complete. */
+export function fightingStyleSpellsComplete(style: string | null, spells: FilterChoiceSpellsChoice | null): boolean {
+	const required = style === null ? null : filterChoiceRequiredCountsByName(style, 1)
+	if (required === null) return true
+	return spells !== null && spells.cantrips.length === required.cantrips && spells.spells.length === required.spells
+}
+
 /** Held (level-up) picks are already in `data`, so they count as chosen. Counts are exact, like the pickers' own caps; a pick the level does not grant blocks the step (D251). */
 export function classPicksComplete(data: WizardData, required: ClassPickRequirements): boolean {
 	const featureNames = required.classFeatureNames
@@ -236,6 +244,7 @@ export function classPicksComplete(data: WizardData, required: ClassPickRequirem
 		(required.skillCount === null || data.classSkills.length === required.skillCount) &&
 		(required.subclass === null || (data.subclass !== null) === required.subclass) &&
 		(required.fightingStyle === null || (data.fightingStyle !== null) === required.fightingStyle) &&
+		fightingStyleSpellsComplete(data.fightingStyle, data.fightingStyleSpells) &&
 		(required.masteryCount === null || activeClassPicks(data, 'masteries').length === required.masteryCount) &&
 		(required.optionalFeatureCount === null || data.optionalFeatureChoices.length === required.optionalFeatureCount) &&
 		(featureNames === null || data.classFeatureChoices.every((choice) => featureNames.includes(choice.featureName)))
@@ -278,7 +287,19 @@ function pruneClassPicks(state: WizardControllerState, required: ClassPickRequir
 	}
 	return {
 		...unsubclassed,
-		data: { ...data, fightingStyle, optionalFeatureChoices, classFeatureChoices, wildShapeForms, featAsiChoices, hitPointLevels, featureLanguages, toolChoices, subclassSkills },
+		data: {
+			...data,
+			fightingStyle,
+			...(fightingStyle === null ? { fightingStyleSpells: null } : {}),
+			optionalFeatureChoices,
+			classFeatureChoices,
+			wildShapeForms,
+			featAsiChoices,
+			hitPointLevels,
+			featureLanguages,
+			toolChoices,
+			subclassSkills,
+		},
 	}
 }
 
@@ -498,6 +519,8 @@ export interface WizardData {
 	expertiseSkills: string[]
 	masteries: string[]
 	fightingStyle: string | null
+	/** D419: the cantrips of a class-only style that teaches some (Blessed/Druidic Warrior); cleared whenever the style changes. */
+	fightingStyleSpells: FilterChoiceSpellsChoice | null
 	subclass: SubclassChoice | null
 	/** The subclass's own optionalfeatureProgression picks (D21) — clear whenever class, level or subclass changes, since the options are keyed to a specific subclass. */
 	optionalFeatureChoices: string[]
@@ -579,6 +602,7 @@ export type ClassFields = Pick<
 	| 'classChoice'
 	| 'subclass'
 	| 'fightingStyle'
+	| 'fightingStyleSpells'
 	| 'optionalFeatureChoices'
 	| 'classOptionalFeatureChoices'
 	| 'spellChoices'
@@ -596,6 +620,7 @@ function stashOf(data: WizardData, classChoice: ClassLevelChoice): ClassStash {
 		classChoice,
 		subclass: data.subclass,
 		fightingStyle: data.fightingStyle,
+		fightingStyleSpells: data.fightingStyleSpells,
 		optionalFeatureChoices: data.optionalFeatureChoices,
 		classOptionalFeatureChoices: data.classOptionalFeatureChoices,
 		spellChoices: data.spellChoices,
@@ -630,6 +655,7 @@ export function emptyWizardData(): WizardData {
 		expertiseSkills: [],
 		masteries: [],
 		fightingStyle: null,
+		fightingStyleSpells: null,
 		subclass: null,
 		optionalFeatureChoices: [],
 		classOptionalFeatureChoices: [],
@@ -758,6 +784,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		expertiseSkills: choiceNames(character.expertiseSkills),
 		masteries: choiceNames(character.masteries),
 		fightingStyle: entering ? null : (fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null),
+		fightingStyleSpells: entering ? null : (fightingStyleFor(character.fightingStyles, characterClass)?.filterChoiceSpells ?? null),
 		subclass,
 		optionalFeatureChoices: subclassFeatureType
 			? choiceNames(storedOptionalFeatures.find((entry) => entry.featureType === subclassFeatureType)?.choices)
@@ -809,6 +836,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 			classChoice: { className: entry.className, classSource: entry.classSource, level: entry.level },
 			subclass,
 			fightingStyle: taggedStyleOf(entry)?.name ?? (index === untaggedOwner ? (untaggedStyle?.name ?? null) : null),
+			fightingStyleSpells: (taggedStyleOf(entry) ?? (index === untaggedOwner ? untaggedStyle : undefined))?.filterChoiceSpells ?? null,
 			optionalFeatureChoices: ownFeatureType ? choiceNames(storedOptionalFeatures.find((stored) => stored.featureType === ownFeatureType)?.choices) : [],
 			classOptionalFeatureChoices: storedOptionalFeatures.filter(
 				(stored) => stored.featureType !== ownFeatureType && (featureTypeOwner.get(stored.featureType) === index || (index === 0 && !claimed.has(stored.featureType))),
@@ -1211,6 +1239,7 @@ export function sameWizardData(a: WizardData, b: WizardData): boolean {
 			classChoice,
 			subclass: _subclass,
 			fightingStyle: _fightingStyle,
+			fightingStyleSpells: _fightingStyleSpells,
 			optionalFeatureChoices: _optionalFeatureChoices,
 			classOptionalFeatureChoices: _classOptionalFeatureChoices,
 			spellChoices: _spellChoices,
@@ -1255,6 +1284,7 @@ function missingClassPicks(cls: ClassStash, conditions: HeldClassConditions): st
 		if (required.subclass === false && cls.subclass !== null) missing.push('remove the subclass')
 		if (required.fightingStyle === true && cls.fightingStyle === null) missing.push('choose a fighting style')
 		if (required.fightingStyle === false && cls.fightingStyle !== null) missing.push('remove the fighting style')
+		if (!fightingStyleSpellsComplete(cls.fightingStyle, cls.fightingStyleSpells)) missing.push('choose the fighting style cantrips')
 		if (required.optionalFeatureCount !== null) missing.push(...count(cls.optionalFeatureChoices.length, required.optionalFeatureCount, 'subclass option', 'subclass options'))
 		const featureNames = required.classFeatureNames
 		if (featureNames !== null && !cls.classFeatureChoices.every((choice) => featureNames.includes(choice.featureName))) missing.push('remove a class feature choice')
@@ -1308,6 +1338,7 @@ export type WizardAction =
 	| { type: 'setClassSkills'; skills: string[] }
 	| { type: 'setMasteries'; weapons: string[] }
 	| { type: 'setFightingStyle'; style: string | null }
+	| { type: 'setFightingStyleSpells'; spells: FilterChoiceSpellsChoice | null }
 	/** D342: set for a class with no spellcasting of its own, whose class spell picks all come from the subclass. */
 	| { type: 'setSubclass'; subclass: SubclassChoice | null; subclassOnlyCaster?: boolean }
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
@@ -1393,6 +1424,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					expertiseSkills: [],
 					masteries: [],
 					fightingStyle: null,
+					fightingStyleSpells: null,
 					subclass: null,
 					optionalFeatureChoices: [],
 					classOptionalFeatureChoices: [],
@@ -1510,7 +1542,12 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setMasteries':
 			return { ...state, data: { ...state.data, masteries: action.weapons } }
 		case 'setFightingStyle':
-			return { ...state, data: { ...state.data, fightingStyle: action.style } }
+			return {
+				...state,
+				data: { ...state.data, fightingStyle: action.style, ...(action.style !== state.data.fightingStyle ? { fightingStyleSpells: null } : {}) },
+			}
+		case 'setFightingStyleSpells':
+			return { ...state, data: { ...state.data, fightingStyleSpells: action.spells } }
 		case 'setSubclass': {
 			// M9/D340: only this class's own subclass picks go; another held class's stay, in a level up (no otherClasses stash) as in Edit.
 			const ownSources = new Set<string>(classSubclassGrantSources(state.data.classChoice?.className ?? ''))
@@ -1943,6 +1980,7 @@ function classRecordsFor(
 						...(classTag ?? {}),
 						name: cls.fightingStyle,
 						...(heldStyle?.name === cls.fightingStyle && heldStyle.source !== undefined ? { source: heldStyle.source } : {}),
+						...(cls.fightingStyleSpells !== null && filterChoiceRequiredCountsByName(cls.fightingStyle, 1) !== null ? { filterChoiceSpells: cls.fightingStyleSpells } : {}),
 					}),
 				]
 

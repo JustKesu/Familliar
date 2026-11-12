@@ -368,7 +368,7 @@ function resolveFilterChoiceAbility(parsedFeats: unknown, featName: string, feat
  * reads the character's own choice directly rather than re-deriving it from
  * additionalSpells.
  */
-function extractFilterChoiceSpells(parsedFeats: unknown, parsedSpells: unknown, choice: FeatChoice): FeatGrantedSpell[] {
+function extractFilterChoiceSpells(parsedFeats: unknown, parsedSpells: unknown, choice: Pick<FeatChoice, 'name' | 'source' | 'chosenAbility' | 'filterChoiceSpells'>): FeatGrantedSpell[] {
 	if (!choice.filterChoiceSpells) return []
 	if (!Array.isArray(parsedSpells)) {
 		throw new Error('spells.json: expected a top-level array.')
@@ -411,6 +411,11 @@ export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unk
 			...extractFilterChoiceSpells(parsedFeats, parsedSpells, choice),
 		]
 		result.push(...spells.map((spell) => ({ ...spell, featInstance: choice.key })))
+	}
+	// D419: a class Fighting Style holding Blessed/Druidic Warrior teaches its stored cantrips with the feat's own ability.
+	for (const style of character.fightingStyles ?? []) {
+		if (!style.filterChoiceSpells || style.source === undefined) continue
+		result.push(...extractFilterChoiceSpells(parsedFeats, parsedSpells, { name: style.name, source: style.source, filterChoiceSpells: style.filterChoiceSpells }))
 	}
 	// D204: stated on the feat's own rows; the other feats keep their numbers.
 	return result.map((spell) => (spell.ability ? spell : { ...spell, unresolvedAbilityReason: UNRESOLVED_ABILITY_REASON }))

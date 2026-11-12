@@ -307,6 +307,12 @@ const FILTER_CHOICE_REQUIRED_COUNTS: Record<string, { cantrips: number; spells: 
 	'Strixhaven Initiate|SCC': { cantrips: 0, spells: 1 },
 }
 
+/** D419: the counts for a class Fighting Style the wizard holds by name only (D318: the first same-named row). */
+export function filterChoiceRequiredCountsByName(featName: string, totalCharacterLevel: number): { cantrips: number; spells: number } | null {
+	const key = Object.keys(FILTER_CHOICE_REQUIRED_COUNTS).find((candidate) => candidate.startsWith(`${featName}|`))
+	return key === undefined ? null : filterChoiceRequiredCounts(featName, key.slice(featName.length + 1), totalCharacterLevel)
+}
+
 /** The exact cantrip/spell counts a completed pick for this feat must have, or null if the feat isn't one of the 8. */
 export function filterChoiceRequiredCounts(featName: string, featSource: string, totalCharacterLevel: number): { cantrips: number; spells: number } | null {
 	const entry = FILTER_CHOICE_REQUIRED_COUNTS[`${featName}|${featSource}`]

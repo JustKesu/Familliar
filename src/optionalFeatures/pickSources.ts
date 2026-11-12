@@ -1,4 +1,5 @@
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { isClassFightingStyleCategory } from '../fightingStyle/fightingStyleData'
 import { findPicked } from '../storage/choiceMatch'
 
 /** D318: the source of the row a sourceless pick resolves to today (first same-named row) — what a new save records. `'FS'` names the class fighting-style list. */
@@ -17,6 +18,8 @@ function isRow(value: unknown): value is Row & Record<string, unknown> {
 export function pickSourceLookup(parsedOptionalFeatures: unknown, parsedFeats: unknown): PickSourceLookup {
 	if (!Array.isArray(parsedOptionalFeatures) || !Array.isArray(parsedFeats)) throw new Error('optional-features.json / feats.json: expected top-level arrays.')
 	const styles = parsedFeats.filter(isRow).filter((feat) => feat['category'] === 'FS')
+	// D419: the class Fighting Style can also hold a class-only FS:P / FS:R feat.
+	const classStyles = parsedFeats.filter(isRow).filter((feat) => isClassFightingStyleCategory(feat['category']))
 	const byType = new Map<string, Row[]>()
 	for (const option of parsedOptionalFeatures.filter(isRow)) {
 		const types = option['featureType']
@@ -24,7 +27,7 @@ export function pickSourceLookup(parsedOptionalFeatures: unknown, parsedFeats: u
 			if (typeof code === 'string') byType.set(code, [...(byType.get(code) ?? []), option])
 		}
 	}
-	return (featureType, name) => findPicked(featureType === 'FS' || featureType.startsWith('FS:') ? styles : (byType.get(featureType) ?? []), { name })?.source
+	return (featureType, name) => findPicked(featureType === 'FS' ? classStyles : featureType.startsWith('FS:') ? styles : (byType.get(featureType) ?? []), { name })?.source
 }
 
 export async function loadPickSourceLookup(): Promise<PickSourceLookup> {

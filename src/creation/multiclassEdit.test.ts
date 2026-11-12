@@ -19,6 +19,7 @@ function twoClasses(): WizardData {
 				classChoice: { className: 'Rogue', classSource: X, level: 1 },
 				subclass: null,
 				fightingStyle: null,
+				fightingStyleSpells: null,
 				optionalFeatureChoices: [],
 				classOptionalFeatureChoices: [],
 				spellChoices: [],

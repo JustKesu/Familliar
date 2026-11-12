@@ -27,6 +27,7 @@ import {
 } from '../featAsi/featAsiData'
 import { featDisplayName, featOriginLabel, LESSONS_OF_THE_FIRST_ONES, pendingInvocationFeats, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { loadFeatProgressionCategories } from '../optionalFeatures/optionalFeatureData'
+import { isClassFightingStyleCategory } from '../fightingStyle/fightingStyleData'
 import { FeatSubChoicePicker, magicInitiateListsOf, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -250,7 +251,7 @@ export function ManageFeatsPanel({
 	const textOf = (feat: FeatRef) => featTexts.find((text) => text.name === feat.name && text.source === feat.source)?.entries
 	const rowOf = (instance: FeatInstance) => featRows.find((row) => row.key === `feat|${instance.key}`)
 
-	const styleFeats = loaded ? loaded.feats.filter((feat) => feat.category === 'FS') : []
+	const styleFeats = loaded ? loaded.feats.filter((feat) => isClassFightingStyleCategory(feat.category)) : []
 	const fightingStyles = (character.fightingStyles ?? []).flatMap((style) => {
 		const feat = findPicked(styleFeats, style)
 		return feat ? [{ style, feat }] : []

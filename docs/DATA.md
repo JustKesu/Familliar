@@ -1409,8 +1409,15 @@ feats.json has 159 entries in 8 `category` codes: G 84, EB 26, O 15, D 13, FS 10
 DG 9, FS:P 1, FS:R 1. Every entry has an `entries` array. The 10 category-`FS`
 entries are all XPHB and their names are unique (case-insensitively), so
 `Character.fightingStyle` — a bare name, picked from exactly those 10 — maps to
-one feats.json entry without a source. FS:P / FS:R are not offered by the class
-Fighting Style picker. Found in R13a (2026-09-28, scripts/investigate-manage-feats.js).
+one feats.json entry without a source. Found in R13a (2026-09-28, scripts/investigate-manage-feats.js).
+
+Which categories a class Fighting Style offers is in classes.json `featProgression` (row named "Fighting
+Style"): Fighter XPHB `["FS"]` (level 1), Paladin XPHB `["FS","FS:P"]` (level 2), Ranger XPHB `["FS","FS:R"]`
+(level 2). FS:P = Blessed Warrior XPHB, FS:R = Druidic Warrior XPHB; both have prerequisite
+`otherSummary` "When Gaining the Level 2 Paladin/Ranger "Fighting Style" Feature" and one `additionalSpells`
+block: Blessed `{ability:"cha", known:{_:[{choose:"level=0|class=cleric",count:2}]}}`, Druidic the same with
+`wis` / `class=druid`. The Paladin/Ranger "Fighting Style" class feature text names them via `refFeat`
+("Instead of choosing one of those feats, you can choose the option below."). FS-1 (D419) reads this row.
 
 ### Feat names across books — none twice today (F-2a, D255)
 
@@ -2120,7 +2127,8 @@ option with stored `spellChoices` is never dropped by the cascade, only by its o
 (`EI`, prereq Warlock 2): `[{"name":"Origin Feat","category":["O"],"progression":{"*":1}}]`; the other 14 are in
 classes.json (Epic Boon, Fighting Style…). Repeatability is prose only ("more than once"), no `isRepeatable`;
 other repeatable EI: Agonizing Blast, Eldritch Spear, Repelling Blast. B-4b reads the category from this field
-(`featProgressionCategories`, D376); the classes.json ones are still unread.
+(`featProgressionCategories`, D376). Of the classes.json ones, the "Fighting Style" rows are read since FS-1
+(D419, see "Feat categories"); the rest are still unread.
 
 ## Species natural armor and natural weapons are prose only (S5 survey)
 

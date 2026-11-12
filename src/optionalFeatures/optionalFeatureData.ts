@@ -15,6 +15,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { isClassFightingStyleCategory } from '../fightingStyle/fightingStyleData'
 import { itemInvocationGrants, type ItemInvocationGrant } from '../inventory/customItemGrants'
 import { choiceNames, type CharacterInventoryItem, type CharacterOptionalFeaturePick } from '../storage/character'
 import { findPicked, type StoredPick } from '../storage/choiceMatch'
@@ -178,14 +179,17 @@ function isRawFeat(value: unknown): value is RawFeat & { name: string; source: s
 	return typeof value['name'] === 'string' && typeof value['source'] === 'string' && Array.isArray(value['entries'])
 }
 
-/** Every feats.json entry with category "FS" — per D12, this is what every `FS:*` code resolves to, suffix ignored. */
-function fightingStyleFeats(parsedFeats: unknown): OptionalFeatureOption[] {
+/**
+ * Every feats.json entry with category "FS" — per D12, this is what every `FS:*` code resolves to, suffix ignored.
+ * `classStyles`: also the class-only FS:P / FS:R feats a class Fighting Style can hold (D419).
+ */
+function fightingStyleFeats(parsedFeats: unknown, classStyles = false): OptionalFeatureOption[] {
 	if (!Array.isArray(parsedFeats)) {
 		throw new Error('feats.json: expected a top-level array.')
 	}
 	return parsedFeats
 		.filter(isRawFeat)
-		.filter((entry) => entry.category === 'FS')
+		.filter((entry) => (classStyles ? isClassFightingStyleCategory(entry.category) : entry.category === 'FS'))
 		.map((entry) => ({
 			name: entry.name,
 			source: entry.source,
@@ -676,7 +680,7 @@ export function chosenOptionalFeatureOptions(
 			out.push({ ...option, featureType: entry.featureType, ...(copies > 1 ? { copies } : {}) })
 		}
 	}
-	for (const style of pickedOptions(fightingStyleFeats(parsedFeats), fightingStyles)) out.push({ ...style, featureType: 'FS' })
+	for (const style of pickedOptions(fightingStyleFeats(parsedFeats, true), fightingStyles)) out.push({ ...style, featureType: 'FS' })
 	return out
 }
 

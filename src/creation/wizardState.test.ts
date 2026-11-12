@@ -5,6 +5,7 @@ import type { Character, CharacterHitPointLevel } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
 	emptyWizardData,
+	fightingStyleSpellsComplete,
 	initialControllerState,
 	isReadyToSave,
 	isSpeciesCantripComplete,
@@ -57,6 +58,7 @@ function completeData(): WizardData {
 		expertiseSkills: [],
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
+		fightingStyleSpells: null,
 		subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' },
 		optionalFeatureChoices: ['Precision Attack'],
 		classOptionalFeatureChoices: [],
@@ -649,6 +651,7 @@ describe('wizardReducer navigation', () => {
 						classChoice: { className: 'Druid', classSource: 'XPHB', level: 2 },
 						subclass: null,
 						fightingStyle: null,
+						fightingStyleSpells: null,
 						optionalFeatureChoices: [],
 						classOptionalFeatureChoices: [],
 						spellChoices: [druidCure],
@@ -2009,5 +2012,56 @@ describe('multiclass Edit (M9a)', () => {
 		expect(() => saveCharacter(editStore(), data, ['athletics', 'intimidation'], { ...conditions, heldClassesComplete: false }, undefined, stored())).toThrow(
 			'before every step is complete',
 		)
+	})
+})
+
+/* FS-1 (D419): Blessed Warrior / Druidic Warrior as the class Fighting Style carry their 2 cantrips. */
+describe('fighting style cantrips (D419)', () => {
+	const GUIDANCE = { name: 'Guidance', source: 'XPHB' }
+	const SACRED_FLAME = { name: 'Sacred Flame', source: 'XPHB' }
+	const both = { cantrips: [GUIDANCE, SACRED_FLAME], spells: [] }
+	const paladin = (): WizardData => ({
+		...completeData(),
+		classChoice: { className: 'Paladin', classSource: 'XPHB', level: 2 },
+		subclass: null,
+		optionalFeatureChoices: [],
+		fightingStyle: 'Blessed Warrior',
+		fightingStyleSpells: both,
+	})
+	const requirements: ClassPickRequirements = { subclass: false, fightingStyle: true, masteryCount: null, optionalFeatureCount: null, skillCount: null, classFeatureNames: null }
+
+	it('needs exactly two cantrips for Blessed Warrior, none for any other style', () => {
+		expect(fightingStyleSpellsComplete('Blessed Warrior', both)).toBe(true)
+		expect(fightingStyleSpellsComplete('Druidic Warrior', { cantrips: [GUIDANCE], spells: [] })).toBe(false)
+		expect(fightingStyleSpellsComplete('Blessed Warrior', null)).toBe(false)
+		expect(fightingStyleSpellsComplete('Defense', null)).toBe(true)
+		expect(fightingStyleSpellsComplete(null, null)).toBe(true)
+		expect(isStepComplete('class', { ...paladin(), fightingStyleSpells: { cantrips: [GUIDANCE], spells: [] } }, { classPickRequirements: requirements })).toBe(false)
+		expect(isStepComplete('class', paladin(), { classPickRequirements: requirements })).toBe(true)
+	})
+
+	it('a changed style drops the cantrips; the same style keeps them', () => {
+		const state: WizardControllerState = { step: 'class', data: paladin() }
+		expect(wizardReducer(state, { type: 'setFightingStyle', style: 'Blessed Warrior' }).data.fightingStyleSpells).toEqual(both)
+		expect(wizardReducer(state, { type: 'setFightingStyle', style: 'Defense' }).data.fightingStyleSpells).toBeNull()
+		expect(wizardReducer({ step: 'class', data: { ...paladin(), fightingStyleSpells: null } }, { type: 'setFightingStyleSpells', spells: both }).data.fightingStyleSpells).toEqual(both)
+	})
+
+	it('saves the cantrips on the class style and reads them back for Edit', () => {
+		const store = { create: vi.fn(() => ({ id: 'x', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		saveCharacter(store, paladin(), ['athletics', 'intimidation'], {}, undefined, undefined, undefined, undefined, (featureType, name) =>
+			featureType === 'FS' && name === 'Blessed Warrior' ? 'XPHB' : undefined,
+		)
+		const saved = vi.mocked(store.create).mock.calls[0][0]
+		expect(saved.fightingStyles).toEqual([{ className: 'Paladin', classSource: 'XPHB', name: 'Blessed Warrior', source: 'XPHB', filterChoiceSpells: both }])
+		const reopened = wizardDataFromCharacter({ id: 'x', ...saved } as Character, { subclasses: [], spellLevels: [] })
+		expect(reopened.fightingStyle).toBe('Blessed Warrior')
+		expect(reopened.fightingStyleSpells).toEqual(both)
+	})
+
+	it('a style without cantrips saves none even if stale ones were held', () => {
+		const store = { create: vi.fn(() => ({ id: 'x', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		saveCharacter(store, { ...paladin(), fightingStyle: 'Defense' }, ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0][0].fightingStyles).toEqual([{ className: 'Paladin', classSource: 'XPHB', name: 'Defense' }])
 	})
 })
