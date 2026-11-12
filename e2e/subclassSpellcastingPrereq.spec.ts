@@ -68,6 +68,8 @@ async function walkToAsi(page: Page): Promise<void> {
   for (let i = 0; i < 10; i++) {
     const step = (await current(page).textContent()) ?? ''
     if (/ASI \/ Feat/.test(step)) return
+    // The step's data loads after the step header shows; count() below does not wait for it.
+    await page.waitForLoadState('networkidle')
     if (/Proficiencies/.test(step) && (await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).count()) > 0) {
       await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).check()
       await page.getByRole('checkbox', { name: 'Elvish (XPHB)' }).check()

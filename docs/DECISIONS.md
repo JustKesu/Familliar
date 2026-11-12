@@ -5786,3 +5786,14 @@ Hunter's Sense, Unerring Eye, Hidden Paths, Infectious Inspiration, Embodiment o
 of Knowledge) do té doby počítadlo neměly vůbec. (3) Řádek tříd na kroku Review (level up, Edit; u jedné třídy i
 tvorba) ukazuje zvolenou podtřídu: „Fighter 5 (Battle Master) / Rogue 3 (Arcane Trickster)“; třída bez podtřídy beze
 změny. Karty postav (characterSummary.ts) beze změny. Zadal plánovací chat (PB-1b) 11. 11. 2026.
+
+## D416 — Opravy z review D409–D415 (F-PB)
+
+(A) Textové pravidlo D409 (`poolKeyFromText`) platí jen pro ruční seznam `TEXT_POOL_FEATURES`, zatím „Psionic Power“;
+featura, která rozdělený fond (Channel Divinity u Cleric + Paladin) jen zmiňuje (Circle of Mortality), nedostane políčka.
+(B) Maximum Superiority Die Battle Mastera (D410) má +1, když postava drží styl Superior Technique (TCE; text: „this die
+is added to any superiority dice you have from another source“), rozpis „Superior Technique +1“. Styl se hledá v
+`fightingStyles` i `optionalFeatureChoices` podle jména. Bez Battle Mastera nic nového. Martial Adept v datech aplikace
+není. (C) Když maximum klesne pod uložený počet utracených (Charisma po sundání předmětu), list všude kreslí
+min(utraceno, maximum); uložená hodnota se nemění, takže se vrátí, až maximum znovu vzroste. Zadal plánovací chat
+(F-PB) 12. 11. 2026.

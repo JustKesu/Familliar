@@ -232,6 +232,23 @@ describe('featureActionRows', () => {
 			expect(rowsFor([roguePower], plain)).toHaveLength(1)
 		})
 
+		it('D416: a feature outside the hand list that only mentions a split pool gets no pool', () => {
+			const channel = { name: 'Channel Divinity', pool: 'Channel Divinity', className: 'Cleric' }
+			const mortality = granted('Circle of Mortality', { className: 'Cleric', kind: 'subclass', entries: ['You can use Channel Divinity to regain hit points. Regain on a {@variantrule Short Rest|XPHB}.'] })
+			const [row] = rowsFor([mortality], [{ ...channel, name: 'Channel Divinity (Cleric)' }, { ...channel, name: 'Channel Divinity (Paladin)', className: 'Paladin' }])
+			expect(row.resourceName).toBe('Circle of Mortality')
+		})
+
+		it('E-c: a feat and a feature sharing a table-counted name give one row', () => {
+			const rows = featureActionRows(
+				[granted('Fairy Trickster', { entries: ['You can use this a number of times equal to your Proficiency Bonus. Regain all on a Long Rest.'] })],
+				[asiFeat('Fairy Trickster', 'FRHoF', 4)],
+				[{ name: 'Fairy Trickster', source: 'FRHoF', entries: ['You can use this a number of times equal to your Proficiency Bonus. Regain all on a Long Rest.'] }],
+				[],
+			)
+			expect(rows.filter((row) => row.name === 'Fairy Trickster')).toHaveLength(1)
+		})
+
 		it('still folds Extra Attack from two classes into one row', () => {
 			const attack = (className: string) => granted('Extra Attack', { className, entries: ['You can attack twice, and take the {@action Attack|XPHB} action.'] })
 			expect(rowsFor([attack('Fighter'), attack('Rogue')], split)).toHaveLength(1)

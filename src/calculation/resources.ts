@@ -195,7 +195,15 @@ function levelScaledMax(name: string, character: Character): Calculated<number> 
 	if (!characterClass) return null
 	const step = scaled.steps.filter(([level]) => level <= characterClass.level).pop()
 	if (!step) return null
-	return known(step[1], [{ source: `${scaled.className} level ${characterClass.level}: ${name}`, amount: step[1] }])
+	const breakdown: Contribution[] = [{ source: `${scaled.className} level ${characterClass.level}: ${name}`, amount: step[1] }]
+	// D416: TCE's Superior Technique adds a die "to any superiority dice you have from another source".
+	if (name === 'Superiority Die' && holdsSuperiorTechnique(character)) breakdown.push({ source: 'Superior Technique', amount: 1 })
+	return known(step[1] + breakdown.length - 1, breakdown)
+}
+
+function holdsSuperiorTechnique(character: Character): boolean {
+	const named = (pick: { name: string }) => pick.name === 'Superior Technique'
+	return (character.fightingStyles ?? []).some(named) || (character.optionalFeatureChoices ?? []).some((entry) => entry.choices.some(named))
 }
 
 /*

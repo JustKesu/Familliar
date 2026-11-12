@@ -56,6 +56,32 @@ test("PB-1 a: Fighter 5 Rune Knight shows 3 Giant's Might boxes per Long Rest; a
   await expect(used(page, GIANTS_MIGHT)).toHaveCount(0)
 })
 
+test("F-PB e (finding 6a): a Short Rest does NOT restore a used Giant's Might box", async ({ page }) => {
+  await openSheet(page, seeded('fpb-e', [['Fighter', 'Rune Knight', 5]], { optionalFeatureChoices: [RUNES], featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] }), 'Features')
+  await counter(page, GIANTS_MIGHT).getByRole('button', { name: `Use ${GIANTS_MIGHT}` }).first().click()
+  await expect(used(page, GIANTS_MIGHT)).toHaveCount(1)
+  await page.getByRole('button', { name: 'Short Rest', exact: true }).click()
+  const drawer = page.getByRole('dialog', { name: 'Short Rest' })
+  await drawer.getByRole('button', { name: 'Finish Short Rest' }).click()
+  await expect(drawer).toHaveCount(0)
+  await expect(used(page, GIANTS_MIGHT)).toHaveCount(1)
+})
+
+test('F-PB c (D416): spent above a lowered maximum shows all boxes used, and the stored count returns when the maximum rises', async ({ page }) => {
+  // Bard 1, Charisma 8: maximum 1, but 3 are stored as spent (as after unequipping a Charisma item).
+  const bard = seeded('fpb-c', [['Bard', null, 1]], { play: { resourceUses: { 'Bardic Inspiration': 3 } } })
+  await openSheet(page, bard, 'Actions')
+  await expect(boxes(page, 'Bardic Inspiration', 'Actions')).toHaveCount(1)
+  await expect(used(page, 'Bardic Inspiration', 'Actions')).toHaveCount(1)
+
+  const raised = { ...bard, abilityScores: { method: 'standardArray', scores: { ...bard.abilityScores.scores, charisma: 16 } } }
+  await page.evaluate(([key, payload]) => localStorage.setItem(key!, payload!), [STORAGE_KEY, JSON.stringify([raised])])
+  await page.reload()
+  await page.getByRole('tab', { name: 'Actions' }).click()
+  await expect(boxes(page, 'Bardic Inspiration', 'Actions')).toHaveCount(3)
+  await expect(used(page, 'Bardic Inspiration', 'Actions')).toHaveCount(3)
+})
+
 test("PB-1 b: Fighter 9 Rune Knight shows 4 Giant's Might boxes", async ({ page }) => {
   await openSheet(
     page,

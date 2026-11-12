@@ -580,12 +580,13 @@ describe('when a level cannot be removed', () => {
 describe('resource uses on a level removal', () => {
 	/* The shared fixture has no resource table; Fighter's real Second Wind column (2 uses to level 3, 3 from 4) is added for these two tests alone. */
 	const SECOND_WIND_ID = 'cf|second wind|fighter|xphb|1|xphb'
+	const MARK_ID = 'cf|unwavering mark|fighter|xphb|1|xphb'
 	const RESOURCE_CLASSES = CLASSES.map((entry) =>
 		entry.entryType === 'class' && entry.name === 'Fighter'
 			? {
 					...entry,
 					classTableGroups: [...(entry.classTableGroups ?? []), { colLabels: ['Second Wind'], rows: [[2], [2], [2], [3], [3], [3], [3], [3], [3], [4]] }],
-					classFeatureIds: [...(entry.classFeatureIds ?? []), SECOND_WIND_ID],
+					classFeatureIds: [...(entry.classFeatureIds ?? []), SECOND_WIND_ID, MARK_ID],
 				}
 			: entry,
 	)
@@ -600,6 +601,14 @@ describe('resource uses on a level removal', () => {
 				classSource: 'XPHB',
 				level: 1,
 				entries: ['You regain one expended use when you finish a {@variantrule Short Rest|XPHB}.'],
+			},
+			{
+				id: MARK_ID,
+				name: 'Unwavering Mark',
+				className: 'Fighter',
+				classSource: 'XPHB',
+				level: 1,
+				entries: ['You can use this a number of times equal to your Strength modifier (minimum of once), and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'],
 			},
 		],
 	}
@@ -622,6 +631,13 @@ describe('resource uses on a level removal', () => {
 
 		expect(result.result.play?.resourceUses).toEqual({ 'Second Wind': 1, 'Superiority Die': 9 })
 		expect(result.dropped.some((line) => line.includes('spent'))).toBe(false)
+	})
+
+	it('F-PB: keeps the spent count of an ability-modifier resource (D412) whose maximum is unknown here', () => {
+		const result = levelRemovalPlan(fighterWithUses(4, { 'Unwavering Mark': 5 }), RESOURCE_CLASSES, RESOURCE_RESOLVER, null)
+		if ('reason' in result) throw new Error(result.reason)
+
+		expect(result.result.play?.resourceUses).toEqual({ 'Unwavering Mark': 5 })
 	})
 
 	it('D332: a pool of a removed class goes with it; a count whose maximum was never known stays', () => {

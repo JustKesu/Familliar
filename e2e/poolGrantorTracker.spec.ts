@@ -53,7 +53,13 @@ test('SP-1 c: Battle Master 3 shows 4 Superiority Die boxes on Combat Superiorit
   await expect(boxes(page, 'Combat Superiority', 'Superiority Die')).toHaveCount(4)
 })
 
-test('SP-1 e: a die spent on a maneuver row is used on Combat Superiority too, and a Short Rest restores it', async ({ page }) => {
+test('F-PB b (D416): Battle Master 3 with the fighting style Superior Technique shows 5 Superiority Die boxes', async ({ page }) => {
+  const master = { ...seeded('fpb-b', 'Fighter', 3, 'Battle Master'), fightingStyles: [{ className: 'Fighter', classSource: XPHB, name: 'Superior Technique', source: 'TCE' }] }
+  await openSheet(page, master)
+  await expect(boxes(page, 'Combat Superiority', 'Superiority Die')).toHaveCount(5)
+})
+
+test('SP-1 e:a die spent on a maneuver row is used on Combat Superiority too, and a Short Rest restores it', async ({ page }) => {
   const character = { ...seeded('sp1-e', 'Fighter', 3, 'Battle Master'), optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack', 'Riposte', 'Parry'].map((name) => ({ name })) }] }
   await openSheet(page, character)
   await boxes(page, 'Riposte', 'Superiority Die').first().click()

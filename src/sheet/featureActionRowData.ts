@@ -95,8 +95,11 @@ export const POOL_GRANTING_FEATURES: Readonly<Record<string, string>> = {
 	'Combat Superiority': 'Superiority Die',
 }
 
+/** D416: the text rule below applies to this hand list only; a feature that merely mentions a split pool (Circle of Mortality) gets no boxes. */
+const TEXT_POOL_FEATURES: ReadonlySet<string> = new Set(['Psionic Power'])
+
 /**
- * D409: a feature that carries no `consumes` but whose own text names a pool the
+ * D409: a listed feature (TEXT_POOL_FEATURES) that carries no `consumes` but whose own text names a pool the
  * character holds split per class (Psionic Power names the Psionic Energy Dice)
  * is filed under its class's share of that pool, so two classes' same-named
  * feature become two rows like D336's Channel Divinity. Otherwise `key` unchanged.
@@ -104,10 +107,10 @@ export const POOL_GRANTING_FEATURES: Readonly<Record<string, string>> = {
 export function poolKeyFromText(
 	key: string,
 	className: string | null,
-	record: { entries: unknown[] },
+	record: { name: string; entries: unknown[] },
 	resources: readonly { name: string; pool?: string; className?: string }[],
 ): string {
-	if (className === null || resources.some((resource) => resource.name === key)) return key
+	if (className === null || !TEXT_POOL_FEATURES.has(record.name) || resources.some((resource) => resource.name === key)) return key
 	const text = comparableText(plainText(record.entries).join(' '))
 	return resources.find((resource) => resource.className === className && resource.pool !== undefined && text.includes(comparableText(resource.pool)))?.name ?? key
 }
@@ -134,7 +137,7 @@ export function featureActionRows(
 	optionOrigin: (option: OptionalFeatureOption) => string | null = () => null,
 	speciesTraits: readonly SpeciesTrait[] = [],
 	speciesName: string | null = null,
-	resourceKey: (candidate: string, className: string | null, record: { entries: unknown[] }) => string = (candidate) => candidate,
+	resourceKey: (candidate: string, className: string | null, record: { name: string; entries: unknown[] }) => string = (candidate) => candidate,
 ): FeatureActionData[] {
 	const rows: FeatureActionData[] = []
 	const seen = new Set<string>()

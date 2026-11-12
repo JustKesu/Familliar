@@ -1384,6 +1384,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   (they had no tracker before). The wizard Review class line shows each class's subclass ("Fighter 5 / Rogue 3 (Arcane
   Trickster)"; single class from the wizard's subclass, also in creation); character cards unchanged.
   `e2e/proficiencyBonusUses.spec.ts` PB-1b a–b, `e2e/levelUpSubclassGains.spec.ts` LS-1 b.
+- F-PB (D416): `poolKeyFromText` only for `TEXT_POOL_FEATURES` (Psionic Power); Battle Master Superiority Die max +1 with
+  the fighting style Superior Technique (`holdsSuperiorTechnique`, resources.ts); the sheet draws spent as min(spent, max)
+  for every resource counter, the stored count is untouched. Flaky `subclassSpellcastingPrereq.spec.ts` walkToAsi now waits
+  for network idle. New tests: `proficiencyBonusUses.spec.ts` F-PB e/c, `poolGrantorTracker.spec.ts` F-PB b,
+  `levelUpSubclassGains.spec.ts` LS-1 e, unit tests in resources/featureActionRowData/levelRemoval.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose

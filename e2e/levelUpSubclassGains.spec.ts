@@ -151,7 +151,38 @@ test('LS-1 c: Bard 2 → 3 College of Valor lists Combat Inspiration and Martial
   await expect(whatsNew(page, 3)).toContainText('Martial Training')
 })
 
-test('LS-1 d: Fighter 2 → 3 Eldritch Knight then Champion — the Spells step goes away, Review lists Champion features', async ({ page }) => {
+test('LS-1 e: Fighter 2 → 3 Eldritch Knight with spells picked, then Champion, then Eldritch Knight again — the saved sheet has only the final pass’s spells', async ({ page }) => {
+  await createFighter(page, { name: 'Knight Flips', level: 2, species: 'Dwarf|XPHB' })
+  await levelUp(page, 'Fighter 2 → 3')
+  await chooseButton(page, 'Eldritch Knight').click()
+  await next(page)
+  await expect(current(page)).toContainText('Spells')
+  const firstPass = await fillSpells(page)
+  expect(firstPass).toHaveLength(5)
+
+  await stepBar(page).getByRole('button').first().click()
+  const pickSubclass = async (name: string): Promise<void> => {
+    await expect(async () => {
+      for (const toggle of await page.locator('.option-list__toggle[aria-expanded="false"]').all()) await toggle.click({ timeout: 1000 })
+      await chooseButton(page, name).click({ timeout: 1000 })
+    }).toPass({ timeout: 20_000 })
+  }
+  await pickSubclass('Champion')
+  await pickSubclass('Eldritch Knight')
+  await next(page)
+  await expect(current(page)).toContainText('Spells')
+  await expect(counter(page, 'Cantrips')).toHaveText(/^Cantrips: 0\/2/)
+  await expect(counter(page, 'Prepared')).toHaveText(/^Prepared: 0\/3/)
+  const { spells } = await walkToReview(page, 3)
+  expect(spells).toHaveLength(5)
+
+  await wizardNav(page).getByRole('button', { name: 'Save level 3' }).click()
+  await expect(page).not.toHaveURL(/\/level-up/)
+  await page.getByRole('tab', { name: 'Spells', exact: true }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Spells' }).locator('.sheet__spell-name')).toHaveCount(5)
+})
+
+test('LS-1 d:Fighter 2 → 3 Eldritch Knight then Champion — the Spells step goes away, Review lists Champion features', async ({ page }) => {
   await createFighter(page, { name: 'Knight Changes', level: 2, species: 'Dwarf|XPHB' })
   await levelUp(page, 'Fighter 2 → 3')
   const spellsStep = stepBar(page).getByRole('button', { name: /Spells/ })

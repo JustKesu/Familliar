@@ -1,59 +1,41 @@
-# REPORT — PB-1b: featury počítané tabulkou mají řádek v Actions, Review ukazuje podtřídu (D415)
+# F-PB — opravy z review D409–D415
 
-Setup: `git fetch`, `git merge --ff-only origin/main` (already up to date), `npm ci`, `npm run e2e:install`; HEAD 3df8f8c.
-Pracovní strom obsahoval 4 nesledované skripty v `scripts/` z minulých sezení (investigate-ability-mod-uses.js, -bm-table.js, -pb-feats.mjs, -pb-uses.mjs); nestagovány, `git clean` dle zadání nespuštěn.
+## STEP 1: soubory ke změně (10 míst, pod limitem 15)
 
-## STEP 1 — nové řádky v Actions (`scripts/investigate-pb1b-table-rows.mjs`, nestagován)
+| # | Soubor | Bod |
+|---|---|---|
+| 1 | src/sheet/featureActionRowData.ts | A |
+| 2 | src/sheet/featureActionRowData.test.ts | A, E-c |
+| 3 | src/calculation/resources.ts | B |
+| 4 | src/calculation/resources.test.ts | B |
+| 5 | src/sheet/CharacterSheet.tsx | C (+ typ callbacku pro A) |
+| 6 | e2e/subclassSpellcastingPrereq.spec.ts | D |
+| 7 | e2e/proficiencyBonusUses.spec.ts | E-a, C (e2e) |
+| 8 | src/levelUp/levelRemoval.test.tsx | E-b |
+| 9 | e2e/levelUpSubclassGains.spec.ts | E-d |
+| 10 | docs/DECISIONS.md, STATUS.md, REPORT.md | D416 |
 
-Záznamy, které tabulka počítá a které dosud neprošly D86 ani D182. Všech 69 jmen tabulek má aspoň jeden záznam. Feats z PB tabulky mají značku odpočinku → v Actions už byly. Žádné jméno nepadá do Actions dvakrát ani do jiné skupiny.
-
-| Jméno | Zdroj | Vlastník | Tabulka | Skupina |
-|---|---|---|---|---|
-| Infectious Fury, Call the Hunt | TCE | Barbarian/Beast | PB | Other |
-| Bolstering Magic, Magic Awareness | TCE | Barbarian/Wild Magic | PB | Other |
-| Steps of Night | TCE | Cleric/Twilight | PB | Other |
-| Emboldening Bond | TCE | Cleric/Peace | PB | Other |
-| Cauterizing Flames | TCE | Druid/Wildfire | PB | Other |
-| Giant's Might, Runic Shield | TCE | Fighter/Rune Knight | PB | Other |
-| Writhing Tide, Swarming Dispersal | TCE | Ranger/Swarmkeeper | PB | Other |
-| Elemental Gift | TCE | Warlock/Genie | PB | Other |
-| Tentacle of the Deeps | TCE | Warlock/Fathomless | PB | Other |
-| Bond / Pact / Protection of the Talisman | TCE | optional features | PB | Other |
-| Infectious Inspiration | TCE | Bard/Eloquence | AB (CHA) | Other |
-| Embodiment of the Law | TCE | Cleric/Order | AB (WIS) | Other |
-| Fungal Infestation | TCE | Druid/Spores | AB (WIS) | Other |
-| Hidden Paths | XGE | Druid/Dreams | AB (WIS) | Other |
-| Warding Maneuver, Unwavering Mark | XGE | Fighter/Cavalier | AB (CON / STR) | Other |
-| Unerring Eye | XGE | Rogue/Inquisitive | AB (WIS) | Other |
-| Hunter's Sense | XGE | Ranger/Monster Slayer | AB (WIS) | Other |
-| Whispers of Knowledge | GriffonsSaddlebag2 | Ranger/Rocborne | AB (WIS) | Other |
-
-Zjištění: 9 AB featur výše nemělo dosud počítadlo vůbec — `isSelfLimitedFeature` bez značky odpočinku propouštěl jen PB řádky (D414), takže premisa zadání („D412 dává počítadla featurám bez značky") platila jen pro PB. Zapsáno do DATA.md.
+Navíc: e2e/poolGrantorTracker.spec.ts (B e2e — počítadlo Superiority Die je na Actions, ne ve Features; seed tam už existoval).
 
 ## Co se změnilo
+- A: `poolKeyFromText` vyžaduje jméno featury v `TEXT_POOL_FEATURES` (jen „Psionic Power“). Typ `record` v callbacku `resourceKey` dostal `name`.
+- B: skript `investigate-superior-technique.js` potvrdil text „this die is added to any superiority dice you have from another source“ → +1 v `levelScaledMax`, rozpis „Superior Technique“. Styl se hledá podle jména v `fightingStyles` i `optionalFeatureChoices`.
+- C: v `CharacterSheet.tsx` je `resourceUses` (z něj se kreslí všechna políčka) ořezané na `resourceMaxima`; `storedResourceUses` a zápis beze změny.
+- D: `walkToAsi` čeká na `networkidle` před `count()`.
 
-- `resources.ts`: export `isTableCounted(name, text)` = `isProficiencyBonusCounted || isAbilityModifierCounted` (regexy beze změny, jen vytažené do `isAbilityModifierCounted`). Použito v `isSelfLimitedFeature` (místo samotného PB) → 9 AB featur výše je nyní zdroj s počítadlem i v Features.
-- `featureActionRowData.ts` `featureActionRows`: feature/feat/option kvalifikuje i přes `isTableCounted(name, plainText(entries))`, na stejném řádku jako `speciesTraitUses` u rysů druhu.
-- B: `CharacterWizard.tsx` classLine (multiclass level up/Edit) a fallback v `ReviewStep.tsx` připojují ` (Subclass)`. `characterSummary.ts` beze změny.
-- `e2e/multiclassEdit.spec.ts` M9b a: očekávaný řádek Review upraven na „Warlock 6 (Fiend Patron) / Sorcerer 3 (Wild Magic Sorcery)".
-- Docs: D415 (DECISIONS), STATUS (PB-1b; věta PB-1 o Features-only odstraněna), DATA.md (PB-1b odstavec).
+## Testy
+- Unit: resources (3: +1 die s rozpisem, pick jako optional feature, bez Battle Mastera nic), featureActionRowData (D416 Circle of Mortality bez fondu; feat + featura = 1 řádek), levelRemoval (AU-1 s neznámým maximem drží utracené).
+- E2E: Giant's Might po Short Rest zůstává použitý; Battle Master 3 + Superior Technique = 5 boxů; utracené 3 při maximu 1 = 1 box použitý, po zvýšení Charisma na 16 zpět 3/3; LS-1 e (EK → Champion → EK, na listu přesně 5 kouzel).
+- Cleric + Paladin e2e: bez vhodného seedu, pokryto unit testem.
+- typecheck, `npm test` (3521) prošly; plný e2e: 779/780 prošlo, jediný pád byl můj test B na špatné záložce, přesunut do poolGrantorTracker.spec.ts a ten soubor znovu prošel (6/6). Plný běh ~9 min (nad 3 min).
+- LS-1 e kontroluje počet kouzel (5), ne jména: druhý průchod nabízí stejná první kouzla, takže zbytky z prvního by se projevily jen jako navíc.
 
-## Ověřeno
-
-- `npm run typecheck` OK; `npm test` 190 souborů / 3515 testů OK; `npm run validate-data` 177/177 OK.
-- `npm run e2e` 776/776 OK, 8,1 min (nad limitem ~3 min z CLAUDE.md, beze změny oproti dřívějšku).
-- Unit: `featureActionRowData.test.ts` „D415: adds an untagged feature, feat or option…" (PB feature, AB feature, PB feat, PB option; stejné jméno bez věty nedostane řádek); `resources.test.ts` „D415: an untagged XGE row is a resource too".
-- e2e: `proficiencyBonusUses.spec.ts` PB-1b a (Rune Knight 5: Giant's Might v Actions › Other, 3 boxy, použití jednoho → Features 1 použitý / 2 volné), PB-1b b (Cavalier 3, STR 15: Unwavering Mark v Actions › Other, 2 boxy); `levelUpSubclassGains.spec.ts` LS-1 b (Review obsahuje „Fighter 5 / Rogue 3 (Arcane Trickster)").
-
-## Rozhodnutí přijatá během práce
-
-- `isTableCounted` použit i v `isSelfLimitedFeature`, jinak by e2e b) (AB featura s boxy v Actions) nešlo splnit: žádná AB featura mimo Actions neměla zdroj. Mění chování: 9 featur nově má počítadlo i v záložce Features. Zapsáno do D415 (2) — pokud nechtěné, vrátit jen tento řádek v `isSelfLimitedFeature`.
-- Fallback v ReviewStep se používá i při tvorbě jedné třídy, takže podtřída se nově ukazuje i na Review tvorby (zadání jmenovalo level up a Edit, ale i tento fallback). Zapsáno do D415 (3).
+## Rozhodnutí (Decisions taken)
+- Superior Technique se rozpoznává podle jména v `fightingStyles` i `optionalFeatureChoices`; aplikace ho dnes nenabízí v pickeru stylů (feats.json FS, 10 položek), takže v praxi může přijít jen z ručně vložených/importovaných dat nebo budoucího pickeru. Ověřit: kde ho má hráč zvolit?
+- Ořez v C platí i pro item-spell čítače (stejná mapa).
 
 ## Subagent
-
 Nepoužit.
 
 ## Manual browser check for the user
-
-Žádná — vzhled kontroluje plánovací chat ze screenshotů. Změněné obrazovky: list postavy › Actions (nové řádky ve skupině Other, např. Rune Knight, Cavalier), list › Features (nová počítadla u 9 AB featur), wizard › Review (řádek tříd s podtřídou při level up, Edit i tvorbě).
+Žádný (plánovací chat kontroluje vzhled ze screenshotů). Dotčené obrazovky: Actions a Features (čítače použití), Level up wizard (Spells/Class krok).

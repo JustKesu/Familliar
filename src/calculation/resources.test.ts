@@ -746,6 +746,29 @@ describe('D410 Battle Master Superiority Die', () => {
 	it('gives no pool to a Champion, a subclass-less Fighter or a Battle Master below level 3', () => {
 		expect([dice(3, 'Champion'), dice(5, null), dice(2, 'Battle Master')]).toEqual([null, null, null])
 	})
+
+	describe('D416 Superior Technique', () => {
+		const pool = (extra: Partial<Character>, subclass: string | null) =>
+			computeCharacterResources({ ...character('Fighter', 3, subclass), ...extra }, CLASSES, []).find((resource) => resource.name === 'Superiority Die')
+		const style = { fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Superior Technique', source: 'TCE' }] }
+
+		it('adds one die with its own breakdown line', () => {
+			expect(pool(style, 'Battle Master')?.max).toMatchObject({
+				status: 'known',
+				value: 5,
+				breakdown: [{ source: 'Fighter level 3: Superiority Die', amount: 4 }, { source: 'Superior Technique', amount: 1 }],
+			})
+		})
+
+		it('also counts a pick stored as an optional feature', () => {
+			const picked = { optionalFeatureChoices: [{ featureType: 'FS:F', choices: [{ name: 'Superior Technique', source: 'TCE' }] }] }
+			expect(pool(picked, 'Battle Master')?.max).toMatchObject({ value: 5 })
+		})
+
+		it('gives a Fighter without Battle Master no new pool', () => {
+			expect(pool(style, 'Champion')).toBeUndefined()
+		})
+	})
 })
 
 describe('D412 uses counted by an ability modifier', () => {

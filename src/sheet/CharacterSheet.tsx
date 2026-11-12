@@ -2562,7 +2562,7 @@ function CharacterSheetBody({
 		freeCastResources(combinedSpells, abilityScores),
 	)
 	const resourceKey = (candidate: string, className: string | null) => resourceKeyFor(candidate, className, characterResources)
-	const actionResourceKey = (candidate: string, className: string | null, record: { entries: unknown[] }) =>
+	const actionResourceKey = (candidate: string, className: string | null, record: { name: string; entries: unknown[] }) =>
 		poolKeyFromText(resourceKey(candidate, className), className, record, characterResources)
 	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, actionOptions, optionOrigin, speciesTraits, character.species?.name ?? null, actionResourceKey)
 	// D219: an item spell's counter joins these maps under its per-render key; its spent count is read from, and written to, its inventory row.
@@ -2578,7 +2578,13 @@ function CharacterSheetBody({
 	])
 	const poolClassOrder = [firstClass(character)?.className, ...character.classes.map((c) => c.className)].filter((name) => name !== undefined)
 	const storedResourceUses = withLegacyPoolUses(withLegacyFreeCastUses(character.play?.resourceUses ?? {}, combinedSpells), characterResources, poolClassOrder)
-	const resourceUses = { ...storedResourceUses, ...Object.fromEntries(itemSpellCounters.map((spell) => [spell.key, spell.grant.spent])) }
+	// D416: a lowered maximum (Charisma after unequipping) shows as all boxes used; the stored count stays so it returns when the maximum rises.
+	const resourceUses = Object.fromEntries(
+		Object.entries({ ...storedResourceUses, ...Object.fromEntries(itemSpellCounters.map((spell) => [spell.key, spell.grant.spent])) }).map(([key, spent]) => {
+			const max = resourceMaxima.get(key)
+			return [key, max === undefined ? spent : Math.min(spent, max)]
+		}),
+	)
 	function spendResource(name: string, delta: number): void {
 		const max = resourceMaxima.get(name)
 		const spent = resourceUses[name] ?? 0
