@@ -129,6 +129,10 @@ test('FS-1 a, b: Paladin 1 → 2 offers Blessed Warrior; Guidance and Sacred Fla
   await expect(chooseButton(page, 'Druidic Warrior')).toHaveCount(0)
   await chooseButton(page, 'Blessed Warrior').click()
   await expect(page.getByText('0 of 2 cantrips chosen.')).toBeVisible()
+  // F-HL C (D421): the cantrip list sits in its own titled box.
+  const box = page.locator('.fighting-style-picker__cantrips')
+  await expect(box).toContainText('Blessed Warrior cantrips')
+  await expect(box.getByRole('checkbox', { name: 'Guidance', exact: true })).toBeVisible()
   await expect(nextButton(page)).toBeDisabled()
   await cantrip(page, 'Guidance').check()
   await expect(nextButton(page)).toBeDisabled()

@@ -42,6 +42,13 @@ test("WM-1 c: Hexblade 3 has one Hexblade's Curse use, back on a Short Rest", as
   await expect(counter.getByRole('button', { pressed: true })).toHaveCount(0)
 })
 
+test("F-HL B (D421): Hexblade's Curse is in the Bonus Action group of Actions", async ({ page }) => {
+  await open(page, warlock3('fhl-b', 'The Hexblade'))
+  await page.getByRole('tab', { name: 'Actions' }).click()
+  const bonus = page.getByRole('tabpanel', { name: 'Actions' }).getByRole('region', { name: 'Bonus Action' })
+  await expect(bonus.locator('.sheet__group-row', { hasText: CURSE })).toHaveCount(1)
+})
+
 test("WM-1 d: Devil's Sight lists Devil's Sight 120 ft. in Senses", async ({ page }) => {
   await open(page, warlock3('wm1-d', null))
   await expect(page.locator('.sheet__senses-card .sheet__senses')).toContainText("Devil's Sight: 120 ft. — from invocation (Devil's Sight)")

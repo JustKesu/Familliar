@@ -257,12 +257,13 @@ function toHitFor(
 	abilityReason: string | null,
 	magicBonus: MagicBonus,
 	itemBonuses: readonly Contribution[],
+	proficiencyNote: string | null = null,
 ): Calculated<number> {
 	if (proficiencyBonus.status === 'unknown') return unknown(proficiencyBonus.reason)
 	const breakdown: Contribution[] = [{ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] }]
 	breakdown.push(
 		proficient
-			? { source: 'proficiency bonus', amount: proficiencyBonus.value }
+			? { source: 'proficiency bonus', amount: proficiencyBonus.value, ...(proficiencyNote ? { note: proficiencyNote } : {}) }
 			: { source: 'proficiency bonus', amount: 0, note: `not proficient with ${weapon.name}` },
 	)
 	// Slice e: the magic bonus reaches the attack roll AND the damage roll, as its own line in each.
@@ -368,10 +369,13 @@ export function computeWeaponAttacks(
 		}
 
 		const weapon = row.weapon
-		const proficient = isProficientWithWeapon(weapon, grants)
-		const monkWeapon = hasMartialArts && isMonkWeapon(weapon, kenseiWeapons)
 		// D408: a ranged row marked before the rule (or after losing Improved Pact Weapon) is not a pact weapon.
 		const pactWeapon = row.pactWeapon === true && canBePactWeapon(weapon, pactEffects.improvedPactWeapon)
+		const grantedProficiency = isProficientWithWeapon(weapon, grants)
+		// D421, XPHB Pact of the Blade: "You have proficiency with it while you wield it."
+		const proficient = grantedProficiency || pactWeapon
+		const proficiencyNote = !grantedProficiency && pactWeapon ? PACT_OF_THE_BLADE_REASON : null
+		const monkWeapon = hasMartialArts && isMonkWeapon(weapon, kenseiWeapons)
 		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, monkWeapon, pactWeapon && charisma.status === 'known')
 		/*
 		 * Every weapon in items.json carries `dmg1`; only a custom one can be a
@@ -411,7 +415,7 @@ export function computeWeaponAttacks(
 			name: row.magicBonus.label,
 			kind: weapon.typeCode === RANGED_TYPE_CODE ? 'ranged' : 'melee',
 			range: weapon.range ?? null,
-			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus, [...styleAttack, ...itemBonuses.attack, ...improved]),
+			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus, [...styleAttack, ...itemBonuses.attack, ...improved], proficiencyNote),
 			damage: scoresUnknown ? unknown(scoresUnknown) : noDice ? unknown(noDice) : known(damage, damage.breakdown),
 			notes: noDice ? [...notesFor(weapon, proficient, masteredKinds), noDice] : notesFor(weapon, proficient, masteredKinds),
 			abilityChoice: choice,

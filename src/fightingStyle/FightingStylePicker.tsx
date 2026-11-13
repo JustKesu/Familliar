@@ -139,16 +139,19 @@ export function FightingStylePicker({
 			/>
 			)}
 			{chosenOption && isFilterChoiceFeat(chosenOption) && (
-				<FilterChoiceSpellSubPicker
-					featName={chosenOption.name}
-					featSource={chosenOption.source}
-					blockName={undefined}
-					characterLevel={characterLevel}
-					chosenAbility={undefined}
-					alreadyKnown={alreadyKnown}
-					filterChoiceSpells={spells}
-					onChange={onSpellsChange}
-				/>
+				<div className="fighting-style-picker__cantrips">
+					<div className="fighting-style-picker__cantrips-heading">{chosenOption.name} cantrips</div>
+					<FilterChoiceSpellSubPicker
+						featName={chosenOption.name}
+						featSource={chosenOption.source}
+						blockName={undefined}
+						characterLevel={characterLevel}
+						chosenAbility={undefined}
+						alreadyKnown={alreadyKnown}
+						filterChoiceSpells={spells}
+						onChange={onSpellsChange}
+					/>
+				</div>
 			)}
 		</div>
 	)

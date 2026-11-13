@@ -107,9 +107,9 @@ test('PB-1 d: Fighter 5 who took Fairy Trickster at level 4 shows 3 boxes', asyn
   await expect(boxes(page, 'Fairy Trickster')).toHaveCount(3)
 })
 
-test("PB-1b a (D415): Fighter 5 Rune Knight has a Giant's Might row in Actions › Other with 3 boxes; using one shows 2 left in Features", async ({ page }) => {
+test("PB-1b a (D415, D421): Fighter 5 Rune Knight has a Giant's Might row in Actions › Bonus Action with 3 boxes; using one shows 2 left in Features", async ({ page }) => {
   await openSheet(page, seeded('pb1b-a', [['Fighter', 'Rune Knight', 5]], { optionalFeatureChoices: [RUNES], featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] }), 'Actions')
-  await expect(otherGroup(page).getByRole('group', { name: `${GIANTS_MIGHT} uses`, exact: true })).toHaveCount(1)
+  await expect(page.getByRole('tabpanel', { name: 'Actions' }).getByRole('region', { name: 'Bonus Action', exact: true }).getByRole('group', { name: `${GIANTS_MIGHT} uses`, exact: true })).toHaveCount(1)
   await expect(boxes(page, GIANTS_MIGHT, 'Actions')).toHaveCount(3)
 
   await counter(page, GIANTS_MIGHT, 'Actions').getByRole('button', { name: `Use ${GIANTS_MIGHT}` }).first().click()

@@ -1366,6 +1366,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - WM-1 part 1 (D420): Hexblade's Curse has 1 use, back on Short or Long Rest (hand table `UNTAGGED_SINGLE_USE`, Actions row);
   Devil's Sight adds "Devil's Sight: 120 ft." to Granted senses (`OPTIONAL_FEATURE_TEXT_SENSES`). Spell Mastery and
   Signature Spells are still text only. `e2e/hexbladeDevilsSight.spec.ts` c, d.
+- F-HL (D421): a marked pact weapon is always proficient (breakdown names Pact of the Blade); Hexblade's Curse and Giant's
+  Might sit in the Bonus Action group (hand table `UNTAGGED_BONUS_ACTION`, gated on "as a bonus action" in the text);
+  Blessed / Druidic Warrior cantrips are in a `.fighting-style-picker__cantrips` box. `e2e/pactWeapon.spec.ts` F-HL A,
+  `e2e/hexbladeDevilsSight.spec.ts` F-HL B, `e2e/fightingStyleClassFeats.spec.ts` a.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

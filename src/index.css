@@ -3764,6 +3764,18 @@ label.wizard__field {
   font-weight: 600;
 }
 
+.fighting-style-picker__cantrips {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+}
+
+.fighting-style-picker__cantrips-heading {
+  font-weight: 600;
+}
+
 .option-list__count {
   color: var(--text-sub);
 }

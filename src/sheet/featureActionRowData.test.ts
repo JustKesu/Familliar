@@ -62,7 +62,7 @@ describe('featureActionRows', () => {
 		const pb = 'You can use this feature a number of times equal to your proficiency bonus, and you regain all expended uses when you finish a long rest.'
 		const rows = featureActionRows(
 			[
-				granted("Giant's Might", { entries: [pb], subclassShortName: 'Rune Knight', level: 3 }),
+				granted("Giant's Might", { entries: ['As a bonus action, you magically gain the following benefits.', pb], subclassShortName: 'Rune Knight', level: 3 }),
 				granted('Unwavering Mark', { entries: ['You can make this special attack a number of times equal to your Strength modifier (minimum of once), and you regain all expended uses of it when you finish a long rest.'] }),
 				granted('Runic Shield', { entries: ['When another creature you can see within 60 feet of you is hit by an attack roll, you can react.'] }),
 			],
@@ -71,7 +71,7 @@ describe('featureActionRows', () => {
 			[option('Bond of the Talisman', { source: 'TCE', entries: [pb] })],
 		)
 		expect(rows.map((row) => [row.name, row.actionType, row.resourceName])).toEqual([
-			["Giant's Might", 'other', "Giant's Might"],
+			["Giant's Might", 'bonus', "Giant's Might"],
 			['Unwavering Mark', 'other', 'Unwavering Mark'],
 			['Mythal Touched', 'other', 'Mythal Touched'],
 			['Bond of the Talisman', 'other', 'Bond of the Talisman'],

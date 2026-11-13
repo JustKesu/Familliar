@@ -99,6 +99,20 @@ describe('classifyActionType — against the generated data (D182, R5b hand list
 	})
 })
 
+describe('classifyActionType — D421 hand table', () => {
+	const records = ['subclass-features.json'].flatMap(read) as Record<string, unknown>[]
+
+	it.each(["Hexblade's Curse", "Giant's Might"])('%s: its own text carries "as a bonus action" → bonus', (name) => {
+		const matches = records.filter((entry) => entry['name'] === name)
+		expect(matches.length).toBeGreaterThan(0)
+		expect(matches.some((entry) => classifyActionType(entry) === 'bonus')).toBe(true)
+	})
+
+	it('a same-named record without the sentence stays other', () => {
+		expect(classifyActionType({ name: "Giant's Might", entries: ['You grow.'] })).toBe('other')
+	})
+})
+
 describe('classifyActionType — frames', () => {
 	it('skips a frame preceded by a trigger', () => {
 		expect(classifyActionType({ entries: ['When you take a {@variantrule Reaction|XPHB} you gain 1 temporary Hit Point.'] })).toBe('other')

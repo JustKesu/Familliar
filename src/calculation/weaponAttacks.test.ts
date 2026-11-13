@@ -308,6 +308,15 @@ describe('computeWeaponAttacks — pact weapon uses Charisma (D417)', () => {
 	const run = (row: HeldWeapon, abilityScores = hexadin) => attackNamed(computeWeaponAttacks(character('Warlock', 9, abilityScores), [row], martialGrants, [], null, undefined, [], none), row.name)
 	const pact = (weapon: ResolvedWeapon, chosen: HeldWeapon['chosenAbility'] = null): HeldWeapon => ({ ...held(weapon, chosen), pactWeapon: true })
 
+	it('D421: with no weapon grants the pact Longsword is still proficient (PB +3 at level 5), the unmarked one is not', () => {
+		const run5 = (row: HeldWeapon) => attackNamed(computeWeaponAttacks(character('Warlock', 5, hexadin), [row], [], [], null, undefined, [], none), row.name)
+		const marked = run5(pact(longsword, 'strength'))
+		expect(toHitOf(marked)).toBe(6)
+		expect(marked.toHit.status === 'known' && marked.toHit.breakdown).toContainEqual({ source: 'proficiency bonus', amount: 3, note: 'Pact of the Blade' })
+		expect(marked.notes.join(' ')).not.toContain('Not proficient')
+		expect(toHitOf(run5(held(longsword, null)))).toBe(3)
+	})
+
 	it('a pact Longsword defaults to Charisma when it is highest: +7 becomes +8, and the breakdown names the pact', () => {
 		const sword = run(pact(longsword))
 		expect(sword.abilityChoice).toEqual({ using: 'charisma', options: ['strength', 'charisma'], isDefault: true })

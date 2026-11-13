@@ -77,13 +77,21 @@ const ACTION_FRAMES: readonly { type: ActionType; re: RegExp }[] = [
 // "when you take a Reaction…" names a trigger, not how this feature is activated.
 const TRIGGER_BEFORE = /\b(?:when|whenever|if|after|once|until|before)\s+(?:you|it|they|the target|a creature)\s+(?:can\s+)?$/i
 
+/** D421: two untagged TCE/XGE features whose own text says "as a bonus action" in plain prose, which no R-phrase frame sees. */
+const UNTAGGED_BONUS_ACTION: Record<string, RegExp> = {
+	"Hexblade's Curse": /\bas a bonus action\b/i,
+	"Giant's Might": /\bas a bonus action\b/i,
+}
+
 /**
  * Which action a feature's activation costs (D182): the first R-phrase frame in
  * document order wins; a feature with none is 'other' (D86's accepted-limit spirit —
- * the 26 untagged TCE/XGE records land there).
+ * the 26 untagged TCE/XGE records land there, bar the two of D421).
  */
 export function classifyActionType(feature: unknown): ActionType {
 	if (!isRecord(feature)) return 'other'
+	const handSentence = UNTAGGED_BONUS_ACTION[String(feature['name'])]
+	if (handSentence && stringLeaves(feature['entries']).some((text) => handSentence.test(text))) return 'bonus'
 	for (const text of stringLeaves(feature['entries'])) {
 		let first: { type: ActionType; at: number } | null = null
 		for (const frame of ACTION_FRAMES) {

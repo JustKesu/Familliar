@@ -131,6 +131,36 @@ test('PC-1 c: the same Longsword without the pact mark has no Charisma option', 
   await expect(sword.getByRole('button', { name: 'Roll Longsword to hit' })).toHaveText('+7')
 })
 
+/* F-HL A (D421): a pure Warlock 5 (PB +3, STR +3, CHA +4) has no Longsword proficiency of its own. */
+function pureBlade(id: string, inventory: Record<string, unknown>[]) {
+  const base = warlock(id, [{ name: 'Pact of the Blade', source: XPHB }], inventory)
+  return {
+    ...base,
+    classes: [{ className: 'Warlock', classSource: XPHB, subclass: null, level: 5 }],
+    abilityScores: { method: 'standardArray', scores: { ...base.abilityScores.scores, charisma: 18 } },
+  }
+}
+
+test('F-HL A: a pure Warlock is proficient with the pact Longsword (+7), and the breakdown names Pact of the Blade', async ({ page }) => {
+  await open(page, pureBlade('fhl-a', [held('Longsword', { pactWeapon: true })]))
+  const sword = await actionRow(page, 'Longsword')
+  await expect(sword.getByRole('button', { name: 'Roll Longsword to hit' })).toHaveText('+7')
+  await sword.getByRole('combobox', { name: 'Attack ability for Longsword' }).selectOption('strength')
+  await expect(sword.getByRole('button', { name: 'Roll Longsword to hit' })).toHaveText('+6')
+  await sword.getByRole('button', { name: 'Longsword breakdown', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText(/Pact of the Blade/i)
+  await expect(dialog).not.toContainText(/not proficient/i)
+})
+
+test('F-HL A: the same Longsword without the pact mark is not proficient', async ({ page }) => {
+  await open(page, pureBlade('fhl-a2', [held('Longsword')]))
+  const sword = await actionRow(page, 'Longsword')
+  await expect(sword.getByRole('button', { name: 'Roll Longsword to hit' })).toHaveText('+3')
+  await sword.getByRole('button', { name: 'Longsword breakdown', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText(/not proficient with Longsword/i)
+})
+
 test('PW-1 d: a pact weapon with its own magic bonus gets no Improved Pact Weapon +1', async ({ page }) => {
   await open(page, warlock('pw1-d', BLADE, [held('Mace', { magicBonus: 1 })]))
   const panel = await openManage(page)

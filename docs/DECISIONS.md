@@ -5838,3 +5838,15 @@ tabulku (D415), takže featura má řádek v Actions i boxy ve Features. (2) Inv
 který se ukáže v Granted senses jako „Devil's Sight: 120 ft. — from invocation (Devil's Sight)“; není to darkvision a s
 ní se nesčítá. Spell Mastery a Signature Spells (části A a B úkolu WM-1) zatím jen text, samostatný úkol. Zadal plánovací
 chat (HL) 12. 11. 2026.
+
+## D421 — Pact weapon je vždy se zdatností, Bonus Action pro Hexblade's Curse a Giant's Might, rámeček cantripů stylu boje (F-HL)
+
+(1) XPHB Pact of the Blade: „You have proficiency with it while you wield it.“ Řádek zbraně s `pactWeapon` (D401, platný
+podle `canBePactWeapon`, D408) se počítá jako zdatný, i když třída zdatnost se zbraní nedává; rozpis útoku v řádku
+„proficiency bonus“ jmenuje Pact of the Blade jako zdroj. Zbraň, ke které zdatnost už je, se nemění. Čistý Warlock se
+zbraní Longsword tak má +7 místo +4. (2) Hexblade's Curse (XGE) a Giant's Might (TCE) nemají značku akce a `classifyActionType`
+je vedl jako 'other' (D182). Malá ruční tabulka `UNTAGGED_BONUS_ACTION` (actionTableFeatureData.ts) jméno → věta „as a bonus
+action“ (malými písmeny) je řadí do 'bonus', jen když text featury větu obsahuje; žádné obecné pravidlo pro prózu a žádná
+další jména. Test D415 pro Giant's Might teď čeká 'bonus'. (3) Výběr cantripů Blessed / Druidic Warrior pod seznamem
+stylů boje je v rámečku `.fighting-style-picker__cantrips` (ohraničení, zaoblení a pozadí jako `.option-list`) s nadpisem
+„<styl> cantrips“; `FilterChoiceSpellSubPicker` se nezměnil (používá ho i Magic Initiate). Zadal plánovací chat (F-HL) 13. 11. 2026.
