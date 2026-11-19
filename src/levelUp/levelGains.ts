@@ -47,6 +47,8 @@ import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
 import { holdsSwappableOption, holdsSwappableSubclassOption, SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES, swappableFightingStyle } from '../optionalFeatures/optionSwap'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
+import { hasSpellbook } from '../sheet/manageSpellsData'
+import { spellbookEntriesOwed } from '../creation/wizardSpellbook'
 import { extractSpellCountClassData } from '../spells/spellCountClassData'
 import { subclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
 import type { Character, CharacterClass } from '../storage/character'
@@ -478,6 +480,8 @@ function spellsStepGain(
 	const parts: LevelGainPart[] = [
 		{ name: 'Cantrips', count: sum(countsNow.value, 'cantripCount') - sum(countsBefore.value, 'cantripCount') },
 		{ name: 'Leveled spells', count: sum(countsNow.value, 'leveledSpellCount') - sum(countsBefore.value, 'leveledSpellCount') },
+		// D423: every Wizard level writes spells in the book, even one that prepares no more.
+		{ name: 'Spellbook spells', count: hasSpellbook(context.className, context.classSource) ? (spellbookEntriesOwed('levelUp', level) ?? 0) : 0 },
 	]
 
 	const subclass = subclassAtLevel(context.subclassName, level, context.subclassGrantLevel, context.subclassSource)

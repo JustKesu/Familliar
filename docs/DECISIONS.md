@@ -5863,3 +5863,19 @@ level up. (4) Manage Spells, jen Wizard: sekce „Spellbook (N)“ s Prepare/Unp
 spellbook“ (zároveň odpřipraví). V Add Spells má levelované kouzlo mimo knihu „Add to spellbook“ (origin `copied`) místo
 Prepare, bez ceny ve zlatě a čase. Unprepare kouzlo v knize nechá. Edit, level up a Remove level knihu přenášejí beze změny.
 Savant picky, krok Spells průvodce, level up, Remove level a Spell Mastery řeší pozdější úkoly. Zadal plánovací chat (SB-1) 19. 11. 2026.
+
+## D423 — Kniha Wizarda v průvodci, level up, Edit a Remove level (SB-2)
+
+(1) PHB 2024: nový Wizard zapíše 6 kouzel 1. úrovně, každá další úroveň Wizarda 2 kouzla úrovní, na které má sloty
+(max úroveň kouzla = min(9, ⌈úroveň Wizarda / 2⌉)); triky v knize nejsou; připravuje se jen z knihy. Jen Wizard|XPHB, bez
+změny schématu. (2) Průvodce drží pracovní kopii knihy (`WizardData.spellbook`, ze seedu postavy) a krok Spells předává
+ClassSpellsManageru `spellbook`, takže Prepare jde jen u kouzel v knize. Tvorba na úrovni L: přesně 6 + 2 × (L − 1)
+zápisů, počítadlo „Spellbook: x/N“, hráč smí odebrat, co přidal; při uložení dostane každý zápis origin `level`: šest 1,
+po dvou 2..L, nejvyšší úrovně kouzel nejvyšším úrovním Wizarda (greedy); když přiřazení neexistuje, Next zůstane zakázaný
+s důvodem. Level up na úroveň k: přesně 2 nové zápisy s origin `level` k (6 s origin 1, když k = 1), jen do max úrovně
+kouzla při k; starší zápisy zůstávají a nejdou odebrat. Edit: počet se nekontroluje, Add to spellbook dává `copied`.
+„Add to spellbook“ je při plném počítadle nebo nad max úrovní zakázané. Krok Spells se při level upu Wizarda ukáže vždy
+(část „Spellbook spells“ v levelGains). (3) Remove level úrovně Wizarda k odebere z knihy zápisy s origin `level` k a
+odpřipraví je; `copied` a `migrated` zůstávají; dialog je jmenuje. (4) Prepare/Unprepare mají pevnou šířku 9em
+(`.manage-spells__button--pick`) a „Remove from spellbook“ stojí před nimi, aby řádky v Prepared Spells a Spellbook
+lícovaly. Savant picky, Spell Mastery a doplnění na kartě (D422) beze změny. Zadal plánovací chat (SB-2) 19. 11. 2026.

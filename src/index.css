@@ -4281,6 +4281,12 @@ label.wizard__field {
   color: var(--accent);
 }
 
+/* D423: Prepare and Unprepare share one width, so the Prepared Spells and Spellbook rows line up. */
+.manage-spells__button--pick {
+  width: 9em;
+  flex-shrink: 0;
+}
+
 .manage-spells__button--on {
   background: var(--accent);
   color: var(--accent-text);

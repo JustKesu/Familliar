@@ -327,7 +327,16 @@ const wizardSpellList: ClassSpellListSpell[] = [
 	spell('Chromatic Orb', 1, { viaVariant: true }),
 	spell('Misty Step', 2),
 	spell('Fireball', 3),
+	// D423: enough for a Wizard 3's ten-spell book (max spell level 2).
+	spell('Shield', 1),
+	spell('Sleep', 1),
+	spell('Identify', 1),
+	spell('Detect Magic', 1),
+	spell('Burning Hands', 1),
+	spell('Web', 2),
 ]
+
+const WIZARD_3_BOOK = ['Magic Missile', 'Find Familiar', 'Chromatic Orb', 'Shield', 'Sleep', 'Identify', 'Detect Magic', 'Burning Hands', 'Misty Step', 'Web']
 
 const fighterSpellList: ClassSpellListSpell[] = [spell('Fire Bolt', 0), spell('Blade Ward', 0), spell('Shield', 1), spell('Magic Missile', 1)]
 
@@ -484,16 +493,23 @@ async function fillThroughAbilities(
 }
 
 /** D210: the class section's buttons — a cantrip is Added/Deleted, a leveled spell Prepared/Unprepared. Anchored so "Prepare X" never matches "Unprepare X". */
+/** D423: scoped to Add Spells, since a Wizard's book spell is offered in the Spellbook section too. */
 function offerButton(name: string): HTMLElement {
-	return screen.getByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+	return within(screen.getByRole('region', { name: 'Add Spells' })).getByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
 }
 
-function findOfferButton(name: string): Promise<HTMLElement> {
-	return screen.findByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+async function findOfferButton(name: string): Promise<HTMLElement> {
+	return within(await screen.findByRole('region', { name: 'Add Spells' })).findByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
 }
 
 function queryOfferButton(name: string): HTMLElement | null {
-	return screen.queryByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+	const region = screen.queryByRole('region', { name: 'Add Spells' })
+	return region && within(region).queryByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+}
+
+/** D423: a new Wizard writes its book before it can prepare from it. */
+async function fillWizardBook(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+	for (const name of WIZARD_3_BOOK) await user.click(await screen.findByRole('button', { name: `Add ${name} to spellbook` }))
 }
 
 /** A picked spell shows in Prepared Spells and again in Add Spells, so more than one button carries the name. */
@@ -510,6 +526,9 @@ describe('CharacterWizard — spells step', () => {
 
 		// Level filter: max slot level 2 (row [4,2,0,...]) — Fireball (level 3) must not appear.
 		expect(await findOfferButton('Prestidigitation')).toBeTruthy()
+		expect(screen.queryByRole('button', { name: 'Add Fireball to spellbook' })).toBeNull()
+		await fillWizardBook(user)
+		expect(screen.getByText('Spellbook: 10/10')).toBeTruthy()
 		expect(offerButton('Misty Step')).toBeTruthy()
 		expect(queryOfferButton('Fireball')).toBeNull()
 		expect(screen.getByText('Cantrips: 0/3')).toBeTruthy()
@@ -552,6 +571,7 @@ describe('CharacterWizard — spells step', () => {
 		await findOfferButton('Fire Bolt')
 		const next = stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement
 		expect(next.disabled).toBe(true)
+		await fillWizardBook(user)
 
 		await user.click(offerButton('Prestidigitation'))
 		await user.click(offerButton('Fire Bolt'))

@@ -78,7 +78,7 @@ function ManagedSpellRow({
 function PickButton({ spell, picked, disabled, onClick }: { spell: { name: string; level: number | null }; picked: boolean; disabled?: boolean; onClick: () => void }): ReactNode {
 	const text = spell.level === 0 ? (picked ? 'Delete' : 'Add') : picked ? 'Unprepare' : 'Prepare'
 	return (
-		<button type="button" className={picked ? 'manage-spells__button manage-spells__button--on' : 'manage-spells__button'} aria-label={`${text} ${spell.name}`} disabled={disabled} onClick={onClick}>
+		<button type="button" className={picked ? 'manage-spells__button manage-spells__button--pick manage-spells__button--on' : 'manage-spells__button manage-spells__button--pick'} aria-label={`${text} ${spell.name}`} disabled={disabled} onClick={onClick}>
 			{text}
 		</button>
 	)
@@ -123,7 +123,17 @@ export function ClassSpellsManager({
 	/** A newly added pick carries its level (the wizard stores it, D210); picks passed in come back untouched. */
 	onChange: (picks: (SpellRef & { level?: number })[]) => void
 	/** D422: the Wizard's book. Present, leveled spells are prepared only from it; `picks` is given when the change unprepares too. */
-	spellbook?: { spells: readonly CharacterSpellbookSpell[]; onChange: (spells: CharacterSpellbookSpell[], picks?: SpellRef[]) => void }
+	spellbook?: {
+		spells: readonly CharacterSpellbookSpell[]
+		/** `added` is the spell an Add to spellbook wrote, with its level (the wizard needs it, D423). */
+		onChange: (spells: CharacterSpellbookSpell[], picks?: SpellRef[], added?: SpellRef & { level: number }) => void
+		/** D423: the creation wizard's rules for this run; absent = the sheet's (any non-'level' entry). */
+		removable?: (spell: SpellRef) => boolean
+		/** D423: entries this run must write; Add to spellbook stops at the count. */
+		counter?: { count: number; required: number }
+		/** D423: the highest spell level this run may write. */
+		maxSpellLevel?: number
+	}
 }): ReactNode {
 	const listClass = spellListClassFor(className, classSource, subclassName)
 	const expandedClass = expandedSpellListClassFor(subclassName)
@@ -160,7 +170,10 @@ export function ClassSpellsManager({
 	const bookKeys = new Set((spellbook?.spells ?? []).map((spell) => spellIdentityKey(spell.name, spell.source)))
 	const inBook = (spell: SpellRef) => bookKeys.has(spellIdentityKey(spell.name, spell.source))
 	const bookRows = (spellbook?.spells ?? []).map((spell) => ({ ...spell, level: levelOf(spell) })).sort((a, b) => compareText(a.name, b.name))
-	const copyToBook = (spell: SpellRef) => spellbook?.onChange([...(spellbook.spells ?? []), { name: spell.name, source: spell.source, origin: { kind: 'copied' } }])
+	const bookFull = spellbook?.counter !== undefined && spellbook.counter.count >= spellbook.counter.required
+	const canRemoveFromBook = (row: CharacterSpellbookSpell) => (spellbook?.removable ? spellbook.removable(row) : row.origin.kind !== 'level')
+	const copyToBook = (spell: SpellRef & { level: number }) =>
+		spellbook?.onChange([...(spellbook.spells ?? []), { name: spell.name, source: spell.source, origin: { kind: 'copied' } }], undefined, { name: spell.name, source: spell.source, level: spell.level })
 	const removeFromBook = (spell: SpellRef) => {
 		if (!spellbook) return
 		const key = spellIdentityKey(spell.name, spell.source)
@@ -201,7 +214,13 @@ export function ClassSpellsManager({
 				note={knownNote !== null && otherNote !== null ? `${knownNote} · ${otherNote}` : (knownNote ?? otherNote ?? undefined)}
 				action={
 					spellbook && spell.level > 0 && !picked && !inBook(spell) ? (
-						<button type="button" className="manage-spells__button" aria-label={`Add ${spell.name} to spellbook`} onClick={() => copyToBook(spell)}>
+						<button
+								type="button"
+								className="manage-spells__button"
+								aria-label={`Add ${spell.name} to spellbook`}
+								disabled={bookFull || (spellbook.maxSpellLevel !== undefined && spell.level > spellbook.maxSpellLevel)}
+								onClick={() => copyToBook(spell)}
+							>
 							Add to spellbook
 						</button>
 					) : (
@@ -265,12 +284,12 @@ export function ClassSpellsManager({
 												note={known !== null ? knownSpellNote(known) : undefined}
 												action={
 													<>
-														<PickButton spell={row} picked={picked} disabled={!picked && (preparedFull || known !== null)} onClick={() => (picked ? remove(row) : add(row))} />
-														{row.origin.kind !== 'level' && (
+														{canRemoveFromBook(row) && (
 															<button type="button" className="manage-spells__button" aria-label={`Remove ${row.name} from spellbook`} onClick={() => removeFromBook(row)}>
 																Remove from spellbook
 															</button>
 														)}
+														<PickButton spell={row} picked={picked} disabled={!picked && (preparedFull || known !== null)} onClick={() => (picked ? remove(row) : add(row))} />
 													</>
 												}
 												detail={findSpellDetail(details, row.name, row.source)}
@@ -295,6 +314,11 @@ export function ClassSpellsManager({
 						<span className={preparedFull ? 'manage-spells__counter manage-spells__counter--full' : 'manage-spells__counter'}>
 							Prepared: {counts.prepared}/{leveledSpellCount}
 						</span>
+						{spellbook?.counter && (
+							<span className={bookFull ? 'manage-spells__counter manage-spells__counter--full' : 'manage-spells__counter'}>
+								Spellbook: {spellbook.counter.count}/{spellbook.counter.required}
+							</span>
+						)}
 					</p>
 					<input
 						type="search"

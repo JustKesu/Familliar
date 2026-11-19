@@ -65,11 +65,14 @@ async function enterClass(page: Page, className: string): Promise<void> {
 async function fillSpells(page: Page, cantrips: string[] = []): Promise<void> {
   const addSpells = page.getByRole('region', { name: 'Add Spells' })
   for (const name of cantrips) await addSpells.getByRole('button', { name: new RegExp(`^Add ${name}\\b`) }).first().click()
+  // D423: a Wizard writes its book first; only book spells offer Prepare.
   for (const [label, button] of [
-    ['Cantrips', /^Add /],
+    ['Spellbook', / to spellbook$/],
+    ['Cantrips', /^Add (?!.* to spellbook$)/],
     ['Prepared', /^Prepare /],
   ] as const) {
     const counter = page.locator('.manage-spells__counter', { hasText: new RegExp(`^${label}:`) })
+    if ((await counter.count()) === 0) continue
     for (;;) {
       const [, have, max] = (await counter.innerText()).match(/(\d+)\/(\d+)/)!.map(Number)
       if (have! >= max!) break

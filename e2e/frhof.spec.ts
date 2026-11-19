@@ -37,7 +37,9 @@ test('D201 b: the Wizard spell step offers Wardaway (FRHoF) and it can be picked
   }
   await next(page)
   await expectStep(page, 'Spells')
-  const wardaway = page.getByRole('button', { name: 'Prepare Wardaway', exact: true })
+  // D423: a Wizard prepares only from its book.
+  await page.getByRole('button', { name: 'Add Wardaway to spellbook', exact: true }).click()
+  const wardaway = page.getByRole('region', { name: 'Add Spells', exact: true }).getByRole('button', { name: 'Prepare Wardaway', exact: true })
   await expect(wardaway).toHaveCount(1)
   await wardaway.click()
   await expect(page.getByRole('button', { name: 'Unprepare Wardaway', exact: true }).first()).toBeVisible()

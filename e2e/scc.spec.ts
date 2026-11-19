@@ -49,7 +49,9 @@ test('D199 a: the Wizard spell step offers Silvery Barbs (SCC) and it can be pic
   }
   await next(page)
   await expectStep(page, 'Spells')
-  const barbs = page.getByRole('button', { name: 'Prepare Silvery Barbs', exact: true })
+  // D423: a Wizard prepares only from its book.
+  await page.getByRole('button', { name: 'Add Silvery Barbs to spellbook', exact: true }).click()
+  const barbs = page.getByRole('region', { name: 'Add Spells', exact: true }).getByRole('button', { name: 'Prepare Silvery Barbs', exact: true })
   await expect(barbs).toHaveCount(1)
   await barbs.click()
   await expect(page.getByRole('button', { name: 'Unprepare Silvery Barbs', exact: true }).first()).toBeVisible()

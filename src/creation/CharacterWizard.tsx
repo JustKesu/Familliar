@@ -42,7 +42,10 @@ import { ClassFeatureChoicePicker } from '../classFeatureChoices/ClassFeatureCho
 import { areClassFeatureChoicesComplete, loadClassFeatureChoices, type ClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import { WildShapeFormPicker } from '../beasts/WildShapeFormPicker'
 import { wildShapeLimits } from '../beasts/wildShapeData'
-import { damagingAttackCantripsAmong, damagingCantripsAmong, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { damagingAttackCantripsAmong, damagingCantripsAmong, findSpellDetail, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { hasSpellbook } from '../sheet/manageSpellsData'
+import { spellIdentityKey } from '../spells/subclassPreparedSpells'
+import { spellbookRunStatus, type SpellbookRunMode, type WizardSpellbookEntry } from './wizardSpellbook'
 import { loadOptionalFeatureSpellChoiceShape, offersSpellChoice, requiredSpellChoiceCounts } from '../spells/optionalFeatureSpellChoiceData'
 import { ExpertisePicker } from '../expertise/ExpertisePicker'
 import { expertisePoolOf, featSkillSources } from './expertisePool'
@@ -1746,6 +1749,19 @@ export function CharacterWizard({
 			}, kenseiRangedWeapons)
 		: []
 
+	/** D423: how this run treats the Wizard's book; null while the active class keeps none. */
+	const spellbookMode: SpellbookRunMode | null =
+		state.data.classChoice && hasSpellbook(state.data.classChoice.className, state.data.classChoice.classSource)
+			? levelUp !== undefined
+				? 'levelUp'
+				: character !== undefined
+					? 'edit'
+					: 'create'
+			: null
+	const spellbookEntries = state.data.spellbook ?? []
+	const spellbookStatus = spellbookMode && state.data.classChoice ? spellbookRunStatus(spellbookEntries, spellbookMode, state.data.classChoice.level) : null
+	const writtenBookKeys = new Set(spellbookEntries.filter((entry) => entry.origin === null).map((entry) => spellIdentityKey(entry.name, entry.source)))
+
 	/** Assembled once so navigation, the Next gate and the save gate cannot drift apart. */
 	const stepConditions: WizardStepConditions = {
 		expertiseRequiredCount,
@@ -1777,6 +1793,7 @@ export function CharacterWizard({
 		elegantCourtierComplete: !courtierOffered || wisdomSaveHeld === false || (wisdomSaveHeld === true && state.data.elegantCourtierSave !== null),
 		genieKindComplete: !genieOffered || state.data.genieKind !== null,
 		kenseiRangedWeapons,
+		spellbookMode,
 		...(multiclassEdit
 			? {
 					heldClasses: draftClasses,
@@ -2397,7 +2414,47 @@ export function CharacterWizard({
 								choices: picks.flatMap((pick) => (pick.level === undefined ? [] : [{ name: pick.name, source: pick.source, level: pick.level }])),
 							})
 						}
+						spellbook={
+							spellbookMode && spellbookStatus
+								? {
+										// Written in this run shows as 'copied' so the panel offers its Remove; save assigns the real origin (D423).
+										spells: spellbookEntries.map((entry) => ({ name: entry.name, source: entry.source, origin: entry.origin ?? { kind: 'copied' } })),
+										onChange: (spells, picks, added) => {
+											const before = new Map(spellbookEntries.map((entry) => [spellIdentityKey(entry.name, entry.source), entry]))
+											const next: WizardSpellbookEntry[] = spells.map(
+												(spell) =>
+													before.get(spellIdentityKey(spell.name, spell.source)) ?? {
+														name: spell.name,
+														source: spell.source,
+														level:
+															added && spellIdentityKey(added.name, added.source) === spellIdentityKey(spell.name, spell.source)
+																? added.level
+																: (findSpellDetail(spellDetails, spell.name, spell.source)?.level ?? null),
+														origin: null,
+													},
+											)
+											const kept = picks && new Set(picks.map((pick) => spellIdentityKey(pick.name, pick.source)))
+											dispatch({
+												type: 'setSpellbook',
+												spellbook: next,
+												...(kept ? { choices: state.data.spellChoices.filter((pick) => kept.has(spellIdentityKey(pick.name, pick.source))) } : {}),
+											})
+										},
+										// D423: a level up and a creation remove only what they wrote; Edit removes as the sheet does.
+										removable: (spell) =>
+											writtenBookKeys.has(spellIdentityKey(spell.name, spell.source)) ||
+											(spellbookMode === 'edit' && spellbookEntries.some((entry) => spellIdentityKey(entry.name, entry.source) === spellIdentityKey(spell.name, spell.source) && entry.origin?.kind !== 'level')),
+										...(spellbookStatus.required !== null ? { counter: { count: spellbookStatus.count, required: spellbookStatus.required } } : {}),
+										...(spellbookStatus.maxSpellLevel !== null ? { maxSpellLevel: spellbookStatus.maxSpellLevel } : {}),
+									}
+								: undefined
+						}
 					/>
+					{spellbookStatus?.reason && (
+						<p className="manage-spells__empty" role="status">
+							{spellbookStatus.reason}
+						</p>
+					)}
 					</section>
 				</div>
 			)}

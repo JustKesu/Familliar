@@ -109,11 +109,15 @@ async function fillSpells(page: Page, named: string[] = []): Promise<void> {
   for (const name of named) {
     if ((await prepared.locator('.manage-spells__name', { hasText: new RegExp(`^${escape(name)}$`) }).count()) > 0) continue
     await search.fill(name)
+    // D423: a Wizard writes the spell in its book before it can prepare it.
+    const toBook = add.getByRole('button', { name: `Add ${name} to spellbook`, exact: true })
+    if ((await toBook.count()) > 0) await toBook.click()
     await add.getByRole('button', { name: new RegExp(`^(Add|Prepare) ${escape(name)}$`) }).first().click()
   }
   if (named.length > 0) await search.fill('')
   for (const [label, button] of [
-    ['Cantrips', /^Add /],
+    ['Spellbook', / to spellbook$/],
+    ['Cantrips', /^Add (?!.* to spellbook$)/],
     ['Prepared', /^Prepare /],
   ] as const) {
     const counter = page.locator('.manage-spells__counter', { hasText: new RegExp(`^${label}:`) })

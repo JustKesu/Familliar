@@ -1373,8 +1373,14 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - SB-1 (D422): schema 71, `Character.spellbooks` (Wizard|XPHB only; origin level / copied / migrated). The sheet fills the
   book from leveled Wizard picks once spells.json loads (`spellbookFill`, origin migrated, one write on change); store
   `setSpellbooks`. Manage Spells (Wizard): "Spellbook (N)" section with Prepare/Unprepare and Remove from spellbook (copied,
-  migrated); Add Spells offers "Add to spellbook" for leveled spells outside the book. Not yet: origin `level` writes,
-  creation Spells step, level up, Remove level, Savant picks, Spell Mastery. `e2e/spellbookSB1.spec.ts` a–g.
+  migrated); Add Spells offers "Add to spellbook" for leveled spells outside the book. `e2e/spellbookSB1.spec.ts` a–g.
+- SB-2 (D423): the creation wizard keeps a working copy of the Wizard's book (`WizardData.spellbook`,
+  `src/creation/wizardSpellbook.ts`); its Spells step passes `spellbook` to ClassSpellsManager (prepare only from the
+  book, "Spellbook: x/N" counter, Add disabled when full or above the slot level). Create: 6 + 2 × (L − 1) entries,
+  origin levels assigned greedily on save, Next blocked with a reason when impossible. Level up: exactly 2 (6 at a new
+  Wizard 1) with origin level k, the Spells step always walked. Edit: no count, added = copied. Remove level drops
+  origin-level-k entries and unprepares them. Prepare/Unprepare fixed width. Not yet: Savant picks in the book, Spell
+  Mastery. `e2e/spellbookSB2.spec.ts` a–f.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

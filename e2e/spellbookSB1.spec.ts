@@ -150,6 +150,8 @@ test('SB-1 f: a Wizard 1 made in the creation wizard has its leveled picks in th
   await expectStep(page, 'Spells')
   const add = addSpells(page.locator('body'))
   for (const name of ['Fire Bolt', 'Light', 'Mage Hand']) await add.getByRole('button', { name: `Add ${name}`, exact: true }).click()
+  // D423: a new Wizard writes six spells in the book before it prepares from it.
+  for (const name of ['Shield', 'Magic Missile', 'Sleep', 'Detect Magic', 'Mage Armor', 'Burning Hands']) await add.getByRole('button', { name: `Add ${name} to spellbook`, exact: true }).click()
   for (const name of ['Shield', 'Magic Missile', 'Sleep', 'Detect Magic']) await add.getByRole('button', { name: `Prepare ${name}`, exact: true }).click()
   await next(page)
   await expectStep(page, 'Starting equipment')
@@ -160,10 +162,10 @@ test('SB-1 f: a Wizard 1 made in the creation wizard has its leveled picks in th
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 
   const panel = await reopenManage(page)
-  await expect(panel.locator('summary', { hasText: 'Spellbook (4)' })).toHaveCount(1)
-  expect((await names(book(panel))).sort()).toEqual(['Detect Magic', 'Magic Missile', 'Shield', 'Sleep'])
+  await expect(panel.locator('summary', { hasText: 'Spellbook (6)' })).toHaveCount(1)
+  expect((await names(book(panel))).sort()).toEqual(['Burning Hands', 'Detect Magic', 'Mage Armor', 'Magic Missile', 'Shield', 'Sleep'])
   const [saved] = await stored(page)
-  expect((saved!['spellbooks'] as { spells: unknown[] }[])[0]!.spells).toHaveLength(4)
+  expect((saved!['spellbooks'] as { spells: unknown[] }[])[0]!.spells).toHaveLength(6)
 })
 
 test('SB-1 g: a Cleric still prepares directly and has no spellbook', async ({ page }) => {

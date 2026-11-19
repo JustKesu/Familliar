@@ -28,6 +28,7 @@ import type {
 	CharacterMastery,
 	CharacterMulticlassPick,
 	CharacterOptionalFeatureChoice,
+	CharacterSpellbook,
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
 	CharacterSubclassSpellChoicePick,
@@ -74,6 +75,8 @@ import { heldPickOwners, ownedPicks, withOwnedPicks, type HeldPickGrantData, typ
 import { checkNoClassRaised, checkOneClassRaised, classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 import { compareText } from '../text/compareText'
+import { hasSpellbook, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { resolveSpellbookEntries, spellbookRunStatus, type SpellbookRunMode, type WizardSpellbookEntry } from './wizardSpellbook'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -213,6 +216,8 @@ export interface WizardStepConditions {
 	genieKindComplete?: boolean
 	/** Item 3 (F-22): the ranged Kensei weapon names, to pair picks with the melee and ranged slots; `null` while items.json loads. */
 	kenseiRangedWeapons?: ReadonlySet<string> | null
+	/** D423: set while the active class keeps a spellbook; the 'spells' step then checks the book this run writes. Absent = no check. */
+	spellbookMode?: SpellbookRunMode | null
 }
 
 /**
@@ -362,6 +367,7 @@ function resolveConditions(
 		elegantCourtierComplete: conditions.elegantCourtierComplete ?? true,
 		genieKindComplete: conditions.genieKindComplete ?? true,
 		kenseiRangedWeapons: conditions.kenseiRangedWeapons === undefined ? null : conditions.kenseiRangedWeapons,
+		spellbookMode: conditions.spellbookMode ?? null,
 	}
 }
 
@@ -589,6 +595,8 @@ export interface WizardData {
 	otherClasses?: ClassStash[]
 	/** D335: a multiclass Edit's owner of each Expertise and mastery pick; expertiseSkills and masteries stay the whole lists. */
 	pickOwners?: { expertiseSkills: HeldPickOwners; masteries: HeldPickOwners }
+	/** D423: the Wizard's book (character axis, kept across class switches); absent = untouched in this run, so save keeps the stored one. */
+	spellbook?: WizardSpellbookEntry[]
 }
 
 /** D335: the active class's own picks in a multiclass Edit; every pick otherwise. */
@@ -744,6 +752,10 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		lookups.spellLevels.find(
 			(detail) => detail.name.toLowerCase() === spell.name.toLowerCase() && detail.source.toUpperCase() === spell.source.toUpperCase(),
 		)?.level ?? -1
+	const book: WizardSpellbookEntry[] = spellbookSpellsOf(character.spellbooks, 'Wizard', 'XPHB').map((spell) => {
+		const level = spellLevelOf(spell)
+		return { name: spell.name, source: spell.source, level: level < 0 ? null : level, origin: spell.origin }
+	})
 
 	const seeded: WizardData = {
 		name: character.name,
@@ -806,6 +818,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		...(character.portrait ? { portrait: character.portrait } : {}),
 		...(active ? { activeClassFeatureTypes: [...active.featureTypes] } : {}),
 		...(character.multiclassPicks ? { multiclassPicks: character.multiclassPicks } : {}),
+		...(book.length > 0 ? { spellbook: book } : {}),
 	}
 	if (lookups.activeClass !== undefined || !isMulticlass(character.classes)) return seeded
 
@@ -968,6 +981,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		genieKindComplete,
 		kenseiRangedWeapons,
 		characterLevel,
+		spellbookMode,
 	} = resolveConditions(conditions)
 	switch (step) {
 		case 'class':
@@ -1050,7 +1064,8 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		case 'spells':
 			return (
 				(spellRequirement === null || isCompleteSpellChoices(data.spellChoices, spellRequirement)) &&
-				data.subclassSpellChoices.length === subclassSpellChoiceSlotCount
+				data.subclassSpellChoices.length === subclassSpellChoiceSlotCount &&
+				(spellbookMode === null || data.classChoice === null || spellbookRunStatus(data.spellbook ?? [], spellbookMode, data.classChoice.level).reason === null)
 			)
 		case 'classOptionalFeatures':
 			// Every granted class-level count filled AND no pick left in the warning state
@@ -1348,6 +1363,8 @@ export type WizardAction =
 	| { type: 'setGrantedFeat'; feat: CharacterGrantedFeat }
 	| { type: 'setBackgroundOriginFeatOverride'; feat: { name: string; source: string } | null }
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
+	/** D423: `choices` is given when removing a book spell unprepares it too. */
+	| { type: 'setSpellbook'; spellbook: WizardSpellbookEntry[]; choices?: SpellPick[] }
 	/** D339: dispatched once per load of the subclass's always-prepared list; a list for another class or subclass than the current one is ignored. */
 	| { type: 'dropAlwaysPreparedPicks'; className: string; classSource: string; subclassName: string | null; alwaysPrepared: { name: string; source: string }[] }
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
@@ -1591,6 +1608,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			}
 		case 'setSpellChoices':
 			return { ...state, data: { ...state.data, spellChoices: action.choices } }
+		case 'setSpellbook':
+			return { ...state, data: { ...state.data, spellbook: action.spellbook, ...(action.choices ? { spellChoices: action.choices } : {}) } }
 		case 'dropAlwaysPreparedPicks': {
 			const { classChoice, subclass } = state.data
 			if (!classChoice || classChoice.className !== action.className || classChoice.classSource !== action.classSource || (action.subclassName !== null && subclass?.name !== action.subclassName)) return state
@@ -1675,6 +1694,16 @@ function clearStartingEquipmentFor(choice: StartingEquipmentChoice, origin: 'cla
  * `currentHp` carried through unchanged, which is also correct for a plain
  * edit (D105) and for a character `maxHp` couldn't be resolved for.
  */
+/** D423: the book the run edited, written while the character holds a spellbook class; otherwise `existing`'s, untouched (D422). */
+function spellbooksAfterRun(existing: Character | undefined, data: WizardData, classes: readonly CharacterClass[], levelUpTo: number | undefined): CharacterSpellbook[] | undefined {
+	const wizard = classes.find((entry) => hasSpellbook(entry.className, entry.classSource))
+	if (!wizard || data.spellbook === undefined) return existing?.spellbooks
+	const mode: SpellbookRunMode = levelUpTo !== undefined ? 'levelUp' : existing ? 'edit' : 'create'
+	const spells = resolveSpellbookEntries(data.spellbook ?? [], mode, wizard.level)
+	const next = withSpellbookSpells(existing?.spellbooks ?? [], wizard.className, wizard.classSource, spells)
+	return next.length > 0 ? next : undefined
+}
+
 export function saveCharacter(
 	store: CharacterStore,
 	data: WizardData,
@@ -1894,8 +1923,7 @@ export function saveCharacter(
 		kenseiWeapons: orNone(heldKenseiWeapons(classes, data.kenseiWeapons)),
 		elegantCourtierSave: hasElegantCourtier(classes) ? (data.elegantCourtierSave ?? undefined) : undefined,
 		genieKind: hasGenie(classes) ? (data.genieKind ?? undefined) : undefined,
-		// D422: sheet-kept, like the free text below; an edit or a level up carries it across.
-		spellbooks: existing?.spellbooks,
+		spellbooks: spellbooksAfterRun(existing, data, classes, levelUpTo),
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.

@@ -12,6 +12,8 @@ import { chosenOptionalFeatureOptions, classOptionalFeatureGroupsFor, type Class
 import { cascadePrerequisiteLoss, familiarAfterOptionChange } from '../optionalFeatures/optionSwap'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
+import { hasSpellbook, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
 import { ELEGANT_COURTIER_LEVEL } from '../kensei/kensei'
@@ -222,12 +224,40 @@ export function levelRemovalCore(
 		return picks.length > 0 ? [{ ...entry, picks }] : []
 	})
 
+	// D423: a Wizard level takes the spells it wrote in the book, and they stop being prepared; copied and migrated ones stay.
+	const book = hasSpellbook(className, classSource) ? spellbookSpellsOf(character.spellbooks, className, classSource) : []
+	const lostBookKeys = new Set(
+		book.filter((spell) => spell.origin.kind === 'level' && spell.origin.level === classLevel).map((spell) => spellIdentityKey(spell.name, spell.source)),
+	)
+	const spellbooks =
+		lostBookKeys.size > 0
+			? withSpellbookSpells(
+					character.spellbooks ?? [],
+					className,
+					classSource,
+					book.filter((spell) => {
+						if (!lostBookKeys.has(spellIdentityKey(spell.name, spell.source))) return true
+						dropped.push(`Spellbook: ${spell.name}`)
+						return false
+					}),
+				)
+			: character.spellbooks
+
 	// D332: records that carry no level belong to the class as a whole, so they go only with its last level.
-	const spellChoices = character.spellChoices?.filter((entry) => {
-		if (!classRemoved || !ofClass(entry)) return true
-		dropped.push(...entry.spells.map((spell) => `${className} spell: ${spell.name}`))
-		droppedSpells.push(...entry.spells)
-		return false
+	const spellChoices = character.spellChoices?.flatMap((entry) => {
+		if (!ofClass(entry)) return [entry]
+		if (classRemoved) {
+			dropped.push(...entry.spells.map((spell) => `${className} spell: ${spell.name}`))
+			droppedSpells.push(...entry.spells)
+			return []
+		}
+		const spells = entry.spells.filter((spell) => {
+			if (!lostBookKeys.has(spellIdentityKey(spell.name, spell.source))) return true
+			dropped.push(`${className} spell: ${spell.name} (no longer prepared)`)
+			droppedSpells.push(spell)
+			return false
+		})
+		return spells.length > 0 ? [{ ...entry, spells }] : []
 	})
 	const wildShapeForms = character.wildShapeForms?.filter((entry) => {
 		if (!classRemoved || !ofClass(entry)) return true
@@ -310,9 +340,10 @@ export function levelRemovalCore(
 		}
 	}
 
-	const { play: _play, kenseiWeapons: _kensei, elegantCourtierSave, genieKind, familiar: _familiar, ...withoutPlay } = character
+	const { play: _play, kenseiWeapons: _kensei, elegantCourtierSave, genieKind, familiar: _familiar, spellbooks: _spellbooks, ...withoutPlay } = character
 	const result: Character = {
 		...withoutPlay,
+		...(spellbooks && spellbooks.length > 0 ? { spellbooks } : {}),
 		...(kenseiWeapons && kenseiWeapons.length > 0 ? { kenseiWeapons } : {}),
 		...(elegantCourtierSave && !losesCourtier ? { elegantCourtierSave } : {}),
 		...(genieKind && !losesGenieKind ? { genieKind } : {}),
