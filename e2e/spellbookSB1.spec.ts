@@ -62,7 +62,7 @@ test('SB-1 a: a schema-70 Wizard 3 gets its leveled picks in the book, prepared,
   expect((await names(book(panel))).sort()).toEqual(['Magic Missile', 'Shield'])
   await expect(book(panel).getByRole('button', { name: 'Unprepare Shield', exact: true })).toBeVisible()
   const [saved] = await stored(page)
-  expect(saved!['schemaVersion']).toBe(71)
+  expect(saved!['schemaVersion']).toBe(72)
   expect(saved!['spellbooks']).toEqual([
     {
       className: 'Wizard',

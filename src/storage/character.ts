@@ -927,6 +927,10 @@ export interface CharacterSpellbook {
 	className: string
 	classSource: string
 	spells: CharacterSpellbookSpell[]
+	/** D425: Spell Mastery picks (Wizard 18), one level 1 and one level 2 book spell. */
+	mastery?: { name: string; source: string }[]
+	/** D425: Signature Spells picks (Wizard 20), two level 3 book spells. */
+	signature?: { name: string; source: string }[]
 }
 
 /** One pick for a subclass spell-choice slot (subclassSpellChoiceData.ts SubclassSpellChoiceSlot) — identified by (grantedAtLevel, slotIndex) rather than array position, so it stays self-describing regardless of storage order. */
@@ -1169,7 +1173,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 71
+export const CURRENT_SCHEMA_VERSION = 72
 
 export interface CharacterLevelOrderEntry {
 	className: string

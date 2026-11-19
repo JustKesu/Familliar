@@ -197,6 +197,7 @@ import { ManageInventoryPanel } from './ManageInventoryPanel'
 import { hasSpellbook, savantSpellsOf, spellbookFill, spellbookSpellsOf, withClassPicks, withSpellbookSpells } from './manageSpellsData'
 import { collectKnownSpells } from '../spells/knownSpells'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
+import { activeBookPicks, prunedBookPicks, withBookPicks } from '../spells/wizardBookPicks'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
 import { loadSpeciesTraits, speciesTraitsAtLevel, type SpeciesTrait } from './speciesTraitNames'
 import { featuresTabGroups, type FeatureTabGroup, type FeatureTabGroupKind, type FeatureTabOption } from './featuresTabData'
@@ -2289,13 +2290,39 @@ function CharacterSheetBody({
 	 * it: a spell reaching the character through a subclass, a feat or an
 	 * invocation counts exactly as much as a player pick.
 	 */
+	// D425: Spell Mastery and Signature Spells are the Wizard's own always-prepared grants, cast without a slot.
+	const bookWizard = character.classes.find((c) => hasSpellbook(c.className, c.classSource))
+	const wizardBookPicks = bookWizard
+		? activeBookPicks(
+				character.spellbooks?.find((book) => book.className === bookWizard.className && book.classSource === bookWizard.classSource),
+				[...spellbookSpellsOf(character.spellbooks, bookWizard.className, bookWizard.classSource), ...savantSpellsOf(character.subclassSpellChoices, bookWizard.className, bookWizard.classSource, bookWizard.subclass)],
+				bookWizard.level,
+			)
+		: { mastery: [], signature: [] }
+	const bookPickGrants: AlwaysPreparedSpell[] = (
+		[
+			...wizardBookPicks.mastery.map((spell) => ({ spell, usage: { kind: 'atWill' } as const })),
+			...wizardBookPicks.signature.map((spell) => ({ spell, usage: { kind: 'onceFreePerShortOrLongRest' } as const })),
+		] as const
+	).flatMap(({ spell, usage }) => {
+		const detail = findSpellDetail(spellDetails ?? [], spell.name, spell.source)
+		if (!detail) return []
+		return [{ name: detail.name, source: detail.source, level: detail.level, grantedAtLevel: bookWizard!.level, ritual: detail.ritual, concentration: detail.concentration, origin: 'class' as const, usage }]
+	})
+	const classGrantInfo =
+		bookWizard && bookPickGrants.length > 0
+			? [
+					...classSpellInfo.filter((info) => info.className !== bookWizard.className),
+					{ className: bookWizard.className, spells: [...(classSpellInfo.find((info) => info.className === bookWizard.className)?.spells ?? []), ...bookPickGrants] },
+				]
+			: classSpellInfo
 	const combinedSpells = combineSpellEntries(
 		character.spellChoices ?? [],
 		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, className: info.className, classSource: info.classSource, spells: info.alwaysPrepared })),
 		featSpells,
 		optionalFeatureSpells,
 		raceSpells.spells,
-		classSpellInfo,
+		classGrantInfo,
 	)
 	const knowsFindFamiliar = hasFindFamiliar(combinedSpells)
 	const knowsMageArmor = hasMageArmor(combinedSpells)
@@ -2800,7 +2827,7 @@ function CharacterSheetBody({
 		const subclassGrants = subclassSpellInfo.find((info) => info.subclassName === c.subclass)?.alwaysPrepared ?? []
 		// subclassSpellInfo merges the fixed grants with the filter-choice picks; the panel shows the two differently.
 		const subclassFixed = subclassGrants.filter((spell) => !choiceKeys.has(spellIdentityKey(spell.name, spell.source)))
-		const classFixed = classSpellInfo.find((info) => info.className === c.className)?.spells ?? []
+		const classFixed = classGrantInfo.find((info) => info.className === c.className)?.spells ?? []
 		const picks = (character.spellChoices ?? []).find((choice) => choice.className === c.className && choice.classSource === c.classSource)?.spells ?? []
 		const alreadyKnown = collectKnownSpells({
 			classSpellPicks: picks,
@@ -3709,10 +3736,27 @@ function CharacterSheetBody({
 											spells: spellbookSpellsOf(character.spellbooks, characterClass.className, characterClass.classSource),
 											onChange: (spells, picks) =>
 												onEditSpellbooks(
-													withSpellbookSpells(character.spellbooks ?? [], characterClass.className, characterClass.classSource, spells),
+													// D425: a spell that leaves the book takes its Mastery or Signature mark with it.
+													prunedBookPicks(
+														withSpellbookSpells(character.spellbooks ?? [], characterClass.className, characterClass.classSource, spells),
+														characterClass.className,
+														characterClass.classSource,
+														[...spells, ...savant],
+														characterClass.level,
+													).spellbooks,
 													picks && withClassPicks(character.spellChoices ?? [], characterClass.className, characterClass.classSource, picks),
 												),
 											savant,
+											bookPicks: {
+												wizardLevel: characterClass.level,
+												active: wizardBookPicks,
+												onChange: (next) =>
+													onEditSpellbooks(
+														(character.spellbooks ?? []).map((book) =>
+															book.className === characterClass.className && book.classSource === characterClass.classSource ? withBookPicks(book, next) : book,
+														),
+													),
+											},
 										}
 									: undefined
 							}

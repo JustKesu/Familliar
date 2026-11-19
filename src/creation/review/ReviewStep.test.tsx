@@ -11,6 +11,7 @@ import { WizardNavButtons } from '../WizardShell'
 
 vi.mock('../../abilities/AbilityScoreTable', () => ({ AbilityScoreTable: () => null }))
 vi.mock('../../sheet/sheetData', () => ({ loadFeatEffectEntries: vi.fn(async () => []) }))
+vi.mock('../../sheet/grantedClassFeatures', () => ({ loadGrantedClassFeatures: vi.fn(async () => []) }))
 
 afterEach(cleanup)
 
@@ -44,6 +45,18 @@ function renderReview(overrides: Partial<Omit<ComponentProps<typeof ReviewStep>,
 }
 
 const spell = (name: string, level = 1) => ({ name, source: 'XPHB', level })
+
+describe("ReviewStep What's new (WM-1b D425)", () => {
+	it('points Spell Mastery and Signature Spells of the 2024 Wizard to Manage Spells, and no other feature', () => {
+		const feature = (name: string, level: number) => ({ id: `${name}|${level}`, name, level, kind: 'class' })
+		renderReview({
+			levelUp: { ...LEVEL_UP, level: 20, className: 'Wizard', classSource: 'XPHB', newFeatures: [feature('Spell Mastery', 18), feature('Signature Spells', 20), feature('Epic Boon', 19)] } as unknown as LevelGains,
+		})
+		const card = screen.getByRole('region', { name: "Level 20 — What's new" })
+		expect(within(card).getAllByText('Choose in Manage Spells')).toHaveLength(2)
+		expect(within(card).getByText('Epic Boon').closest('li')!.textContent).not.toContain('Manage Spells')
+	})
+})
 
 describe('ReviewStep spells', () => {
 	it('lists cantrips (with the readable species label), leveled picks, class options and subclass picks in the Spells card', () => {

@@ -1365,7 +1365,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   as `fightingStyles[].filterChoiceSpells` (schema 70) and shown on Spells with CHA / WIS. `e2e/fightingStyleClassFeats.spec.ts` a–c.
 - WM-1 part 1 (D420): Hexblade's Curse has 1 use, back on Short or Long Rest (hand table `UNTAGGED_SINGLE_USE`, Actions row);
   Devil's Sight adds "Devil's Sight: 120 ft." to Granted senses (`OPTIONAL_FEATURE_TEXT_SENSES`). Spell Mastery and
-  Signature Spells are still text only. `e2e/hexbladeDevilsSight.spec.ts` c, d.
+  Signature Spells: see WM-1b. `e2e/hexbladeDevilsSight.spec.ts` c, d.
 - F-HL (D421): a marked pact weapon is always proficient (breakdown names Pact of the Blade); Hexblade's Curse and Giant's
   Might sit in the Bonus Action group (hand table `UNTAGGED_BONUS_ACTION`, gated on "as a bonus action" in the text);
   Blessed / Druidic Warrior cantrips are in a `.fighting-style-picker__cantrips` box. `e2e/pactWeapon.spec.ts` F-HL A,
@@ -1379,13 +1379,19 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   book, "Spellbook: x/N" counter, Add disabled when full or above the slot level). Create: 6 + 2 × (L − 1) entries,
   origin levels assigned greedily on save, Next blocked with a reason when impossible. Level up: exactly 2 (6 at a new
   Wizard 1) with origin level k, the Spells step always walked. Edit: no count, added = copied. Remove level drops
-  origin-level-k entries and unprepares them. Prepare/Unprepare fixed width. Not yet: Spell Mastery.
+  origin-level-k entries and unprepares them. Prepare/Unprepare fixed width. Spell Mastery: see WM-1b.
   `e2e/spellbookSB2.spec.ts` a–f.
 - SB-3 (D424): Abjurer/Diviner/Evoker/Illusionist (XPHB) Savant picks are no longer always prepared (sheet grants,
   Manage Spells Prepared, wizard holdings); they are derived book entries (`savantSpellsOf`, `spellbook.savant`) shown
   in Spellbook with a "Savant" tag, no Remove, outside the "Spellbook: x/N" counter and treated as in the book by
   `spellbookFill`. A Savant pick that goes (Remove level, setSubclass, setSubclassSpellChoices) unprepares its spell
   unless the stored book holds it (`savantLossUnprepares`). College of Lore unchanged. `e2e/spellbookSB3.spec.ts` a–f.
+- WM-1b (D425): schema 72, `spellbooks[].mastery` / `.signature` (`src/spells/wizardBookPicks.ts`). Manage Spells
+  Spellbook: "Mastery" toggle (Wizard 18+, level 1/2 action spells, one per level) and "Signature" (Wizard 20, level 3,
+  two), status line "x/2 chosen". Active picks join the Wizard's class grants: Mastery at will, Signature 1/SR free cast
+  (use box, Short and Long Rest), always prepared outside the limit. Picks are pruned on Remove from spellbook, Edit,
+  Remove level (named in the dialog) and below 18/20; level up Review shows "Choose in Manage Spells".
+  `e2e/spellMasteryWM1b.spec.ts` a–e.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

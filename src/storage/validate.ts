@@ -774,6 +774,22 @@ export function describeSpellbooksError(value: unknown): string | null {
 				if (typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > 20) return `${label}.origin.level must be a whole number from 1 to 20`
 			} else if (origin['kind'] !== 'copied' && origin['kind'] !== 'migrated') return `${label}.origin.kind must be one of level, copied, migrated`
 		}
+		for (const [field, max] of [
+			['mastery', 2],
+			['signature', 2],
+		] as const) {
+			const picks = entry[field]
+			if (picks === undefined) continue
+			if (!Array.isArray(picks)) return `spellbooks[${i}].${field} must be an array`
+			if (picks.length > max) return `spellbooks[${i}].${field} holds at most ${max} spells`
+			for (let j = 0; j < picks.length; j++) {
+				const pick: unknown = picks[j]
+				const label = `spellbooks[${i}].${field}[${j}]`
+				if (!isRecord(pick)) return `${label} is not an object`
+				if (!isNonEmptyString(pick['name'])) return `${label}.name is missing or not a string`
+				if (!isNonEmptyString(pick['source'])) return `${label}.source is missing or not a string`
+			}
+		}
 	}
 	return null
 }
@@ -1709,6 +1725,13 @@ function toCharacterSpellbooks(entries: Record<string, unknown>[]): CharacterSpe
 				origin: origin['kind'] === 'level' ? { kind: 'level' as const, level: origin['level'] as number } : { kind: origin['kind'] as 'copied' | 'migrated' },
 			}
 		}),
+		...(['mastery', 'signature'] as const).reduce(
+			(picks, field) =>
+				Array.isArray(entry[field])
+					? { ...picks, [field]: (entry[field] as Record<string, unknown>[]).map((pick) => ({ name: pick['name'] as string, source: pick['source'] as string })) }
+					: picks,
+			{},
+		),
 	}))
 }
 

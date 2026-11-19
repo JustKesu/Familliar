@@ -60,15 +60,17 @@ export function spellbookSpellsOf(spellbooks: readonly CharacterSpellbook[] | un
 	return spellbooks?.find((book) => book.className === className && book.classSource === classSource)?.spells ?? []
 }
 
-/** Character.spellbooks with one class's book replaced; an empty book drops that class's entry. */
+/** Character.spellbooks with one class's book replaced; an empty book drops that class's entry. D425: the picks stay; prunedBookPicks drops stale ones. */
 export function withSpellbookSpells(
 	spellbooks: readonly CharacterSpellbook[],
 	className: string,
 	classSource: string,
 	spells: readonly CharacterSpellbookSpell[],
 ): CharacterSpellbook[] {
-	const others = spellbooks.filter((book) => !(book.className === className && book.classSource === classSource))
-	return spells.length === 0 ? others : [...others, { className, classSource, spells: [...spells] }]
+	const own = spellbooks.find((book) => book.className === className && book.classSource === classSource)
+	const others = spellbooks.filter((book) => book !== own)
+	if (spells.length === 0) return others
+	return [...others, { className, classSource, spells: [...spells], ...(own?.mastery ? { mastery: own.mastery } : {}), ...(own?.signature ? { signature: own.signature } : {}) }]
 }
 
 /** D424: the class's Savant picks — part of its book, derived and never stored there. */

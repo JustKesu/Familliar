@@ -12,6 +12,7 @@ import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { DrawerSection } from './Drawer'
 import type { CharacterSpellbookSpell } from '../storage/character'
 import { pickCounts, preparedSpellRows, type ClassSpellHoldings, type SpellRef } from './manageSpellsData'
+import { bookPickKindFor, bookPickStatus, canToggleBookPick, isBookPick, toggledBookPicks, type BookPicks } from '../spells/wizardBookPicks'
 import { SpellDetailBody } from './SpellList'
 import { ordinalLevel, sectionLabel } from './spellsTabData'
 
@@ -135,6 +136,8 @@ export function ClassSpellsManager({
 		maxSpellLevel?: number
 		/** D424: Savant picks, in the book without being stored there; never removed here. */
 		savant?: readonly SpellRef[]
+		/** D425: Spell Mastery and Signature Spells, picked only here (the sheet); `active` holds the picks that count now. */
+		bookPicks?: { wizardLevel: number; active: BookPicks; onChange: (picks: BookPicks) => void }
 	}
 }): ReactNode {
 	const listClass = spellListClassFor(className, classSource, subclassName)
@@ -192,6 +195,28 @@ export function ClassSpellsManager({
 		spellbook.onChange(
 			spellbook.spells.filter((entry) => spellIdentityKey(entry.name, entry.source) !== key),
 			isPicked(spell) ? holdings.picks.filter((pick) => spellIdentityKey(pick.name, pick.source) !== key) : undefined,
+		)
+	}
+
+	const bookPicks = spellbook?.bookPicks
+	const bookPickStatusLines = bookPicks ? bookPickStatus(bookPicks.active, bookPicks.wizardLevel) : []
+	function bookPickToggle(row: SpellRef & { level: number | null }): ReactNode {
+		if (!bookPicks) return null
+		const kind = bookPickKindFor(row.level, findSpellDetail(details, row.name, row.source)?.time ?? [], bookPicks.wizardLevel)
+		if (kind === null) return null
+		const on = isBookPick(bookPicks.active, kind, row)
+		const label = kind === 'mastery' ? 'Mastery' : 'Signature'
+		return (
+			<button
+				type="button"
+				className={on ? 'manage-spells__button manage-spells__button--on' : 'manage-spells__button'}
+				aria-pressed={on}
+				aria-label={`${label} ${row.name}`}
+				disabled={!canToggleBookPick(bookPicks.active, kind, row, levelOf)}
+				onClick={() => bookPicks.onChange(toggledBookPicks(bookPicks.active, kind, row))}
+			>
+				{label}
+			</button>
 		)
 	}
 
@@ -279,6 +304,15 @@ export function ClassSpellsManager({
 			{spellbook && (
 				<DrawerSection title={`Spellbook (${bookRows.length})`}>
 					<section aria-label="Spellbook" className="manage-spells__list">
+						{bookPickStatusLines.length > 0 && (
+							<p className="manage-spells__counters">
+								{bookPickStatusLines.map((line) => (
+									<span key={line} className="manage-spells__counter">
+										{line}
+									</span>
+								))}
+							</p>
+						)}
 						{bookRows.length === 0 && <p className="manage-spells__empty">No spells in the spellbook yet.</p>}
 						{groupByLevel(bookRows).map(([level, group]) => (
 							<div key={String(level)}>
@@ -297,6 +331,7 @@ export function ClassSpellsManager({
 												action={
 													<>
 														{isSavant(row) && <span className="manage-spells__tag">Savant</span>}
+														{bookPickToggle(row)}
 														{canRemoveFromBook(row) && (
 															<button type="button" className="manage-spells__button" aria-label={`Remove ${row.name} from spellbook`} onClick={() => removeFromBook(row)}>
 																Remove from spellbook

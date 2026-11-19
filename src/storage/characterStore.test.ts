@@ -3027,6 +3027,17 @@ describe('spellbooks in storage (SB-1 D422)', () => {
 		expect(() => store.setSpellbooks(created.id, book({ kind: 'level', level: 0 }))).toThrow(ImportValidationError)
 		expect(() => store.setSpellbooks(created.id, book({ kind: 'bought' } as never))).toThrow(ImportValidationError)
 	})
+
+	it('stores Mastery and Signature picks and refuses a third or a nameless one (WM-1b D425)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria', classes: [{ ...wizard, level: 20 }] })
+		const picks = { mastery: [{ name: 'Shield', source: 'XPHB' }], signature: [{ name: 'Fireball', source: 'XPHB' }] }
+		store.setSpellbooks(created.id, [{ ...book({ kind: 'copied' })[0], ...picks }])
+		expect(store.list()[0].spellbooks?.[0]).toMatchObject(picks)
+		const three = Array.from({ length: 3 }, () => ({ name: 'Fly', source: 'XPHB' }))
+		expect(() => store.setSpellbooks(created.id, [{ ...book({ kind: 'copied' })[0], signature: three }])).toThrow(ImportValidationError)
+		expect(() => store.setSpellbooks(created.id, [{ ...book({ kind: 'copied' })[0], mastery: [{ name: '', source: 'XPHB' }] }])).toThrow(ImportValidationError)
+	})
 })
 
 describe('pactWeapon and genieKind in storage (PW-1 D401, GN-1 D407, F-Q D408)', () => {

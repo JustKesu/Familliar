@@ -56,6 +56,47 @@ describe('Remove level of a Wizard (D423)', () => {
 	})
 })
 
+describe('Remove level and the book picks (D425)', () => {
+	function wizardAt(level: number): Character {
+		const character = wizard4()
+		character.classes = [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level }]
+		character.spellbooks = [
+			{
+				...character.spellbooks![0],
+				spells: [...character.spellbooks![0].spells, { name: 'Fireball', source: 'XPHB', origin: { kind: 'level', level } }, { name: 'Counterspell', source: 'XPHB', origin: { kind: 'copied' } }],
+				mastery: [
+					{ name: 'Sleep', source: 'XPHB' },
+					{ name: 'Web', source: 'XPHB' },
+				],
+				signature: [
+					{ name: 'Fireball', source: 'XPHB' },
+					{ name: 'Counterspell', source: 'XPHB' },
+				],
+			},
+		]
+		return character
+	}
+
+	it('Wizard 18 to 17 drops both Mastery picks and names them', () => {
+		const plan = levelRemovalCore(wizardAt(18), CLASSES, RESOLVER, null)
+		if ('reason' in plan) throw new Error(plan.reason)
+		expect(plan.result.spellbooks?.[0].mastery).toBeUndefined()
+		expect(plan.dropped).toEqual(expect.arrayContaining(['Spell Mastery: Sleep', 'Spell Mastery: Web']))
+	})
+
+	it('Wizard 20 to 19 drops the Signature picks and keeps Mastery, except a pick whose spell left with the level', () => {
+		const plan = levelRemovalCore(wizardAt(20), CLASSES, RESOLVER, null)
+		if ('reason' in plan) throw new Error(plan.reason)
+		expect(plan.result.spellbooks?.[0].mastery).toEqual([
+			{ name: 'Sleep', source: 'XPHB' },
+			{ name: 'Web', source: 'XPHB' },
+		])
+		expect(plan.result.spellbooks?.[0].signature).toBeUndefined()
+		expect(plan.dropped).toEqual(expect.arrayContaining(['Signature Spells: Fireball', 'Signature Spells: Counterspell']))
+		expect(plan.dropped.some((line) => line.startsWith('Spell Mastery:'))).toBe(false)
+	})
+})
+
 describe('Remove level and Savant picks (D424)', () => {
 	function evoker3(): Character {
 		return {

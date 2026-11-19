@@ -79,6 +79,7 @@ import { hasSpellbook, savantLossUnprepares, spellbookSpellsOf, withSpellbookSpe
 import { isSavantSubclass } from '../spells/subclassSpellChoiceData'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { resolveSpellbookEntries, spellbookRunStatus, type SpellbookRunMode, type WizardSpellbookEntry } from './wizardSpellbook'
+import { prunedBookPicks } from '../spells/wizardBookPicks'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -1712,7 +1713,15 @@ function spellbooksAfterRun(existing: Character | undefined, data: WizardData, c
 	if (!wizard || data.spellbook === undefined) return existing?.spellbooks
 	const mode: SpellbookRunMode = levelUpTo !== undefined ? 'levelUp' : existing ? 'edit' : 'create'
 	const spells = resolveSpellbookEntries(data.spellbook ?? [], mode, wizard.level)
-	const next = withSpellbookSpells(existing?.spellbooks ?? [], wizard.className, wizard.classSource, spells)
+	const savant = data.subclass && isSavantSubclass(data.subclass.name, data.subclass.source) ? data.subclassSpellChoices : []
+	// D425: an Edit that takes a spell out of the book takes its Mastery or Signature mark too.
+	const next = prunedBookPicks(
+		withSpellbookSpells(existing?.spellbooks ?? [], wizard.className, wizard.classSource, spells),
+		wizard.className,
+		wizard.classSource,
+		[...spells, ...savant],
+		wizard.level,
+	).spellbooks
 	return next.length > 0 ? next : undefined
 }
 

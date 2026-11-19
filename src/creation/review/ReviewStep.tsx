@@ -13,6 +13,7 @@ import { loadFeatEffectEntries } from '../../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../../sheet/grantedClassFeatures'
 import { UnresolvedValue } from '../../sheet/ValueBreakdown'
 import { countedNames, lostCopies } from '../../optionalFeatures/optionSwap'
+import { bookPickFeatureNote } from '../../spells/wizardBookPicks'
 import { choiceNames, type AbilityIncreaseMap, type Character, type CharacterInventoryItem, type FeatAsiChoice } from '../../storage/character'
 import type { UnfinishedClass, WizardData, WizardStep } from '../wizardState'
 
@@ -74,7 +75,19 @@ function CardHeading({ title, step, steps, onGoTo }: { title: string; step: Wiza
 }
 
 /** The sheet's Features & Traits row (same classes, same ResolvedEntries), without use boxes. */
-function NewFeatureRow({ name, entries, loading, resolverData }: { name: string; entries: unknown[] | undefined; loading: boolean; resolverData: ResolverData }): ReactNode {
+function NewFeatureRow({
+	name,
+	note,
+	entries,
+	loading,
+	resolverData,
+}: {
+	name: string
+	note?: string | null
+	entries: unknown[] | undefined
+	loading: boolean
+	resolverData: ResolverData
+}): ReactNode {
 	const [open, setOpen] = useState(false)
 	return (
 		<li className="sheet__group-row">
@@ -85,6 +98,7 @@ function NewFeatureRow({ name, entries, loading, resolverData }: { name: string;
 					</span>
 					<span className="sheet__group-row-name">{name}</span>
 				</button>
+				{note && <span className="review__feature-note">{note}</span>}
 			</div>
 			{open && (
 				<div className="sheet__group-row-text">
@@ -297,7 +311,11 @@ export function ReviewStep({
 					{levelUp.newFeatures.length > 0 && (
 						<ul className="review__features">
 							{levelUp.newFeatures.map((feature) => (
-								<NewFeatureRow key={feature.id} name={feature.name} entries={entries.byId.get(feature.id)} loading={entries.loading} resolverData={resolverData} />
+								<NewFeatureRow
+									key={feature.id}
+									name={feature.name}
+									note={bookPickFeatureNote(feature.name, levelUp.className, levelUp.classSource)}
+									entries={entries.byId.get(feature.id)} loading={entries.loading} resolverData={resolverData} />
 							))}
 						</ul>
 					)}

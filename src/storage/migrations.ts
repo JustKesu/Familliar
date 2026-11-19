@@ -638,6 +638,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 71 adds Character.spellbooks (SB-1, D422). Spell levels are not known synchronously, so the sheet fills the book — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 71 }),
 	},
+	{
+		from: 71,
+		to: 72,
+		/* 72 adds CharacterSpellbook.mastery and .signature (WM-1b, D425). A version-71 book holds no picks — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 72 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

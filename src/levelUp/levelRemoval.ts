@@ -13,6 +13,7 @@ import { cascadePrerequisiteLoss, familiarAfterOptionChange } from '../optionalF
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
 import { hasSpellbook, savantLossUnprepares, savantSpellsOf, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { prunedBookPicks } from '../spells/wizardBookPicks'
 import { isSavantSubclass } from '../spells/subclassSpellChoiceData'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
@@ -232,7 +233,7 @@ export function levelRemovalCore(
 	const lostBookKeys = new Set(
 		book.filter((spell) => spell.origin.kind === 'level' && spell.origin.level === classLevel).map((spell) => spellIdentityKey(spell.name, spell.source)),
 	)
-	const spellbooks =
+	const bookAfterLevel =
 		lostBookKeys.size > 0
 			? withSpellbookSpells(
 					character.spellbooks ?? [],
@@ -248,9 +249,22 @@ export function levelRemovalCore(
 	// D424: a lost Savant spell leaves the book, so its pick stops being prepared unless the stored book keeps it.
 	const lostSavantKeys = savantLossUnprepares(
 		lostSavant,
-		spellbookSpellsOf(spellbooks, className, classSource),
+		spellbookSpellsOf(bookAfterLevel, className, classSource),
 		savantSpellsOf(subclassSpellChoices, className, classSource),
 	)
+	// D425: Spell Mastery and Signature Spells go with Wizard 18 / 20, and with their spell when it leaves the book.
+	const prunedPicks =
+		bookAfterLevel && hasSpellbook(className, classSource)
+			? prunedBookPicks(
+					bookAfterLevel,
+					className,
+					classSource,
+					[...spellbookSpellsOf(bookAfterLevel, className, classSource), ...savantSpellsOf(subclassSpellChoices, className, classSource)],
+					classLevel - 1,
+				)
+			: { spellbooks: bookAfterLevel, dropped: [] }
+	dropped.push(...prunedPicks.dropped)
+	const spellbooks = prunedPicks.spellbooks
 
 	// D332: records that carry no level belong to the class as a whole, so they go only with its last level.
 	const spellChoices = character.spellChoices?.flatMap((entry) => {

@@ -5891,3 +5891,16 @@ Actions, Prepared v Manage Spells). (2) Jsou součástí knihy, odvozené z `sub
 Savant pick zmizí (Remove level, změna podtřídy, Edit Savant pickeru) a kouzlo nemá jinou cestu do knihy, odpřipraví se;
 dialog Remove level ho jmenuje. (6) Existující postavy: Savant kouzla prostě přestanou být připravená. Bez změny schématu.
 Zadal plánovací chat (SB-3) 19. 11. 2026.
+
+## D425 — Spell Mastery a Signature Spells se volí v Manage Spells (WM-1b)
+
+Nahrazuje plán výběru v level upu z D420. Jen Wizard|XPHB. (1) Uloženo na záznamu knihy: `spellbooks[].mastery` a
+`.signature` ({name, source}[], max 2), schema 72, migrace jen tag. (2) Volí se jen v Manage Spells, sekce Spellbook:
+od Wizard 18 přepínač „Mastery“ u kouzel 1. a 2. úrovně s casting time 1 action (jedno na úroveň), od Wizard 20
+„Signature“ u kouzel 3. úrovně (dvě); nad seznamem „Spell Mastery: x/2 chosen“, „Signature Spells: x/2 chosen“. Kdy je
+lze měnit, aplikace nehlídá. Kniha zahrnuje Savant kouzla (D424). (3) Vybraná kouzla jsou vždy připravená jako class
+grant Wizarda (nepočítají se do limitu): Mastery „at will“, Signature 1 použití bez slotu, obnova Short i Long Rest
+(stávající vzor free cast, D190/D193). (4) Pick zmizí, když kouzlo opustí knihu (Remove from spellbook, Edit, Remove
+level, ztráta Savant) nebo Wizard klesne pod 18 / 20; dialog Remove level ho jmenuje. Karta navíc zobrazuje jen picky
+platné teď. (5) Review level upu u těchto rysů ukazuje „Choose in Manage Spells“, bez pickeru.
+Zadal plánovací chat (WM-1b) 19. 11. 2026.

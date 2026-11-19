@@ -2765,6 +2765,11 @@ label.wizard__field {
   overflow-wrap: anywhere;
 }
 
+.review__feature-note {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
 .class-switcher {
   display: flex;
   flex-wrap: wrap;
