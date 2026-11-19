@@ -1,24 +1,46 @@
-# F-HL - three small fixes after block HL (D421)
+# SB-1 — Wizard spellbook: úložiště, doplnění na kartě, Manage Spells (D422, schema 71)
 
-Setup: HEAD 6c8152b at start (requirement met). 13 places changed (under the ~15 limit); no STOP triggered.
+Setup: `git merge --ff-only origin/main` odmítnut („unrelated histories“ — lokální větev `claude/keen-ptolemy-pntid6` měla mělkou starou historii). Vyřešeno `git reset --hard origin/main` (pracovní strom čistý, plánovací commit f9c422c zůstává na origin/claude/keen-ptolemy-pntid6). HEAD na startu 6fe94ee — OK. npm ci, e2e:install proběhly.
 
-## Changes
-- A: `weaponAttacks.ts` `computeWeaponAttacks` - `proficient = isProficientWithWeapon || pactWeapon` (pactWeapon already computed with D408 gate, so no change elsewhere); `toHitFor` gets `proficiencyNote`, the "proficiency bonus" row carries note "Pact of the Blade" only when the pact is the sole source. Notes line "Not proficient" follows the new flag.
-- B: `actionTableFeatureData.ts` - `UNTAGGED_BONUS_ACTION` (Hexblade's Curse, Giant's Might -> /as a bonus action/i on the feature's own string leaves) checked at the start of `classifyActionType`. Real-data unit guard confirms both names have a record whose text contains the sentence (no STOP).
-- C: `FightingStylePicker.tsx` wraps `FilterChoiceSpellSubPicker` in `.fighting-style-picker__cantrips` with heading "<style> cantrips" (`.fighting-style-picker__cantrips-heading`); `index.css` rules (border, radius 12px, surface, margin .75rem 0, padding .75rem 1rem, weight 600 heading). `FilterChoiceSpellSubPicker` untouched.
-- Docs: D421 in DECISIONS.md, STATUS.md.
+## STEP 1 — aktualizovaná tabulka (19 míst, pod limitem 25)
 
-## Verified
-- typecheck clean; `npm test` 191 files / 3553 tests pass (new: weaponAttacks D421, actionTableFeatureData D421 incl. real data; `featureActionRowData.test.ts` D415 now expects Giant's Might 'bonus').
-- lint: exit 1 from the pre-existing `spellsTabData.ts:229` rules-of-hooks error (noted in block HL report); no new findings in changed files.
-- e2e full run: 791 passed / 2 failed (8.8 min, over the 3 min guideline). Failure 1: `proficiencyBonusUses.spec.ts` PB-1b a expected Giant's Might in Other - updated to the Bonus Action group (consequence of B), file re-run 8/8 pass. Failure 2: `subclassSpellcastingPrereq.spec.ts` SC-1 a (wizard Next stayed disabled, timeout) - unrelated to this task, file re-run 4/4 pass (flaky). The full suite was not re-run after the PB-1b edit.
-- New scenarios: `pactWeapon.spec.ts` F-HL A (Warlock 5 pact Longsword +7, STR switch +6 with breakdown naming Pact of the Blade and no "not proficient"; unmarked Longsword +3 "not proficient with Longsword"), `hexbladeDevilsSight.spec.ts` F-HL B, `fightingStyleClassFeats.spec.ts` a (cantrip checkboxes inside the box with heading).
+| Soubor | Změna |
+|---|---|
+| src/storage/character.ts | `spellbooks?`, `CharacterSpellbook`, `CharacterSpellbookSpell`, `SpellbookOrigin`; CURRENT_SCHEMA_VERSION 71 |
+| src/storage/migrations.ts | krok 70→71, jen tag |
+| src/storage/validate.ts | `describeSpellbooksError` (jen Wizard\|XPHB, origin level 1–20 / copied / migrated), volání v describeCharacterError, `toCharacterSpellbooks` v toCharacter |
+| src/storage/characterStore.ts | `CharacterCreateInput.spellbooks`, buildCharacter, nový `setSpellbooks(id, books, spellChoices?)` (jeden zápis) |
+| src/creation/wizardState.ts | saveCharacter: `spellbooks: existing?.spellbooks` (Edit/level up knihu nesmažou; jediný řádek, krok Spells netknut) |
+| src/CharacterManager.tsx | `handleEditSpellbooks` + prop `onEditSpellbooks` |
+| src/sheet/manageSpellsData.ts | `hasSpellbook`, `spellbookSpellsOf`, `withSpellbookSpells`, `spellbookFill` |
+| src/sheet/ManageSpellsPanel.tsx | volitelný prop `spellbook`; sekce „Spellbook (N)“, „Add to spellbook“, „Remove from spellbook“ |
+| src/sheet/CharacterSheet.tsx | prop `onEditSpellbooks`, efekt doplnění (ref proti opakování), wiring `spellbook` u ClassSpellsManager |
+| testy | migrations.test (70→71 + schema čísla), characterStore.test (spellbooks), manageSpellsData.test (spellbookFill) |
+| e2e | spellbookSB1.spec.ts (nový, a–g), levelOrder.spec.ts, stableIds.spec.ts (71) |
+| docs | DECISIONS.md D422, STATUS.md, REPORT.md |
 
-## Decisions / questions
-- Decision: "Not proficient" note and breakdown follow the pact flag; a weapon already proficient through a class keeps the plain "proficiency bonus" row.
-- Question noticed: SC-1 a looks flaky under load.
-- Untracked investigation scripts from block HL remain in `scripts/` (git clean forbidden for this task).
+## Co se změnilo
+- Remove level jde přes `characterUpdateInput` (spread Character), takže knihu přenáší automaticky díky novému poli v CharacterCreateInput.
+- Fill: `spellbookFill` vrací null, když nic nechybí → zápis jen při změně; navíc `useRef` s posledním zkoušeným objektem postavy, aby odmítnutý zápis neběžel v každém renderu.
+- Kreační průvodce používá ClassSpellsManager bez propu `spellbook` → beze změny (Prepare přímo). Knihu postavě z průvodce doplní karta (e2e f).
+
+## Ověření
+- typecheck OK; test 191 souborů / 3563 testů OK; validate-data 177/177 OK.
+- lint: 1 error `src/sheet/spellsTabData.ts:229` (rules-of-hooks, `useLabel`) — soubor tímto úkolem nezměněn, chyba je předchozí; ostatní jen warningy.
+- e2e: 799 testů, 798 OK v plném běhu (8,6 min — přes limit ~3 min); `subclassSpellcastingPrereq.spec.ts` SC-1 a timeout (Next zakázaný v kroku průvodce Fighter EK, mimo dosah změn), po samostatném opakování 4/4 OK. spellbookSB1 a–g OK.
+
+## Rozhodnutí v kódu
+- Validace knihu nespojuje s držením třídy Wizard (stačí className/classSource) — Edit, který Wizarda změní na jinou třídu, tak uložení neodmítne; kniha zůstane ležet.
+- Pick s neznámou úrovní (není ve spells.json) se do knihy nepřidá.
+- „Add to spellbook“ není blokovaný poznámkou „already known“ ani plným počítadlem; Prepare v sekci Spellbook ano (stejně jako dnes).
+- Sekce Spellbook řadí podle úrovně a jména; origin `level` tlačítko Remove nemá.
+
+## Subagent
+Nepoužit.
+
+## Otázky pro uživatele
+- Kniha osiřelá po změně třídy v Edit (viz výše) — mazat ji, nebo nechat pro případ návratu? Zatím zůstává.
+- Lint error ve spellsTabData.ts je předchozí; opravit v samostatném úkolu?
 
 ## Manual browser check for the user
-Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Changed screens: Actions tab (pact weapon to-hit and breakdown; Hexblade's Curse and Giant's Might now in the Bonus Action group); wizard / level up / Edit Class step (Blessed / Druidic Warrior cantrips box).
+none - the planning chat checks the looks from screenshots. Změněné obrazovky: karta → Spells → Manage Spells u Wizarda (nová sekce „Spellbook (N)“, tlačítka „Add to spellbook“ a „Remove from spellbook“).

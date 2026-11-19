@@ -1894,6 +1894,8 @@ export function saveCharacter(
 		kenseiWeapons: orNone(heldKenseiWeapons(classes, data.kenseiWeapons)),
 		elegantCourtierSave: hasElegantCourtier(classes) ? (data.elegantCourtierSave ?? undefined) : undefined,
 		genieKind: hasGenie(classes) ? (data.genieKind ?? undefined) : undefined,
+		// D422: sheet-kept, like the free text below; an edit or a level up carries it across.
+		spellbooks: existing?.spellbooks,
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.

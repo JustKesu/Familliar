@@ -5850,3 +5850,16 @@ action“ (malými písmeny) je řadí do 'bonus', jen když text featury větu 
 další jména. Test D415 pro Giant's Might teď čeká 'bonus'. (3) Výběr cantripů Blessed / Druidic Warrior pod seznamem
 stylů boje je v rámečku `.fighting-style-picker__cantrips` (ohraničení, zaoblení a pozadí jako `.option-list`) s nadpisem
 „<styl> cantrips“; `FilterChoiceSpellSubPicker` se nezměnil (používá ho i Magic Initiate). Zadal plánovací chat (F-HL) 13. 11. 2026.
+
+## D422 — Kniha kouzel Wizarda: úložiště, doplnění na kartě, Manage Spells (SB-1)
+
+(1) PHB 2024: Wizard připravuje levelovaná kouzla jen ze své knihy; triky v knize nejsou, počet připravených se nemění,
+appka nekontroluje, kdy se seznam smí měnit. (2) `Character.spellbooks?: { className, classSource, spells: { name, source,
+origin } }[]`, origin `level` (s úrovní; zapíše až pozdější úkol) | `copied` | `migrated`; knihu smí mít jen Wizard|XPHB.
+Schema 71, migrace 70→71 jen přepíše verzi (úroveň kouzla se synchronně nezjistí). (3) Knihu plní karta: po načtení
+spells.json se každá levelovaná Wizard pick ze `spellChoices`, která v knize chybí, přidá s origin `migrated` a uloží jedním
+zápisem, jen při změně. Pick s neznámou úrovní se nepřidá. Pokrývá staré postavy i postavy z nezměněného průvodce, Edit a
+level up. (4) Manage Spells, jen Wizard: sekce „Spellbook (N)“ s Prepare/Unprepare, u `copied` a `migrated` i „Remove from
+spellbook“ (zároveň odpřipraví). V Add Spells má levelované kouzlo mimo knihu „Add to spellbook“ (origin `copied`) místo
+Prepare, bez ceny ve zlatě a čase. Unprepare kouzlo v knize nechá. Edit, level up a Remove level knihu přenášejí beze změny.
+Savant picky, krok Spells průvodce, level up, Remove level a Spell Mastery řeší pozdější úkoly. Zadal plánovací chat (SB-1) 19. 11. 2026.

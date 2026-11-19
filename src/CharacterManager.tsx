@@ -9,6 +9,7 @@ import type {
 	CharacterInventoryItem,
 	CharacterLanguage,
 	CharacterSpellChoice,
+	CharacterSpellbook,
 	CharacterToolChoice,
 	CharacterWildShapeForms,
 	ConcentrationRef,
@@ -238,6 +239,11 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setSpellChoices(id, spellChoices))
 	}
 
+	function handleEditSpellbooks(id: string, spellbooks: CharacterSpellbook[], spellChoices?: CharacterSpellChoice[]): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setSpellbooks(id, spellbooks, spellChoices))
+	}
+
 	function handleEditText(id: string, field: CharacterTextField, text: string): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setText(id, field, text))
@@ -379,6 +385,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditLanguages={(languages) => handleEditLanguages(character.id, languages)}
 					onEditToolChoices={(toolChoices) => handleEditToolChoices(character.id, toolChoices)}
 					onEditSpellChoices={(spellChoices) => handleEditSpellChoices(character.id, spellChoices)}
+					onEditSpellbooks={(spellbooks, spellChoices) => handleEditSpellbooks(character.id, spellbooks, spellChoices)}
 						onEditText={(field, text) => handleEditText(character.id, field, text)}
 					onRest={(rest) => handleRest(character.id, rest)}
 					onEditPortrait={(portrait) => handleEditPortrait(character.id, portrait)}

@@ -2975,6 +2975,7 @@ describe('every write validates the changed character (D353)', () => {
 		['setText', (store, id) => store.setText(id, 'notes', ['not text'] as never)],
 		['setLanguages', (store, id) => store.setLanguages(id, [{ bogus: true } as never])],
 		['setSpellChoices', (store, id) => store.setSpellChoices(id, [{ bogus: true } as never])],
+		['setSpellbooks', (store, id) => store.setSpellbooks(id, [{ className: 'Cleric', classSource: 'XPHB', spells: [{ name: 'Bless', source: 'XPHB', origin: { kind: 'copied' } }] }])],
 		['setFamiliar', (store, id) => store.setFamiliar(id, { name: '', source: '' })],
 		['create', (store) => store.create({ name: 'Cleo', classes: [{ bogus: true }] as never })],
 	]
@@ -2986,6 +2987,45 @@ describe('every write validates the changed character (D353)', () => {
 		expect(backing.getItem(STORAGE_KEY)).toBe(before)
 		expect(() => store.list()).not.toThrow()
 		expect(store.list().map((character) => character.name)).toEqual(['Aria', 'Bryn'])
+	})
+})
+
+describe('spellbooks in storage (SB-1 D422)', () => {
+	const wizard = { className: 'Wizard', classSource: 'XPHB', subclass: null, level: 3 }
+	const book = (origin: { kind: 'copied' } | { kind: 'migrated' } | { kind: 'level'; level: number }) => [
+		{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Shield', source: 'XPHB', origin }] },
+	]
+
+	it('stores every origin kind, and an update carries the book', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria', classes: [wizard], spellbooks: book({ kind: 'level', level: 1 }) })
+		expect(store.list()[0].spellbooks).toEqual(book({ kind: 'level', level: 1 }))
+		store.setSpellbooks(created.id, book({ kind: 'copied' }))
+		expect(store.list()[0].spellbooks).toEqual(book({ kind: 'copied' }))
+		store.setSpellbooks(created.id, book({ kind: 'migrated' }))
+		const { id: _id, ...input } = store.list()[0]
+		store.update(created.id, input)
+		expect(store.list()[0].spellbooks).toEqual(book({ kind: 'migrated' }))
+	})
+
+	it('setSpellbooks replaces the picks in the same write when given, and an empty book clears the field', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({
+			name: 'Aria',
+			classes: [wizard],
+			spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Shield', source: 'XPHB' }] }],
+			spellbooks: book({ kind: 'copied' }),
+		})
+		store.setSpellbooks(created.id, [{ className: 'Wizard', classSource: 'XPHB', spells: [] }], [])
+		expect('spellbooks' in store.list()[0]).toBe(false)
+		expect('spellChoices' in store.list()[0]).toBe(false)
+	})
+
+	it('refuses a bad origin', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria', classes: [wizard] })
+		expect(() => store.setSpellbooks(created.id, book({ kind: 'level', level: 0 }))).toThrow(ImportValidationError)
+		expect(() => store.setSpellbooks(created.id, book({ kind: 'bought' } as never))).toThrow(ImportValidationError)
 	})
 })
 

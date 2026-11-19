@@ -24,6 +24,7 @@ import type {
 	CharacterPlayState,
 	CharacterSpecies,
 	CharacterSpellChoice,
+	CharacterSpellbook,
 	CharacterSubclassSpellChoice,
 	ConcentrationRef,
 	FeatAsiChoice,
@@ -276,6 +277,8 @@ export interface CharacterCreateInput {
 	kenseiWeapons?: CharacterKenseiWeapon[]
 	elegantCourtierSave?: ElegantCourtierSave
 	genieKind?: GenieKind
+	/** D422: the Wizard's spellbook; the edit, level-up and remove-level paths pass the character's own back in. */
+	spellbooks?: CharacterSpellbook[]
 	hitPointLevels?: CharacterHitPointLevel[]
 	/*
 	 * Play-time state the wizard never collects: the hand-set current hit points
@@ -426,6 +429,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		kenseiWeapons,
 		elegantCourtierSave,
 		genieKind,
+		spellbooks,
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
@@ -491,6 +495,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(kenseiWeapons && kenseiWeapons.length > 0 ? { kenseiWeapons } : {}),
 		...(elegantCourtierSave ? { elegantCourtierSave } : {}),
 		...(genieKind ? { genieKind } : {}),
+		...(spellbooks && spellbooks.length > 0 ? { spellbooks } : {}),
 		...(hitPointLevels &&hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
 		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),
@@ -937,6 +942,24 @@ export class CharacterStore {
 		const { spellChoices: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = spellChoices.length > 0 ? { ...rest, spellChoices } : rest
+		this.writeChanged(updated, index)
+	}
+
+	/** D422: replaces the spellbooks, and the class spell picks with them when given (removing a book spell unprepares it in the same write). A book left empty is dropped. */
+	setSpellbooks(id: string, spellbooks: CharacterSpellbook[], spellChoices?: CharacterSpellChoice[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const kept = spellbooks.filter((book) => book.spells.length > 0)
+		const { spellbooks: _previous, ...rest } = characters[index]
+		let next: Character = kept.length > 0 ? { ...rest, spellbooks: kept } : rest
+		if (spellChoices !== undefined) {
+			const { spellChoices: _previousChoices, ...withoutChoices } = next
+			next = spellChoices.length > 0 ? { ...withoutChoices, spellChoices } : withoutChoices
+		}
+		const updated = [...characters]
+		updated[index] = next
 		this.writeChanged(updated, index)
 	}
 

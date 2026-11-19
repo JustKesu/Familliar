@@ -10,6 +10,7 @@ import { filterSpellsByLevel } from '../spells/spellLevelFilter'
 import { findSpellDetail, type SpellDetail } from '../spells/spellDetailData'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { DrawerSection } from './Drawer'
+import type { CharacterSpellbookSpell } from '../storage/character'
 import { pickCounts, preparedSpellRows, type ClassSpellHoldings, type SpellRef } from './manageSpellsData'
 import { SpellDetailBody } from './SpellList'
 import { ordinalLevel, sectionLabel } from './spellsTabData'
@@ -103,6 +104,7 @@ export function ClassSpellsManager({
 	details,
 	resolverData,
 	onChange,
+	spellbook,
 }: {
 	className: string
 	classSource: string
@@ -120,6 +122,8 @@ export function ClassSpellsManager({
 	resolverData: ResolverData
 	/** A newly added pick carries its level (the wizard stores it, D210); picks passed in come back untouched. */
 	onChange: (picks: (SpellRef & { level?: number })[]) => void
+	/** D422: the Wizard's book. Present, leveled spells are prepared only from it; `picks` is given when the change unprepares too. */
+	spellbook?: { spells: readonly CharacterSpellbookSpell[]; onChange: (spells: CharacterSpellbookSpell[], picks?: SpellRef[]) => void }
 }): ReactNode {
 	const listClass = spellListClassFor(className, classSource, subclassName)
 	const expandedClass = expandedSpellListClassFor(subclassName)
@@ -149,8 +153,22 @@ export function ClassSpellsManager({
 	const pickedKeys = new Set(holdings.picks.map((pick) => spellIdentityKey(pick.name, pick.source)))
 	const isPicked = (spell: SpellRef) => pickedKeys.has(spellIdentityKey(spell.name, spell.source))
 
-	const add = (spell: ClassSpellListSpell) => onChange([...holdings.picks, { name: spell.name, source: spell.source, level: spell.level }])
+	const add = (spell: SpellRef & { level: number | null }) =>
+		onChange([...holdings.picks, { name: spell.name, source: spell.source, ...(spell.level !== null ? { level: spell.level } : {}) }])
 	const remove = (spell: SpellRef) => onChange(holdings.picks.filter((pick) => spellIdentityKey(pick.name, pick.source) !== spellIdentityKey(spell.name, spell.source)))
+
+	const bookKeys = new Set((spellbook?.spells ?? []).map((spell) => spellIdentityKey(spell.name, spell.source)))
+	const inBook = (spell: SpellRef) => bookKeys.has(spellIdentityKey(spell.name, spell.source))
+	const bookRows = (spellbook?.spells ?? []).map((spell) => ({ ...spell, level: levelOf(spell) })).sort((a, b) => compareText(a.name, b.name))
+	const copyToBook = (spell: SpellRef) => spellbook?.onChange([...(spellbook.spells ?? []), { name: spell.name, source: spell.source, origin: { kind: 'copied' } }])
+	const removeFromBook = (spell: SpellRef) => {
+		if (!spellbook) return
+		const key = spellIdentityKey(spell.name, spell.source)
+		spellbook.onChange(
+			spellbook.spells.filter((entry) => spellIdentityKey(entry.name, entry.source) !== key),
+			isPicked(spell) ? holdings.picks.filter((pick) => spellIdentityKey(pick.name, pick.source) !== key) : undefined,
+		)
+	}
 
 	const offered = filterSpellsByLevel(poolSpells, spellSlots).filter((spell) => (spell.level === 0 ? cantripCount > 0 : leveledSpellCount > 0))
 	const pillLevels = [...new Set(offered.map((spell) => spell.level))].sort((a, b) => a - b)
@@ -181,7 +199,15 @@ export function ClassSpellsManager({
 				flags={spell}
 				magicalSecrets={isSecret(spell)}
 				note={knownNote !== null && otherNote !== null ? `${knownNote} · ${otherNote}` : (knownNote ?? otherNote ?? undefined)}
-				action={<PickButton spell={spell} picked={picked} disabled={!picked && (full || known !== null)} onClick={() => (picked ? remove(spell) : add(spell))} />}
+				action={
+					spellbook && spell.level > 0 && !picked && !inBook(spell) ? (
+						<button type="button" className="manage-spells__button" aria-label={`Add ${spell.name} to spellbook`} onClick={() => copyToBook(spell)}>
+							Add to spellbook
+						</button>
+					) : (
+						<PickButton spell={spell} picked={picked} disabled={!picked && (full || known !== null)} onClick={() => (picked ? remove(spell) : add(spell))} />
+					)
+				}
 				detail={findSpellDetail(details, spell.name, spell.source)}
 				resolverData={resolverData}
 			/>
@@ -219,6 +245,45 @@ export function ClassSpellsManager({
 					))}
 				</section>
 			</DrawerSection>
+			{spellbook && (
+				<DrawerSection title={`Spellbook (${bookRows.length})`}>
+					<section aria-label="Spellbook" className="manage-spells__list">
+						{bookRows.length === 0 && <p className="manage-spells__empty">No spells in the spellbook yet.</p>}
+						{groupByLevel(bookRows).map(([level, group]) => (
+							<div key={String(level)}>
+								<h4 className="manage-spells__level">{level === null ? 'Unknown level' : sectionLabel(level)}</h4>
+								<ul>
+									{group.map((row) => {
+										const picked = isPicked(row)
+										const known = picked ? null : knownSpellReason(alreadyKnown, row, CLASS_SPELL_PICKER_KEY)
+										return (
+											<ManagedSpellRow
+												key={`${row.name}|${row.source}`}
+												name={row.name}
+												level={row.level}
+												magicalSecrets={isSecret(row)}
+												note={known !== null ? knownSpellNote(known) : undefined}
+												action={
+													<>
+														<PickButton spell={row} picked={picked} disabled={!picked && (preparedFull || known !== null)} onClick={() => (picked ? remove(row) : add(row))} />
+														{row.origin.kind !== 'level' && (
+															<button type="button" className="manage-spells__button" aria-label={`Remove ${row.name} from spellbook`} onClick={() => removeFromBook(row)}>
+																Remove from spellbook
+															</button>
+														)}
+													</>
+												}
+												detail={findSpellDetail(details, row.name, row.source)}
+												resolverData={resolverData}
+											/>
+										)
+									})}
+								</ul>
+							</div>
+						))}
+					</section>
+				</DrawerSection>
+			)}
 			<DrawerSection title="Add Spells">
 				<section aria-label="Add Spells" className="manage-spells__list">
 					<p className="manage-spells__counters">

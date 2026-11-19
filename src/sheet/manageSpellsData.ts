@@ -1,4 +1,4 @@
-import type { CharacterSpellChoice } from '../storage/character'
+import type { CharacterSpellbook, CharacterSpellbookSpell, CharacterSpellChoice } from '../storage/character'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { compareText } from '../text/compareText'
 
@@ -48,6 +48,56 @@ export function preparedSpellRows(holdings: ClassSpellHoldings, levelOf: (spell:
 export function pickCounts(rows: readonly PreparedSpellRow[]): { cantrips: number; prepared: number } {
 	const picks = rows.filter((row) => row.kind === 'pick' && !row.alsoGranted && row.level !== null)
 	return { cantrips: picks.filter((row) => row.level === 0).length, prepared: picks.filter((row) => row.level! > 0).length }
+}
+
+/** D422: only the 2024 Wizard keeps a spellbook. */
+export function hasSpellbook(className: string, classSource: string): boolean {
+	return className === 'Wizard' && classSource === 'XPHB'
+}
+
+export function spellbookSpellsOf(spellbooks: readonly CharacterSpellbook[] | undefined, className: string, classSource: string): CharacterSpellbookSpell[] {
+	return spellbooks?.find((book) => book.className === className && book.classSource === classSource)?.spells ?? []
+}
+
+/** Character.spellbooks with one class's book replaced; an empty book drops that class's entry. */
+export function withSpellbookSpells(
+	spellbooks: readonly CharacterSpellbook[],
+	className: string,
+	classSource: string,
+	spells: readonly CharacterSpellbookSpell[],
+): CharacterSpellbook[] {
+	const others = spellbooks.filter((book) => !(book.className === className && book.classSource === classSource))
+	return spells.length === 0 ? others : [...others, { className, classSource, spells: [...spells] }]
+}
+
+/**
+ * D422: every leveled spellbook-class pick missing from its book, added as 'migrated'.
+ * Null when nothing is missing, so the caller writes only on a change. A pick whose level
+ * is unknown is left out: it may be a cantrip, and cantrips are never in the book.
+ */
+export function spellbookFill(
+	spellbooks: readonly CharacterSpellbook[] | undefined,
+	spellChoices: readonly CharacterSpellChoice[] | undefined,
+	levelOf: (spell: SpellRef) => number | null,
+): CharacterSpellbook[] | null {
+	let next: CharacterSpellbook[] = [...(spellbooks ?? [])]
+	let changed = false
+	for (const choice of spellChoices ?? []) {
+		if (!hasSpellbook(choice.className, choice.classSource)) continue
+		const book = spellbookSpellsOf(next, choice.className, choice.classSource)
+		const inBook = new Set(book.map((spell) => spellIdentityKey(spell.name, spell.source)))
+		const missing = choice.spells.filter((spell) => {
+			const level = levelOf(spell)
+			return level !== null && level > 0 && !inBook.has(spellIdentityKey(spell.name, spell.source))
+		})
+		if (missing.length === 0) continue
+		changed = true
+		next = withSpellbookSpells(next, choice.className, choice.classSource, [
+			...book,
+			...missing.map((spell) => ({ name: spell.name, source: spell.source, origin: { kind: 'migrated' as const } })),
+		])
+	}
+	return changed ? next : null
 }
 
 /** Character.spellChoices with one class's picks replaced; an empty pick list drops that class's entry. */

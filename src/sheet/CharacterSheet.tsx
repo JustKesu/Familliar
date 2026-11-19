@@ -75,7 +75,7 @@ import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '..
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells, type RaceSpellGrants } from '../spells/raceSpells'
-import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { findSpellDetail, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBody } from './BeastStatBlock'
 import {
 	inventoryRowKey,
@@ -157,6 +157,7 @@ import {
 	type CharacterInventoryItem,
 	type CharacterLanguage,
 	type CharacterSpellChoice,
+	type CharacterSpellbook,
 	type CharacterToolChoice,
 	type CharacterWildShapeForms,
 	type ConcentrationRef,
@@ -193,7 +194,7 @@ import { familiarBonusLines, familiarItemBonuses } from './familiarItemBonuses'
 import { ManageExtrasPanel } from './ManageExtrasPanel'
 import { ManageFeatsPanel } from './ManageFeatsPanel'
 import { ManageInventoryPanel } from './ManageInventoryPanel'
-import { withClassPicks } from './manageSpellsData'
+import { hasSpellbook, spellbookFill, spellbookSpellsOf, withClassPicks, withSpellbookSpells } from './manageSpellsData'
 import { collectKnownSpells } from '../spells/knownSpells'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
@@ -1739,6 +1740,7 @@ function CharacterSheetBody({
 	onEditLanguages,
 	onEditToolChoices,
 	onEditSpellChoices,
+	onEditSpellbooks,
 	onEditText,
 	onRest,
 	onEditCharacter,
@@ -1787,6 +1789,8 @@ function CharacterSheetBody({
 	onEditToolChoices?: (toolChoices: CharacterToolChoice[]) => void
 	/** Replaces the class spell picks from the Manage Spells drawer (R9a, D208). Absent leaves the Spells tab without the button. */
 	onEditSpellChoices?: (spellChoices: CharacterSpellChoice[]) => void
+	/** D422: replaces the spellbooks (and the picks, when given). Absent leaves the book unfilled and the Spellbook section out. */
+	onEditSpellbooks?: (spellbooks: CharacterSpellbook[], spellChoices?: CharacterSpellChoice[]) => void
 	/** Writes one of the three free-text fields, exactly as typed (slice 9d2). Absent leaves the textareas showing the stored text, read-only. */
 	onEditText?: (field: CharacterTextField, text: string) => void
 	/** Applies a finished rest in one write (slice 9b5). Absent leaves the header without the two rest buttons. */
@@ -1958,6 +1962,15 @@ function CharacterSheetBody({
 			cancelled = true
 		}
 	}, [])
+
+	/* D422: the ref stops a refused write from retrying on every render; a successful one yields a new character with nothing missing. */
+	const spellbookFillTriedFor = useRef<Character | null>(null)
+	useEffect(() => {
+		if (!spellDetails || !onEditSpellbooks || spellbookFillTriedFor.current === character) return
+		spellbookFillTriedFor.current = character
+		const filled = spellbookFill(character.spellbooks, character.spellChoices, (spell) => findSpellDetail(spellDetails, spell.name, spell.source)?.level ?? null)
+		if (filled) onEditSpellbooks(filled)
+	}, [character, spellDetails, onEditSpellbooks])
 
 	useEffect(() => {
 		let cancelled = false
@@ -3675,6 +3688,18 @@ function CharacterSheetBody({
 							details={spellDetails}
 							resolverData={resolverData}
 							onChange={(picks) => onEditSpellChoices(withClassPicks(character.spellChoices ?? [], characterClass.className, characterClass.classSource, picks))}
+							spellbook={
+								onEditSpellbooks && hasSpellbook(characterClass.className, characterClass.classSource)
+									? {
+											spells: spellbookSpellsOf(character.spellbooks, characterClass.className, characterClass.classSource),
+											onChange: (spells, picks) =>
+												onEditSpellbooks(
+													withSpellbookSpells(character.spellbooks ?? [], characterClass.className, characterClass.classSource, spells),
+													picks && withClassPicks(character.spellChoices ?? [], characterClass.className, characterClass.classSource, picks),
+												),
+										}
+									: undefined
+							}
 						/>
 					))}
 				</Drawer>

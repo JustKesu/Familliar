@@ -354,6 +354,8 @@ export interface Character {
 	elegantCourtierSave?: ElegantCourtierSave
 	/** D407: Warlock The Genie's genie kind; picks which additionalSpells entry grants expanded spells. Absent = not chosen yet. */
 	genieKind?: GenieKind
+	/** D422: the Wizard's spellbook; leveled spells are prepared only from it. Only Wizard|XPHB has one. Absent = empty. */
+	spellbooks?: CharacterSpellbook[]
 	/**
 	 * The character level the creation wizard made this character at (slice 8e).
 	 * Set once, never changed afterwards. It is the floor for removing a level:
@@ -912,6 +914,21 @@ export interface CharacterSpellChoice {
 	spells: { name: string; source: string }[]
 }
 
+/** D422: how a spell got into the spellbook. 'level' is written by level-up (a later task); 'migrated' by the sheet's fill from spellChoices. */
+export type SpellbookOrigin = { kind: 'level'; level: number } | { kind: 'copied' } | { kind: 'migrated' }
+
+export interface CharacterSpellbookSpell {
+	name: string
+	source: string
+	origin: SpellbookOrigin
+}
+
+export interface CharacterSpellbook {
+	className: string
+	classSource: string
+	spells: CharacterSpellbookSpell[]
+}
+
 /** One pick for a subclass spell-choice slot (subclassSpellChoiceData.ts SubclassSpellChoiceSlot) — identified by (grantedAtLevel, slotIndex) rather than array position, so it stays self-describing regardless of storage order. */
 export interface CharacterSubclassSpellChoicePick {
 	grantedAtLevel: number
@@ -1152,7 +1169,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 70
+export const CURRENT_SCHEMA_VERSION = 71
 
 export interface CharacterLevelOrderEntry {
 	className: string

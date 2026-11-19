@@ -23,6 +23,7 @@ import type {
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 	CharacterSpellChoice,
+	CharacterSpellbook,
 	CharacterSubclassSpellChoice,
 	CustomItemDefinition,
 	EquippedSlot,
@@ -750,6 +751,33 @@ export function describeSpellChoicesError(value: unknown): string | null {
 	return null
 }
 
+/** D422: validates an optional `spellbooks` field; only Wizard|XPHB may carry a book. */
+export function describeSpellbooksError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `spellbooks must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `spellbooks[${i}] is not an object`
+		if (entry['className'] !== 'Wizard' || entry['classSource'] !== 'XPHB') return `spellbooks[${i}] must belong to Wizard (XPHB)`
+		const spells = entry['spells']
+		if (!Array.isArray(spells)) return `spellbooks[${i}].spells must be an array`
+		for (let j = 0; j < spells.length; j++) {
+			const spell: unknown = spells[j]
+			const label = `spellbooks[${i}].spells[${j}]`
+			if (!isRecord(spell)) return `${label} is not an object`
+			if (!isNonEmptyString(spell['name'])) return `${label}.name is missing or not a string`
+			if (!isNonEmptyString(spell['source'])) return `${label}.source is missing or not a string`
+			const origin = spell['origin']
+			if (!isRecord(origin)) return `${label}.origin is not an object`
+			if (origin['kind'] === 'level') {
+				const level = origin['level']
+				if (typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > 20) return `${label}.origin.level must be a whole number from 1 to 20`
+			} else if (origin['kind'] !== 'copied' && origin['kind'] !== 'migrated') return `${label}.origin.kind must be one of level, copied, migrated`
+		}
+	}
+	return null
+}
+
 /** Validates an optional `subclassSpellChoices` field (build order step 6, slice d6b). Returns null if the field is absent (it's optional). */
 export function describeSubclassSpellChoicesError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -1408,6 +1436,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (courtier !== undefined && courtier !== 'intelligence' && courtier !== 'charisma') return `[${index}].elegantCourtierSave must be one of intelligence, charisma`
 	const genieKind = value['genieKind']
 	if (genieKind !== undefined && !(GENIE_KINDS as readonly unknown[]).includes(genieKind)) return `[${index}].genieKind must be one of ${GENIE_KINDS.join(', ')}`
+	const spellbooksError = describeSpellbooksError(value['spellbooks'])
+	if (spellbooksError) return `[${index}].${spellbooksError}`
 	if (value['speciesSize'] !== undefined && !isNonEmptyString(value['speciesSize'])) return `[${index}].speciesSize must be a non-empty string`
 	const createdAtLevel = value['createdAtLevel']
 	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
@@ -1654,6 +1684,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 			: {}),
 		...(value['elegantCourtierSave'] === 'intelligence' || value['elegantCourtierSave'] === 'charisma' ? { elegantCourtierSave: value['elegantCourtierSave'] } : {}),
 		...((GENIE_KINDS as readonly unknown[]).includes(value['genieKind']) ? { genieKind: value['genieKind'] as GenieKind } : {}),
+		...(Array.isArray(value['spellbooks']) && value['spellbooks'].length > 0 ? { spellbooks: toCharacterSpellbooks(value['spellbooks'] as Record<string, unknown>[]) } : {}),
 		...(typeof speciesSize === 'string' ? { speciesSize } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),
 		...(typeof appearance === 'string' && appearance.length > 0 ? { appearance } : {}),
@@ -1664,6 +1695,21 @@ export function toCharacter(value: Record<string, unknown>): Character {
 			? { levelOrder: (value['levelOrder'] as Record<string, unknown>[]).map((entry) => ({ className: entry['className'] as string, classSource: entry['classSource'] as string })) }
 			: {}),
 	}
+}
+
+function toCharacterSpellbooks(entries: Record<string, unknown>[]): CharacterSpellbook[] {
+	return entries.map((entry) => ({
+		className: entry['className'] as string,
+		classSource: entry['classSource'] as string,
+		spells: (entry['spells'] as Record<string, unknown>[]).map((spell) => {
+			const origin = spell['origin'] as Record<string, unknown>
+			return {
+				name: spell['name'] as string,
+				source: spell['source'] as string,
+				origin: origin['kind'] === 'level' ? { kind: 'level' as const, level: origin['level'] as number } : { kind: origin['kind'] as 'copied' | 'migrated' },
+			}
+		}),
+	}))
 }
 
 export function toStoredCharacter(value: Record<string, unknown>): StoredCharacter {

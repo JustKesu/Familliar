@@ -632,6 +632,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 70 adds CharacterFightingStyle.filterChoiceSpells (FS-1, D419). A version-69 style holds no cantrips — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 70 }),
 	},
+	{
+		from: 70,
+		to: 71,
+		/* 71 adds Character.spellbooks (SB-1, D422). Spell levels are not known synchronously, so the sheet fills the book — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 71 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

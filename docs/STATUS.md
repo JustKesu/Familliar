@@ -1370,6 +1370,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Might sit in the Bonus Action group (hand table `UNTAGGED_BONUS_ACTION`, gated on "as a bonus action" in the text);
   Blessed / Druidic Warrior cantrips are in a `.fighting-style-picker__cantrips` box. `e2e/pactWeapon.spec.ts` F-HL A,
   `e2e/hexbladeDevilsSight.spec.ts` F-HL B, `e2e/fightingStyleClassFeats.spec.ts` a.
+- SB-1 (D422): schema 71, `Character.spellbooks` (Wizard|XPHB only; origin level / copied / migrated). The sheet fills the
+  book from leveled Wizard picks once spells.json loads (`spellbookFill`, origin migrated, one write on change); store
+  `setSpellbooks`. Manage Spells (Wizard): "Spellbook (N)" section with Prepare/Unprepare and Remove from spellbook (copied,
+  migrated); Add Spells offers "Add to spellbook" for leveled spells outside the book. Not yet: origin `level` writes,
+  creation Spells step, level up, Remove level, Savant picks, Spell Mastery. `e2e/spellbookSB1.spec.ts` a–g.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`
