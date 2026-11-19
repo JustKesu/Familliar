@@ -107,7 +107,7 @@ import {
 	loadSubclassSpellcastingAbility,
 	type AlwaysPreparedSpell,
 } from '../spells/subclassPreparedSpells'
-import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
+import { isSavantSubclass, loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import {
 	loadFeatEffectEntries,
 	loadFeatTextEntries,
@@ -194,7 +194,7 @@ import { familiarBonusLines, familiarItemBonuses } from './familiarItemBonuses'
 import { ManageExtrasPanel } from './ManageExtrasPanel'
 import { ManageFeatsPanel } from './ManageFeatsPanel'
 import { ManageInventoryPanel } from './ManageInventoryPanel'
-import { hasSpellbook, spellbookFill, spellbookSpellsOf, withClassPicks, withSpellbookSpells } from './manageSpellsData'
+import { hasSpellbook, savantSpellsOf, spellbookFill, spellbookSpellsOf, withClassPicks, withSpellbookSpells } from './manageSpellsData'
 import { collectKnownSpells } from '../spells/knownSpells'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
@@ -1968,7 +1968,12 @@ function CharacterSheetBody({
 	useEffect(() => {
 		if (!spellDetails || !onEditSpellbooks || spellbookFillTriedFor.current === character) return
 		spellbookFillTriedFor.current = character
-		const filled = spellbookFill(character.spellbooks, character.spellChoices, (spell) => findSpellDetail(spellDetails, spell.name, spell.source)?.level ?? null)
+		const filled = spellbookFill(
+			character.spellbooks,
+			character.spellChoices,
+			(spell) => findSpellDetail(spellDetails, spell.name, spell.source)?.level ?? null,
+			character.subclassSpellChoices,
+		)
 		if (filled) onEditSpellbooks(filled)
 	}, [character, spellDetails, onEditSpellbooks])
 
@@ -2050,8 +2055,14 @@ function CharacterSheetBody({
 				const pactSlotsByLevel = spellSlotsClassData?.find((d) => d.className === c.className && d.classSource === c.classSource)?.pactSlotsByLevel ?? undefined
 				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level, pactSlotsByLevel, genieEntryFor(c, character.genieKind)) : []
 				/** The subclass filter-choice spell picker's own picks (d6b) — same "always prepared (subclass)" provenance label as the fixed grants above, merged into the same group rather than a separate one (CharacterSheet.tsx module comment, SpellList.tsx). */
+				// D424: Savant picks go into the spellbook, not into always prepared.
 				const matchingChoices = (character.subclassSpellChoices ?? []).filter(
-					(choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass && choice.subclassSource === source,
+					(choice) =>
+						choice.className === c.className &&
+						choice.classSource === c.classSource &&
+						choice.subclassName === c.subclass &&
+						choice.subclassSource === source &&
+						!isSavantSubclass(choice.subclassName, choice.subclassSource),
 				)
 				const chosen = matchingChoices.length > 0 ? await loadSubclassChosenSpells(matchingChoices) : []
 				const ability = source ? await loadSubclassSpellcastingAbility(c.subclass, source, c.className, c.classSource) : null
@@ -2779,8 +2790,12 @@ function CharacterSheetBody({
 		const counts = spellCountEntries.find((entry) => entry.className === c.className && entry.classSource === c.classSource)
 		if (!counts) return []
 		const choicePicks = (character.subclassSpellChoices ?? [])
-			.filter((choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass)
+			.filter(
+				(choice) =>
+					choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass && !isSavantSubclass(choice.subclassName, choice.subclassSource),
+			)
 			.flatMap((choice) => choice.picks.map((pick) => ({ name: pick.name, source: pick.source })))
+		const savant = savantSpellsOf(character.subclassSpellChoices, c.className, c.classSource, c.subclass)
 		const choiceKeys = new Set(choicePicks.map((pick) => spellIdentityKey(pick.name, pick.source)))
 		const subclassGrants = subclassSpellInfo.find((info) => info.subclassName === c.subclass)?.alwaysPrepared ?? []
 		// subclassSpellInfo merges the fixed grants with the filter-choice picks; the panel shows the two differently.
@@ -2797,7 +2812,7 @@ function CharacterSheetBody({
 			optionalFeatureGrantedSpells: optionalFeatureSpells,
 			speciesCantrip: character.speciesCantrip,
 		})
-		return [{ characterClass: c, counts, alreadyKnown, holdings: { picks, subclassChoicePicks: choicePicks, alwaysPrepared: [...classFixed, ...subclassFixed] } }]
+		return [{ characterClass: c, counts, alreadyKnown, savant, holdings: { picks, subclassChoicePicks: choicePicks, alwaysPrepared: [...classFixed, ...subclassFixed] } }]
 	})
 	const preparedGroups = managedClasses.map((managed) => ({ className: managed.characterClass.className, spells: managed.holdings.alwaysPrepared }))
 	const canManageSpells = onEditSpellChoices !== undefined && managedClasses.length > 0
@@ -3671,7 +3686,7 @@ function CharacterSheetBody({
 							</div>
 						</DrawerSection>
 					)}
-					{managedClasses.map(({ characterClass, counts, holdings, alreadyKnown }) => (
+					{managedClasses.map(({ characterClass, counts, holdings, alreadyKnown, savant }) => (
 						<ClassSpellsManager
 							key={`${characterClass.className}|${characterClass.classSource}`}
 							className={characterClass.className}
@@ -3697,6 +3712,7 @@ function CharacterSheetBody({
 													withSpellbookSpells(character.spellbooks ?? [], characterClass.className, characterClass.classSource, spells),
 													picks && withClassPicks(character.spellChoices ?? [], characterClass.className, characterClass.classSource, picks),
 												),
+											savant,
 										}
 									: undefined
 							}

@@ -1,4 +1,5 @@
-import type { CharacterSpellbook, CharacterSpellbookSpell, CharacterSpellChoice } from '../storage/character'
+import type { CharacterSpellbook, CharacterSpellbookSpell, CharacterSpellChoice, CharacterSubclassSpellChoice } from '../storage/character'
+import { isSavantSubclass } from '../spells/subclassSpellChoiceData'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { compareText } from '../text/compareText'
 
@@ -70,22 +71,49 @@ export function withSpellbookSpells(
 	return spells.length === 0 ? others : [...others, { className, classSource, spells: [...spells] }]
 }
 
+/** D424: the class's Savant picks — part of its book, derived and never stored there. */
+export function savantSpellsOf(
+	choices: readonly CharacterSubclassSpellChoice[] | undefined,
+	className: string,
+	classSource: string,
+	subclassName?: string | null,
+): SpellRef[] {
+	return (choices ?? [])
+		.filter(
+			(choice) =>
+				choice.className === className &&
+				choice.classSource === classSource &&
+				isSavantSubclass(choice.subclassName, choice.subclassSource) &&
+				(subclassName === undefined || choice.subclassName === subclassName),
+		)
+		.flatMap((choice) => choice.picks.map((pick) => ({ name: pick.name, source: pick.source })))
+}
+
+/** D424: identity keys of lost Savant spells that leave the book, so their picks are unprepared; one still in the stored book or kept by another Savant pick stays. */
+export function savantLossUnprepares(lost: readonly SpellRef[], book: readonly SpellRef[], remainingSavant: readonly SpellRef[]): Set<string> {
+	const kept = new Set([...book, ...remainingSavant].map((spell) => spellIdentityKey(spell.name, spell.source)))
+	return new Set(lost.map((spell) => spellIdentityKey(spell.name, spell.source)).filter((key) => !kept.has(key)))
+}
+
 /**
  * D422: every leveled spellbook-class pick missing from its book, added as 'migrated'.
  * Null when nothing is missing, so the caller writes only on a change. A pick whose level
  * is unknown is left out: it may be a cantrip, and cantrips are never in the book.
+ * D424: a Savant pick is already in the book.
  */
 export function spellbookFill(
 	spellbooks: readonly CharacterSpellbook[] | undefined,
 	spellChoices: readonly CharacterSpellChoice[] | undefined,
 	levelOf: (spell: SpellRef) => number | null,
+	subclassSpellChoices?: readonly CharacterSubclassSpellChoice[],
 ): CharacterSpellbook[] | null {
 	let next: CharacterSpellbook[] = [...(spellbooks ?? [])]
 	let changed = false
 	for (const choice of spellChoices ?? []) {
 		if (!hasSpellbook(choice.className, choice.classSource)) continue
 		const book = spellbookSpellsOf(next, choice.className, choice.classSource)
-		const inBook = new Set(book.map((spell) => spellIdentityKey(spell.name, spell.source)))
+		const savant = savantSpellsOf(subclassSpellChoices, choice.className, choice.classSource)
+		const inBook = new Set([...book, ...savant].map((spell) => spellIdentityKey(spell.name, spell.source)))
 		const missing = choice.spells.filter((spell) => {
 			const level = levelOf(spell)
 			return level !== null && level > 0 && !inBook.has(spellIdentityKey(spell.name, spell.source))

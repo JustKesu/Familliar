@@ -75,7 +75,9 @@ import { heldPickOwners, ownedPicks, withOwnedPicks, type HeldPickGrantData, typ
 import { checkNoClassRaised, checkOneClassRaised, classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 import { compareText } from '../text/compareText'
-import { hasSpellbook, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { hasSpellbook, savantLossUnprepares, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { isSavantSubclass } from '../spells/subclassSpellChoiceData'
+import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { resolveSpellbookEntries, spellbookRunStatus, type SpellbookRunMode, type WizardSpellbookEntry } from './wizardSpellbook'
 
 /**
@@ -1125,6 +1127,16 @@ export interface SpellPick {
 	level: number
 }
 
+/** D424: a Wizard Savant pick that goes is unprepared too, unless the book still holds the spell. */
+function withoutLostSavantPicks(data: WizardData, nextSavant: readonly { name: string; source: string }[]): SpellPick[] {
+	const { classChoice, subclass } = data
+	if (!classChoice || !hasSpellbook(classChoice.className, classChoice.classSource) || !subclass || !isSavantSubclass(subclass.name, subclass.source)) return data.spellChoices
+	const nextKeys = new Set(nextSavant.map((pick) => spellIdentityKey(pick.name, pick.source)))
+	const lost = data.subclassSpellChoices.filter((pick) => !nextKeys.has(spellIdentityKey(pick.name, pick.source)))
+	const unprepared = savantLossUnprepares(lost, data.spellbook ?? [], nextSavant)
+	return unprepared.size === 0 ? data.spellChoices : data.spellChoices.filter((pick) => !unprepared.has(spellIdentityKey(pick.name, pick.source)))
+}
+
 function isCompleteSpellChoices(spellChoices: SpellPick[], spellRequirement: SpellRequirement): boolean {
 	const cantripsChosen = spellChoices.filter((pick) => pick.level === 0).length
 	const leveledChosen = spellChoices.filter((pick) => pick.level > 0).length
@@ -1584,7 +1596,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					...state.data,
 					subclass: action.subclass,
 					optionalFeatureChoices: nothingHeld ? state.data.optionalFeatureChoices : [],
-					spellChoices: hadSubclass ? [] : state.data.spellChoices,
+					spellChoices: hadSubclass ? [] : withoutLostSavantPicks(state.data, []),
 					subclassSpellChoices: [],
 					wildShapeForms: hadSubclass ? [] : state.data.wildShapeForms,
 					subclassSkills: state.data.subclassSkills.filter((pick) => !ownSources.has(pick.grantedBy)),
@@ -1629,7 +1641,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: removed.length > 0 ? { ...state.data, spellChoices: kept } : state.data, droppedAlwaysPrepared: notes }
 		}
 		case 'setSubclassSpellChoices':
-			return { ...state, data: { ...state.data, subclassSpellChoices: action.picks } }
+			return { ...state, data: { ...state.data, subclassSpellChoices: action.picks, spellChoices: withoutLostSavantPicks(state.data, action.picks) } }
 		case 'setClassFeatureChoices':
 			return { ...state, data: { ...state.data, classFeatureChoices: action.choices } }
 		case 'setWildShapeForms':

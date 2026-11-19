@@ -12,7 +12,8 @@ import { chosenOptionalFeatureOptions, classOptionalFeatureGroupsFor, type Class
 import { cascadePrerequisiteLoss, familiarAfterOptionChange } from '../optionalFeatures/optionSwap'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
-import { hasSpellbook, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { hasSpellbook, savantLossUnprepares, savantSpellsOf, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { isSavantSubclass } from '../spells/subclassSpellChoiceData'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
@@ -213,12 +214,14 @@ export function levelRemovalCore(
 		return false
 	})
 
+	const lostSavant: { name: string; source: string }[] = []
 	const subclassSpellChoices = (character.subclassSpellChoices ?? []).flatMap((entry) => {
 		if (!ofClass(entry)) return [entry]
 		const picks = entry.picks.filter((pick) => {
 			if (pick.grantedAtLevel !== classLevel && !classRemoved) return true
 			dropped.push(`${entry.subclassName} spell choice: ${pick.name}`)
 			droppedSpells.push(pick)
+			if (isSavantSubclass(entry.subclassName, entry.subclassSource)) lostSavant.push(pick)
 			return false
 		})
 		return picks.length > 0 ? [{ ...entry, picks }] : []
@@ -242,6 +245,12 @@ export function levelRemovalCore(
 					}),
 				)
 			: character.spellbooks
+	// D424: a lost Savant spell leaves the book, so its pick stops being prepared unless the stored book keeps it.
+	const lostSavantKeys = savantLossUnprepares(
+		lostSavant,
+		spellbookSpellsOf(spellbooks, className, classSource),
+		savantSpellsOf(subclassSpellChoices, className, classSource),
+	)
 
 	// D332: records that carry no level belong to the class as a whole, so they go only with its last level.
 	const spellChoices = character.spellChoices?.flatMap((entry) => {
@@ -252,7 +261,8 @@ export function levelRemovalCore(
 			return []
 		}
 		const spells = entry.spells.filter((spell) => {
-			if (!lostBookKeys.has(spellIdentityKey(spell.name, spell.source))) return true
+			const key = spellIdentityKey(spell.name, spell.source)
+			if (!lostBookKeys.has(key) && !lostSavantKeys.has(key)) return true
 			dropped.push(`${className} spell: ${spell.name} (no longer prepared)`)
 			droppedSpells.push(spell)
 			return false

@@ -48,6 +48,11 @@ export function isSubclassSpellChoice(subclass: { name: string; source: string }
 	return SUBCLASS_SPELL_CHOICE_KEYS.has(`${subclass.name}|${subclass.source}`)
 }
 
+/** D424: the Wizard Savant features write their picks into the spellbook; they are not prepared by themselves. */
+export function isSavantSubclass(subclassName: string | null, subclassSource: string | null | undefined): boolean {
+	return subclassName !== null && subclassSource === 'XPHB' && ['Abjurer', 'Diviner', 'Evoker', 'Illusionist'].includes(subclassName)
+}
+
 interface RawSubclassEntry {
 	entryType: string
 	name: string

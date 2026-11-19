@@ -133,6 +133,8 @@ export function ClassSpellsManager({
 		counter?: { count: number; required: number }
 		/** D423: the highest spell level this run may write. */
 		maxSpellLevel?: number
+		/** D424: Savant picks, in the book without being stored there; never removed here. */
+		savant?: readonly SpellRef[]
 	}
 }): ReactNode {
 	const listClass = spellListClassFor(className, classSource, subclassName)
@@ -167,11 +169,21 @@ export function ClassSpellsManager({
 		onChange([...holdings.picks, { name: spell.name, source: spell.source, ...(spell.level !== null ? { level: spell.level } : {}) }])
 	const remove = (spell: SpellRef) => onChange(holdings.picks.filter((pick) => spellIdentityKey(pick.name, pick.source) !== spellIdentityKey(spell.name, spell.source)))
 
-	const bookKeys = new Set((spellbook?.spells ?? []).map((spell) => spellIdentityKey(spell.name, spell.source)))
+	const savantKeys = new Set((spellbook?.savant ?? []).map((spell) => spellIdentityKey(spell.name, spell.source)))
+	const isSavant = (spell: SpellRef) => savantKeys.has(spellIdentityKey(spell.name, spell.source))
+	const storedKeys = new Set((spellbook?.spells ?? []).map((spell) => spellIdentityKey(spell.name, spell.source)))
+	const bookKeys = new Set([...storedKeys, ...savantKeys])
 	const inBook = (spell: SpellRef) => bookKeys.has(spellIdentityKey(spell.name, spell.source))
-	const bookRows = (spellbook?.spells ?? []).map((spell) => ({ ...spell, level: levelOf(spell) })).sort((a, b) => compareText(a.name, b.name))
+	const bookRows = [
+		...(spellbook?.spells ?? []),
+		...(spellbook?.savant ?? [])
+			.filter((spell) => !storedKeys.has(spellIdentityKey(spell.name, spell.source)))
+			.map((spell) => ({ name: spell.name, source: spell.source, origin: { kind: 'copied' as const } })),
+	]
+		.map((spell) => ({ ...spell, level: levelOf(spell) }))
+		.sort((a, b) => compareText(a.name, b.name))
 	const bookFull = spellbook?.counter !== undefined && spellbook.counter.count >= spellbook.counter.required
-	const canRemoveFromBook = (row: CharacterSpellbookSpell) => (spellbook?.removable ? spellbook.removable(row) : row.origin.kind !== 'level')
+	const canRemoveFromBook = (row: CharacterSpellbookSpell) => !isSavant(row) && (spellbook?.removable ? spellbook.removable(row) : row.origin.kind !== 'level')
 	const copyToBook = (spell: SpellRef & { level: number }) =>
 		spellbook?.onChange([...(spellbook.spells ?? []), { name: spell.name, source: spell.source, origin: { kind: 'copied' } }], undefined, { name: spell.name, source: spell.source, level: spell.level })
 	const removeFromBook = (spell: SpellRef) => {
@@ -284,6 +296,7 @@ export function ClassSpellsManager({
 												note={known !== null ? knownSpellNote(known) : undefined}
 												action={
 													<>
+														{isSavant(row) && <span className="manage-spells__tag">Savant</span>}
 														{canRemoveFromBook(row) && (
 															<button type="button" className="manage-spells__button" aria-label={`Remove ${row.name} from spellbook`} onClick={() => removeFromBook(row)}>
 																Remove from spellbook

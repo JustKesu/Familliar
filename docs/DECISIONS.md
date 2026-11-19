@@ -5879,3 +5879,15 @@ kouzla při k; starší zápisy zůstávají a nejdou odebrat. Edit: počet se n
 odpřipraví je; `copied` a `migrated` zůstávají; dialog je jmenuje. (4) Prepare/Unprepare mají pevnou šířku 9em
 (`.manage-spells__button--pick`) a „Remove from spellbook“ stojí před nimi, aby řádky v Prepared Spells a Spellbook
 lícovaly. Savant picky, Spell Mastery a doplnění na kartě (D422) beze změny. Zadal plánovací chat (SB-2) 19. 11. 2026.
+
+## D424 — Savant kouzla Wizarda jsou v knize, ne vždy připravená (SB-3)
+
+PHB 2024: Abjuration/Divination/Evocation/Illusion Savant kouzla (Abjurer, Diviner, Evoker, Illusionist XPHB) se jen
+zdarma zapíšou do knihy; připravit je musí Wizard sám a pak se počítají do limitu. Mění dosavadní chování těchto 4
+podtříd (slice d6b: „always prepared“); College of Lore beze změny. (1) Savant picky nejsou vždy připravené nikde (Spells tab,
+Actions, Prepared v Manage Spells). (2) Jsou součástí knihy, odvozené z `subclassSpellChoices`, nikdy se nekopírují do
+`Character.spellbooks`; v sekci Spellbook se štítkem „Savant“, bez Remove, Prepare/Unprepare normálně. (3) Nepočítají se do
+„Spellbook: x/N“. (4) Doplnění na kartě (D422) i kontroly knihy je berou jako už zapsané (nikdy `migrated`). (5) Když
+Savant pick zmizí (Remove level, změna podtřídy, Edit Savant pickeru) a kouzlo nemá jinou cestu do knihy, odpřipraví se;
+dialog Remove level ho jmenuje. (6) Existující postavy: Savant kouzla prostě přestanou být připravená. Bez změny schématu.
+Zadal plánovací chat (SB-3) 19. 11. 2026.

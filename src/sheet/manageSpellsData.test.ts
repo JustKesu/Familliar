@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { pickCounts, preparedSpellRows, spellbookFill, withClassPicks, withSpellbookSpells, type SpellRef } from './manageSpellsData'
+import { spellIdentityKey } from '../spells/subclassPreparedSpells'
+import { pickCounts, preparedSpellRows, savantLossUnprepares, savantSpellsOf, spellbookFill, withClassPicks, withSpellbookSpells, type SpellRef } from './manageSpellsData'
 
 const ref = (name: string): SpellRef => ({ name, source: 'XPHB' })
 
@@ -39,6 +40,30 @@ describe('spellbookFill (D422)', () => {
 	it('withSpellbookSpells drops an emptied book', () => {
 		const book = [{ className: 'Wizard', classSource: 'XPHB', spells: [migrated('Shield')] }]
 		expect(withSpellbookSpells(book, 'Wizard', 'XPHB', [])).toEqual([])
+	})
+
+	it('D424: treats a prepared Savant pick as already in the book', () => {
+		const savant = [{ subclassName: 'Evoker', subclassSource: 'XPHB', className: 'Wizard', classSource: 'XPHB', picks: [{ grantedAtLevel: 3, slotIndex: 0, ...ref('Magic Missile') }] }]
+		const choices = [{ className: 'Wizard', classSource: 'XPHB', spells: [ref('Magic Missile'), ref('Shield')] }]
+		expect(spellbookFill(undefined, choices, wizardLevelOf, savant)).toEqual([{ className: 'Wizard', classSource: 'XPHB', spells: [migrated('Shield')] }])
+		expect(spellbookFill(undefined, [{ className: 'Wizard', classSource: 'XPHB', spells: [ref('Magic Missile')] }], wizardLevelOf, savant)).toBeNull()
+	})
+})
+
+describe('Savant picks (D424)', () => {
+	const choices = [
+		{ subclassName: 'Evoker', subclassSource: 'XPHB', className: 'Wizard', classSource: 'XPHB', picks: [{ grantedAtLevel: 3, slotIndex: 0, ...ref('Shatter') }] },
+		{ subclassName: 'College of Lore', subclassSource: 'XPHB', className: 'Bard', classSource: 'XPHB', picks: [{ grantedAtLevel: 6, slotIndex: 0, ...ref('Fireball') }] },
+	]
+
+	it('savantSpellsOf returns the Wizard Savant picks only, never College of Lore', () => {
+		expect(savantSpellsOf(choices, 'Wizard', 'XPHB')).toEqual([ref('Shatter')])
+		expect(savantSpellsOf(choices, 'Wizard', 'XPHB', 'Diviner')).toEqual([])
+		expect(savantSpellsOf(choices, 'Bard', 'XPHB')).toEqual([])
+	})
+
+	it('savantLossUnprepares keeps a spell the stored book or another Savant pick still holds', () => {
+		expect([...savantLossUnprepares([ref('Shatter'), ref('Shield'), ref('Web')], [ref('Shield')], [ref('Web')])]).toEqual([spellIdentityKey('Shatter', 'XPHB')])
 	})
 })
 const LEVELS: Record<string, number> = { Guidance: 0, Light: 0, Bless: 1, 'Cure Wounds': 1, Aid: 2, 'Spiritual Weapon': 2 }

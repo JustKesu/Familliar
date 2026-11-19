@@ -914,7 +914,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    - F-13 (D338): the first subclass pick on a level up keeps spellChoices, subclass options and Wild Shape forms; a subclass change still clears them (multiclassEndToEnd.spec.ts "M11a finding 1", "F-13" Wizard 2 → 3)
    - F-14 (D339): once the subclass's always-prepared list loads, the wizard drops the active class's picks it grants (name + source) and shows a note above the Spells counter (`dropAlwaysPreparedPicks`, `DroppedAlwaysPreparedNote`; multiclassEndToEnd.spec.ts "F-14 a", "F-14 b", M11a B with Bless/Cure Wounds and Shield of Faith again)
    - M11b end to end e2e for Wizard/Cleric, Monk/Ranger (multiclassEndToEnd.spec.ts)
-   - F-15 (D340): Savant picker above the class spell list on the Spells step; setSubclass drops only the active class's subclass skills/languages (`classSubclassGrantSources`); class always-prepared grants (Divine Smite etc.) drop the same pick via `dropAlwaysPreparedPicks` with `subclassName: null`, note names the class (multiclassEndToEnd.spec.ts "M11b finding 1", "M11b finding 2", "M11b F (finding 3)", M11b D with Evoker)
+   - F-15 (D340; Savant picks no longer always prepared since D424): Savant picker above the class spell list on the Spells step; setSubclass drops only the active class's subclass skills/languages (`classSubclassGrantSources`); class always-prepared grants (Divine Smite etc.) drop the same pick via `dropAlwaysPreparedPicks` with `subclassName: null`, note names the class (multiclassEndToEnd.spec.ts "M11b finding 1", "M11b finding 2", "M11b F (finding 3)", M11b D with Evoker)
    - F-16 (D341): class spell picks and Wild Shape forms clear on a subclass change only when the loaded character already had a subclass for that class (`initialSubclasses` in the controller state, seeded by `seed`); the always-prepared note (`droppedAlwaysPrepared`) keeps one entry per class/subclass and follows the grant level; Paladin entry asserts weapon mastery (multiclassEndToEnd.spec.ts "F-16 a", "F-16 d", extended "M11b finding 2", "F-14 b", M11a B)
    - F-16b (D342): `setSubclass` gets `subclassOnlyCaster` from `hasOwnSpellcasting` (calculation/spellSlots.ts) for classes without own slot table (Fighter, Rogue); a subclass switch then clears their class spell picks also for a new character (wizardState.test.ts; e2e/subclassOnlyCaster.spec.ts)
    - F-17 (D343): `buildFeatureReachTest` joins subclass records by className + subclassShortName + subclassSource without classSource, so the 41 older subclasses on XPHB classes show their 265 PHB-filed records (Features & Traits, Actions, pools, `featureNamesFor`); class records stay strict (featureReach.test.ts; e2e/olderSubclassFeatures.spec.ts)
@@ -1379,8 +1379,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   book, "Spellbook: x/N" counter, Add disabled when full or above the slot level). Create: 6 + 2 × (L − 1) entries,
   origin levels assigned greedily on save, Next blocked with a reason when impossible. Level up: exactly 2 (6 at a new
   Wizard 1) with origin level k, the Spells step always walked. Edit: no count, added = copied. Remove level drops
-  origin-level-k entries and unprepares them. Prepare/Unprepare fixed width. Not yet: Savant picks in the book, Spell
-  Mastery. `e2e/spellbookSB2.spec.ts` a–f.
+  origin-level-k entries and unprepares them. Prepare/Unprepare fixed width. Not yet: Spell Mastery.
+  `e2e/spellbookSB2.spec.ts` a–f.
+- SB-3 (D424): Abjurer/Diviner/Evoker/Illusionist (XPHB) Savant picks are no longer always prepared (sheet grants,
+  Manage Spells Prepared, wizard holdings); they are derived book entries (`savantSpellsOf`, `spellbook.savant`) shown
+  in Spellbook with a "Savant" tag, no Remove, outside the "Spellbook: x/N" counter and treated as in the book by
+  `spellbookFill`. A Savant pick that goes (Remove level, setSubclass, setSubclassSpellChoices) unprepares its spell
+  unless the stored book holds it (`savantLossUnprepares`). College of Lore unchanged. `e2e/spellbookSB3.spec.ts` a–f.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

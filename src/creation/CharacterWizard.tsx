@@ -94,9 +94,9 @@ import { loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type A
 import { loadHeldClassPrepared, preparedByOtherClass, type ClassPreparedSpells } from '../spells/heldPreparedSpells'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
-import { collectKnownSpells } from '../spells/knownSpells'
+import { collectKnownSpells, SUBCLASS_SPELL_CHOICE_PICKER_KEY } from '../spells/knownSpells'
 import { SubclassSpellChoicePicker } from '../spells/SubclassSpellChoicePicker'
-import { isSubclassSpellChoice, loadSubclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
+import { isSavantSubclass, isSubclassSpellChoice, loadSubclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { computeSpellCounts } from '../calculation/spellCounts'
@@ -1761,6 +1761,7 @@ export function CharacterWizard({
 	const spellbookEntries = state.data.spellbook ?? []
 	const spellbookStatus = spellbookMode && state.data.classChoice ? spellbookRunStatus(spellbookEntries, spellbookMode, state.data.classChoice.level) : null
 	const writtenBookKeys = new Set(spellbookEntries.filter((entry) => entry.origin === null).map((entry) => spellIdentityKey(entry.name, entry.source)))
+	const savantRun = spellbookMode !== null && state.data.subclass !== null && isSavantSubclass(state.data.subclass.name, state.data.subclass.source)
 
 	/** Assembled once so navigation, the Next gate and the save gate cannot drift apart. */
 	const stepConditions: WizardStepConditions = {
@@ -2401,10 +2402,10 @@ export function CharacterWizard({
 						featChoices={markFeatChoices}
 						holdings={{
 							picks: state.data.spellChoices,
-							subclassChoicePicks: state.data.subclassSpellChoices,
+							subclassChoicePicks: savantRun ? [] : state.data.subclassSpellChoices,
 							alwaysPrepared: [...classAlwaysPrepared, ...subclassAlwaysPrepared],
 						}}
-						alreadyKnown={alreadyKnownSpells}
+						alreadyKnown={savantRun ? alreadyKnownSpells.filter((spell) => spell.pickerKey !== SUBCLASS_SPELL_CHOICE_PICKER_KEY) : alreadyKnownSpells}
 						preparedByOther={preparedByOtherClass(heldPrepared, state.data.classChoice.className)}
 						details={spellDetails}
 						resolverData={resolverData}
@@ -2446,6 +2447,7 @@ export function CharacterWizard({
 											(spellbookMode === 'edit' && spellbookEntries.some((entry) => spellIdentityKey(entry.name, entry.source) === spellIdentityKey(spell.name, spell.source) && entry.origin?.kind !== 'level')),
 										...(spellbookStatus.required !== null ? { counter: { count: spellbookStatus.count, required: spellbookStatus.required } } : {}),
 										...(spellbookStatus.maxSpellLevel !== null ? { maxSpellLevel: spellbookStatus.maxSpellLevel } : {}),
+										...(savantRun ? { savant: state.data.subclassSpellChoices } : {}),
 									}
 								: undefined
 						}

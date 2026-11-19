@@ -541,6 +541,39 @@ describe('wizardReducer navigation', () => {
 		expect(wizardReducer(fighter, { type: 'setSubclass', subclass: { name: 'Champion', source: 'XPHB', featureType: null } }).data.genieKind).toBe('Djinni')
 	})
 
+	/* D424: a Savant pick that goes takes its preparation with it, unless the book holds the spell. */
+	it('unprepares a lost Wizard Savant pick (Savant edit, subclass change); the book and College of Lore keep theirs', () => {
+		const shatter = { name: 'Shatter', source: 'XPHB' }
+		const web = { name: 'Web', source: 'XPHB' }
+		const evoker: WizardControllerState = {
+			step: 'spells',
+			data: {
+				...emptyWizardData(),
+				classChoice: { className: 'Wizard', classSource: 'XPHB', level: 3 },
+				subclass: { name: 'Evoker', source: 'XPHB', featureType: null },
+				spellChoices: [
+					{ ...shatter, level: 2 },
+					{ ...web, level: 2 },
+				],
+				subclassSpellChoices: [
+					{ grantedAtLevel: 3, slotIndex: 0, ...shatter },
+					{ grantedAtLevel: 3, slotIndex: 1, ...web },
+				],
+				spellbook: [{ ...web, level: 2, origin: { kind: 'copied' } }],
+			},
+		}
+		const edited = wizardReducer(evoker, { type: 'setSubclassSpellChoices', picks: [] })
+		expect(edited.data.spellChoices.map((pick) => pick.name)).toEqual(['Web'])
+		const changed = wizardReducer(evoker, { type: 'setSubclass', subclass: { name: 'Diviner', source: 'XPHB', featureType: null } })
+		expect(changed.data.spellChoices.map((pick) => pick.name)).toEqual(['Web'])
+
+		const lore: WizardControllerState = {
+			...evoker,
+			data: { ...evoker.data, classChoice: { className: 'Bard', classSource: 'XPHB', level: 6 }, subclass: { name: 'College of Lore', source: 'XPHB', featureType: null }, spellbook: undefined },
+		}
+		expect(wizardReducer(lore, { type: 'setSubclassSpellChoices', picks: [] }).data.spellChoices).toEqual(lore.data.spellChoices)
+	})
+
 	/* D338: the level that grants the subclass picks it for the first time; nothing chosen before depends on it. */
 	it('a first subclass pick keeps spells, subclass options and Wild Shape forms; a change still clears them', () => {
 		const spellChoices = [

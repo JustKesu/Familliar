@@ -6580,7 +6580,7 @@ describe('CharacterSheet', () => {
 			expect(mistyStepSummary.textContent).toContain('always prepared (Archfey Patron)')
 		})
 
-		it('a subclass spell-choice pick (Evoker, slice d6b) shows on the sheet marked "always prepared (Evoker)"', async () => {
+		it('a Wizard Savant pick (Evoker) is not always prepared and stays off the sheet until prepared (D424)', async () => {
 			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
 			const spellSlots: ClassSpellSlotsData[] = [
 				{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3]], pactSlotsByLevel: null },
@@ -6613,14 +6613,15 @@ describe('CharacterSheet', () => {
 				],
 			}
 
+			vi.mocked(loadSubclassChosenSpells).mockClear()
 			const { container } = render(<CharacterSheet character={wizard} />)
 			await screen.findByRole('heading', { name: 'Evocation Wizard' })
 
+			// D424: a Wizard Savant pick goes into the spellbook; unprepared, it is not on the sheet.
+			await waitFor(() => expect(vi.mocked(loadSubclassSource)).toHaveBeenCalled())
 			const spellsSection = container.querySelector('.sheet__spells')!
-			await waitFor(() => expect(spellsSection.textContent).toContain('Fire Bolt'))
-
-			const fireBoltSummary = openSpellRow(spellsSection, 'Fire Bolt')
-			expect(fireBoltSummary.textContent).toContain('always prepared (Evoker)')
+			expect(vi.mocked(loadSubclassChosenSpells)).not.toHaveBeenCalled()
+			expect(spellsSection.textContent).not.toContain('Fire Bolt')
 		})
 
 		/*

@@ -1,50 +1,52 @@
-# SB-2 — Wizard spellbook v průvodci, level up, Edit a Remove level (D423)
+# SB-3 — Savant kouzla Wizarda ve spellbooku (D424)
 
-## STEP 1 — místa změn (17, pod limitem 25)
+## STEP 1 — místa změn (14, pod limitem ~20)
 
-| Soubor | Změna |
-|---|---|
-| src/creation/wizardSpellbook.ts (nový) | typ položky průvodce, max úroveň kouzla Wizarda, počet dlužných zápisů, greedy přiřazení origin, stav běhu, převod na CharacterSpellbookSpell |
-| src/creation/wizardSpellbook.test.ts (nový) | přiřazení origin (proveditelné / neproveditelné), stav |
-| src/creation/wizardState.ts | WizardData.spellbook; podmínka spellbookMode; isStepComplete 'spells'; seed z postavy; akce setSpellbook; saveCharacter zapisuje knihu |
-| src/creation/CharacterWizard.tsx | stepConditions.spellbookMode; krok Spells předává `spellbook` + důvod blokace |
-| src/sheet/ManageSpellsPanel.tsx | prop spellbook: removable, counter, maxSpellLevel; počítadlo „Spellbook: x/N“; pořadí tlačítek |
-| src/index.css | pevná šířka Prepare/Unprepare (PickButton) |
-| src/levelUp/levelGains.ts | krok spells u Wizarda vždy „adds“ (část „Spellbook spells“) |
-| src/levelUp/levelRemoval.ts | odebrání položek origin level k + unprepare, řádky v seznamu ztrát |
-| src/levelUp/levelRemovalSpellbook.test.ts (nový) | Remove level a kniha |
-| e2e/spellbookSB2.spec.ts (nový) | scénáře a–f |
-| docs | DECISIONS.md D423, STATUS.md, REPORT.md |
+| # | Soubor | Změna |
+|---|---|---|
+| 1 | src/spells/subclassSpellChoiceData.ts | `isSavantSubclass` (Abjurer/Diviner/Evoker/Illusionist XPHB) |
+| 2 | src/sheet/manageSpellsData.ts | `savantSpellsOf`, `savantLossUnprepares`; `spellbookFill` bere Savant jako už v knize |
+| 3 | src/sheet/ManageSpellsPanel.tsx | `spellbook.savant`: řádky v Spellbook se štítkem „Savant“, bez Remove; nepočítají se do knihy pro „Add to spellbook“ |
+| 4 | src/sheet/CharacterSheet.tsx ~2053 | Savant volby mimo subclass alwaysPrepared (Spells tab, Actions) |
+| 5 | src/sheet/CharacterSheet.tsx ~2781 | Manage Spells: Savant mimo `subclassChoicePicks` a alreadyKnown, předání `savant` |
+| 6 | src/sheet/CharacterSheet.tsx ~1971 | volání `spellbookFill` se `subclassSpellChoices` |
+| 7 | src/sheet/CharacterSheet.tsx ~3691 | prop `spellbook.savant` |
+| 8 | src/creation/CharacterWizard.tsx ~2400 | holdings/alreadyKnown bez Savant, `spellbook.savant` |
+| 9 | src/creation/wizardState.ts `setSubclassSpellChoices` | odebraná Savant volba odpřipraví kouzlo (není-li v knize) |
+| 10 | src/creation/wizardState.ts `setSubclass` | totéž při změně podtřídy |
+| 11 | src/levelUp/levelRemoval.ts | ztracená Savant volba odpřipraví kouzlo + řádek v dialogu |
+| 12 | unit testy | manageSpellsData.test.ts, levelRemovalSpellbook.test.ts, wizardState.test.ts |
+| 13 | e2e/spellbookSB3.spec.ts (nový) | scénáře a–f |
+| 14 | docs | DECISIONS.md D424, STATUS.md, REPORT.md |
 
-Navíc (úprava existujících testů, které procházejí Wizardovým krokem Spells): CharacterWizard.spells.test.tsx, e2e spellbookSB1 f, frhof D201 b, scc D199 a, multiclassEndToEnd (`fillSpells` plní nejdřív knihu), multiclassEntry (`fillSpells` totéž).
+Navíc: CharacterSheet.test.tsx — test „Evoker pick always prepared (d6b)“ přepsán na D424 (pick není na kartě, `loadSubclassChosenSpells` se nevolá).
 
-Setup: fetch, `merge --ff-only` (already up to date), npm ci, e2e:install; HEAD f0175c1 — OK.
+Setup: fetch, `merge --ff-only` (already up to date), npm ci, e2e:install; HEAD ee62d65 — OK.
 
 ## Co se změnilo
-- `wizardSpellbook.ts`: `WizardSpellbookEntry` (origin `null` = zapsáno v tomto běhu), `wizardMaxSpellLevel` = min(9, ⌈L/2⌉), `spellbookEntriesOwed`, `assignSpellbookOrigins` (greedy: seřazené úrovně kouzel ↔ sestupné kapacity úrovní Wizarda), `spellbookRunStatus` (důvod blokace), `resolveSpellbookEntries` (create → greedy, levelUp → level k, edit → copied).
-- wizardState: `WizardData.spellbook?` (osa postavy, seed z `character.spellbooks`), akce `setSpellbook` (volitelně i spellChoices při odpřipravení), podmínka `spellbookMode` (jen ji předává UI → testy bez ní beze změny), kontrola v `isStepComplete('spells')`; `spellbooksAfterRun`: knihu zapíše, když postava drží Wizard|XPHB a průvodce knihu nesl, jinak `existing.spellbooks`.
-- ManageSpellsPanel: prop `spellbook` + `removable`, `counter`, `maxSpellLevel`; `onChange` dostává i přidané kouzlo s úrovní (`added`); „Remove from spellbook“ před Prepare; PickButton má třídu `manage-spells__button--pick` (width 9em).
-- levelGains: část „Spellbook spells“ (2, resp. 6 při k = 1) → krok Spells se u Wizarda při level upu ukáže vždy (i Wizard 12).
-- levelRemoval: zápisy s origin `level` = k pryč + odpřipravení, řádky „Spellbook: X“ a „Wizard spell: X (no longer prepared)“ v dialogu; koncentrace přes `droppedSpells`.
+- `isSavantSubclass` (4 Wizard XPHB podtřídy). `savantSpellsOf` odvozuje Savant kouzla z `subclassSpellChoices`; `savantLossUnprepares` vrací klíče ztracených Savant kouzel, která nedrží uložená kniha ani jiný Savant pick.
+- Karta: Savant volby vyřazeny z merge do subclass alwaysPrepared (Spells tab, Actions) i z `subclassChoicePicks`/alreadyKnown v Manage Spells; `spellbook.savant` předán panelu; `spellbookFill` dostává `subclassSpellChoices` → Savant nikdy `migrated`.
+- ManageSpellsPanel: Savant řádky v sekci Spellbook (štítek „Savant“, bez Remove), patří do `bookKeys` (žádné „Add to spellbook“ pro ně). Počítadlo „Spellbook: x/N“ počítá jen zápisy běhu → Savant mimo.
+- Průvodce: při Savant podtřídě holdings bez subclassChoicePicks, alreadyKnown pro třídní panel bez položek Savant pickeru, `spellbook.savant`. Reducer `setSubclassSpellChoices` a `setSubclass` (větev bez `hadSubclass`) odpřipraví ztracené Savant kouzlo, není-li v `WizardData.spellbook`.
+- Remove level: ztracený Savant pick → řádek „Wizard spell: X (no longer prepared)“ vedle „Evoker spell choice: X“.
 
 ## Ověření
-- typecheck OK; test 193 souborů / 3574 OK; validate-data 177/177 OK.
-- lint: jen předchozí error `src/sheet/spellsTabData.ts:229` (rules-of-hooks), nezměněno.
-- e2e plná sada: 797 OK, 7 padlo (všechny procházely Wizardovým krokem Spells bez knihy — očekávané); po úpravě testů opakovány celé soubory multiclassEndToEnd, multiclassEntry, scc, frhof, spellbookSB1: 34/34 OK. spellbookSB2 a–f 5/5 OK. Plná sada trvá 14,9 min (přes limit ~3 min).
+- typecheck OK; test 193 souborů / 3583 OK; validate-data 177/177 OK.
+- lint: jen předchozí error `src/sheet/spellsTabData.ts:229`, nezměněno.
+- e2e plná sada 808/808 OK (8,9 min, nad limitem ~3 min). spellbookSB3: a+b+e (jeden test), c, d, f — 4/4 OK.
+- Unit: manageSpellsData.test (fill se Savant, savantSpellsOf, savantLossUnprepares), levelRemovalSpellbook.test (E), wizardState.test (E: Edit pickeru, změna podtřídy, Lore beze změny). B pokryto e2e a + savantSpellsOf (panel nemá unit testy).
 
 ## Rozhodnutí v kódu
-- „Add to spellbook“ zakázané při plném počítadle (create/level up) a nad max úrovní kouzla (spec říkala jen počítadlo).
-- Max úroveň kouzla podle tabulky Wizarda (vzorec), ne podle multiclass slotů.
-- Tvorba: kniha zůstává při změně třídy/úrovně (nemaže se); uloží se jen pro Wizarda.
-- Edit: odebrat lze zápisy z tohoto běhu a non-`level` zápisy (jako karta).
-- Wizard odebraný úplně (multiclass, úroveň 1): odejdou zápisy origin 1, copied/migrated zůstanou jako osiřelá kniha (D422).
+- Savant kouzlo zároveň uložené v knize (např. dříve `copied`) se ukáže jednou se štítkem Savant a bez Remove.
+- Kouzlo připravené jen přes Savant zůstává připravené, když ho drží uložená kniha nebo jiný Savant pick.
+- Savant picker dál ukazuje u kouzla připraveného třídou poznámku „already have it from the Spells step“ (vlastní volba zůstává volitelná) — kosmetické, neřešeno.
 
 ## Subagent
 Nepoužit.
 
 ## Otázky pro uživatele
-- Délka plné e2e sady (14,9 min) — rozdělit/paralelizovat?
+- Délka plné e2e sady (8,9 min).
 - Lint error ve spellsTabData.ts (předchozí) stále otevřený.
 
 ## Manual browser check for the user
-none - the planning chat checks the looks from screenshots. Změněné obrazovky: průvodce → krok Spells u Wizarda (tvorba, level up, Edit: sekce Spellbook, počítadlo „Spellbook: x/N“, důvod blokace pod seznamem); karta → Manage Spells (pevná šířka Prepare/Unprepare, „Remove from spellbook“ vlevo od nich); dialog Remove level (řádky Spellbook).
+none - the planning chat checks the looks from screenshots. Změněné obrazovky: karta → Manage Spells u Wizarda Abjurer/Diviner/Evoker/Illusionist (sekce Spellbook se štítkem „Savant“ vedle Prepare); karta → Spells tab (Savant kouzla jen když připravená); průvodce krok Spells u těchto podtříd; dialog Remove level (řádek „Wizard spell: X (no longer prepared)“).
