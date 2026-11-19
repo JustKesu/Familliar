@@ -132,7 +132,30 @@ test('WM-1b d: Remove from spellbook of a copied Mastery spell drops the mark', 
   expect((await storedBook(page))[0].mastery?.map((spell) => spell.name)).toEqual(['Web'])
 })
 
-test('WM-1b e: Remove level of Wizard 18 drops both Mastery picks and the dialog names them', async ({ page }) => {
+test('F-WM f: Wizard 20 — Magic Missile, a prepared pick and a Mastery spell, has a CAST row and an AT WILL row', async ({ page }) => {
+  await openSheet(page, wizard('fwm-f', 20, { mastery: refs(['Magic Missile', 'Shatter']) }))
+  await expect(spellRows(page, 'Magic Missile', 'label')).toHaveCount(1)
+  await expect(spellRows(page, 'Magic Missile', 'label')).toContainText(/at will/i)
+  await expect(spellRows(page, 'Magic Missile', 'cast').first()).toBeVisible()
+  await expect(spellRows(page, 'Shatter', 'label')).toContainText(/at will/i)
+})
+
+test('F-WM g: 1366x900 — a copied spell row with Mastery, Remove and Prepare keeps a readable name and nothing overflows the drawer', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 })
+  await openSheet(page, wizard('fwm-g', 18))
+  const panel = await openManage(page)
+  const book = region(panel, 'Spellbook')
+  const row = book.locator('.manage-spells__row', { has: page.locator('.manage-spells__name', { hasText: /^Sleep$/ }) })
+  for (const name of ['Mastery Sleep', 'Remove Sleep from spellbook', 'Prepare Sleep']) await expect(row.getByRole('button', { name, exact: true })).toBeVisible()
+  const nameBox = await row.locator('.manage-spells__name-cell').boundingBox()
+  expect(nameBox!.width).toBeGreaterThanOrEqual(100)
+  const overflowing = await page.locator('.drawer').evaluate((drawer) =>
+    [drawer, ...drawer.querySelectorAll('*')].filter((element) => element.scrollWidth > element.clientWidth && element.clientWidth > 0).map((element) => element.className),
+  )
+  expect(overflowing).toEqual([])
+})
+
+test('WM-1b e:Remove level of Wizard 18 drops both Mastery picks and the dialog names them', async ({ page }) => {
   await openSheet(page, wizard('wm1b-e', 18, { mastery: refs(['Sleep', 'Web']) }))
   await page.getByRole('button', { name: 'Remove level 18', exact: true }).click()
   const dialog = page.getByRole('alertdialog', { name: 'Remove level 18?' })

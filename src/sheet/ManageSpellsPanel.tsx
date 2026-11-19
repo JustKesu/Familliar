@@ -34,6 +34,7 @@ function ManagedSpellRow({
 	note,
 	magicalSecrets,
 	action,
+	wrapAction = false,
 	detail,
 	resolverData,
 }: {
@@ -43,6 +44,8 @@ function ManagedSpellRow({
 	magicalSecrets?: boolean
 	note?: ReactNode
 	action: ReactNode
+	/** F-WM: three buttons do not fit beside the name in the drawer, so the group may drop to a line of its own. */
+	wrapAction?: boolean
 	detail: SpellDetail | undefined
 	resolverData: ResolverData
 }): ReactNode {
@@ -50,7 +53,7 @@ function ManagedSpellRow({
 	const [open, setOpen] = useState(false)
 	return (
 		<li className="manage-spells__row">
-			<div className="manage-spells__line">
+			<div className={wrapAction ? 'manage-spells__line manage-spells__line--wrap' : 'manage-spells__line'}>
 				<span className="manage-spells__name-cell">
 					<span className="manage-spells__name">{name}</span> <span className="manage-spells__meta">({levelLabel(level)})</span>
 					{magicalSecrets && <span className="manage-spells__meta manage-spells__secrets">Magical Secrets</span>}
@@ -66,7 +69,7 @@ function ManagedSpellRow({
 					)}
 					{note && <span className="manage-spells__meta manage-spells__note">{note}</span>}
 				</span>
-				{action}
+				{wrapAction ? <span className="manage-spells__actions">{action}</span> : action}
 				<button type="button" className="manage-spells__expand" aria-expanded={open} aria-label={`${name} text`} onClick={() => setOpen(!open)}>
 					{open ? '▾' : '▸'}
 				</button>
@@ -321,6 +324,8 @@ export function ClassSpellsManager({
 									{group.map((row) => {
 										const picked = isPicked(row)
 										const known = picked ? null : knownSpellReason(alreadyKnown, row, CLASS_SPELL_PICKER_KEY)
+										const toggle = bookPickToggle(row)
+										const removable = canRemoveFromBook(row)
 										return (
 											<ManagedSpellRow
 												key={`${row.name}|${row.source}`}
@@ -328,11 +333,12 @@ export function ClassSpellsManager({
 												level={row.level}
 												magicalSecrets={isSecret(row)}
 												note={known !== null ? knownSpellNote(known) : undefined}
+												wrapAction={toggle !== null && removable}
 												action={
 													<>
 														{isSavant(row) && <span className="manage-spells__tag">Savant</span>}
-														{bookPickToggle(row)}
-														{canRemoveFromBook(row) && (
+														{toggle}
+														{removable && (
 															<button type="button" className="manage-spells__button" aria-label={`Remove ${row.name} from spellbook`} onClick={() => removeFromBook(row)}>
 																Remove from spellbook
 															</button>

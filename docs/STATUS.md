@@ -1392,6 +1392,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   (use box, Short and Long Rest), always prepared outside the limit. Picks are pruned on Remove from spellbook, Edit,
   Remove level (named in the dialog) and below 18/20; level up Review shows "Choose in Manage Spells".
   `e2e/spellMasteryWM1b.spec.ts` a–e.
+- F-WM: a Mastery spell that is also a prepared pick shows CAST plus an "At will" row (`spellsTabActionSections`: an
+  at-will usage gets its own row beside CAST/USE). Spellbook rows with Mastery/Signature + Remove + Prepare wrap the
+  button group under the name (`.manage-spells__line--wrap`, name min 10em). `e2e/spellMasteryWM1b.spec.ts` f, g.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

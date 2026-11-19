@@ -4240,6 +4240,32 @@ label.wizard__field {
   overflow-wrap: anywhere;
 }
 
+/* F-WM: a row with three buttons keeps the name readable; the buttons drop under it, the arrow stays on the first line. */
+.manage-spells__line--wrap {
+  flex-wrap: wrap;
+}
+
+.manage-spells__line--wrap .manage-spells__name-cell {
+  flex: 1 1 10em;
+  min-width: 10em;
+}
+
+.manage-spells__line--wrap .manage-spells__expand {
+  order: 1;
+}
+
+.manage-spells__actions {
+  order: 2;
+  flex: 0 0 auto;
+  max-width: 100%;
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
 .manage-spells__name {
   font-size: 14px;
   font-weight: 600;

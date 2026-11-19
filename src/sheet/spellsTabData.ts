@@ -232,6 +232,8 @@ export function spellsTabActionSections({
 		}
 
 		if (!cast && counterKeys.size === 0) labelRow(detail.level, entry.usages.map(shortUsageLabel).join(' · '))
+		// D425: an at-will grant has no counter, so beside a CAST or USE row it still needs its own row (Spell Mastery on a prepared pick).
+		else if (entry.usages.some((usage) => usage.kind === 'atWill')) labelRow(detail.level, shortUsageLabel({ kind: 'atWill' }))
 	}
 	for (const spell of itemSpells) {
 		const { entry, detail, usage, castLevel } = spell

@@ -238,6 +238,16 @@ describe('spellsTabActionSections (D190)', () => {
 		)
 	}
 
+	it('F-WM: a Wizard pick that is also a Spell Mastery grant keeps CAST and adds an At will row', () => {
+		const entries = combineSpellEntries([{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Shield', source: 'XPHB' }] }], [], [], [], [], [
+			{ className: 'Wizard', spells: [{ name: 'Shield', source: 'XPHB', usage: { kind: 'atWill' } }] },
+		])
+		expect(rows(sectionsFor(entries, { ordinary: [2, 0, 0, 0, 0, 0, 0, 0, 0] }))).toEqual([
+			[1, 'shield|XPHB#cast', 'CAST'],
+			[1, 'shield|XPHB#label', 'LABEL At will'],
+		])
+	})
+
 	it('Tiefling (Infernal) Warlock 3 who also chose Hellish Rebuke: CAST in the pact section with a badge, USE 1/LR in its own level', () => {
 		const entries = combineSpellEntries([{ spells: [{ name: 'Hellish Rebuke', source: 'XPHB' }] }], [], [], [], [
 			{ speciesName: 'Tiefling; Infernal Legacy', name: 'Hellish Rebuke', source: 'XPHB', usage: ONCE },
