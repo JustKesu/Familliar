@@ -1,49 +1,39 @@
-# F-HLSB — opravy z review R-HLSB, upozornění na Savant kouzla (D426)
+# LH-2 — pole pro množství u poolů nad 10 (D427)
 
-Setup: fetch, `merge --ff-only` (already up to date), npm ci, e2e:install; HEAD bbcc240 — OK.
+Setup: fetch, `merge --ff-only` (already up to date), npm ci, e2e:install; HEAD 815a41c — OK.
 
-## STEP 1 — místa změn (14, bez rozdělení)
+## STEP 1 — místa změn
 
-| # | Soubor | Místo | Bod |
-|---|---|---|---|
-| 1 | src/creation/wizardState.ts | `spellbooksAfterRun` (nově export) + volání v `saveCharacter` | A |
-| 2 | src/levelUp/levelRemoval.ts | filtr `spellChoices` podle `lostBookKeys` | B |
-| 3 | src/levelUp/levelRemoval.ts | `savantSpellsOf` u `savantLossUnprepares` a `prunedBookPicks` | C |
-| 4 | src/sheet/manageSpellsData.ts | `spellbookFill` (nový volitelný parametr `classes`) | C |
-| 5 | src/sheet/CharacterSheet.tsx | volání `spellbookFill` v efektu | C |
-| 6 | src/levelUp/levelRemoval.ts | odebrání stylu boje → `Fighting style cantrip: <jméno>` | D |
-| 7 | src/storage/validate.ts | `describeSpellbooksError` | E |
-| 8 | src/spells/wizardBookPicks.ts | `prunedBookPicks` | F |
-| 9 | src/storage/settingsStore.ts | `dismissedSavantNotices`, `dismissSavantNotice` | G |
-| 10 | src/sheet/manageSpellsData.ts | nová `unpreparedSavantSpells` | G |
-| 11 | src/sheet/CharacterSheet.tsx | upozornění v `notices` Spells tabu + stav | G |
-| 12 | testy (unit) | wizardState, levelRemovalSpellbook, manageSpellsData, characterStore, wizardBookPicks, settingsStore; upraveny ThemeToggle, CharacterSheet (D424 test) | A–G |
-| 13 | e2e/reviewFixesHLSB.spec.ts | nový | a–f |
-| 14 | docs/DECISIONS.md (D426), docs/STATUS.md, docs/REPORT.md | | |
+| # | Soubor | Místo |
+|---|---|---|
+| 1 | src/sheet/CharacterSheet.tsx | `UseBoxes`: stav `amountText`, větev max > 10 = [−] [input] [+] spent / max; `onChange` typ `number` |
+| 2 | src/sheet/CharacterSheet.tsx | `FeatureUses` a 4× props `onSpendResource` (`delta: number`) |
+| 3 | src/sheet/CharacterSheet.tsx | 4 volání slotů (Spells tab ordinary/pact, Manage Spells ordinary/pact): `delta > 0 ? 1 : -1` |
+| 4 | src/index.css | `.sheet__use-counter .sheet__use-amount` + skrytí spinnerů |
+| 5 | src/sheet/CharacterSheet.test.tsx | nový test `LH-2 (D427)` vedle R5c |
+| 6 | e2e/poolAmountLH2.spec.ts | nový, a–g |
+| 7 | docs/DECISIONS.md (D427), docs/STATUS.md, docs/REPORT.md | |
 
 ## Co se změnilo
 
-- A: `spellbooksAfterRun(existing, data, classes, levelUpTo, subclassSpellChoices)`. Level up jiné třídy než Wizard → `existing?.spellbooks` beze změny. Jinak Savant = `savantSpellsOf(perClass.subclassSpellChoices, Wizard, XPHB, wizard.subclass)`, tj. uložené záznamy po sloučení s picky běhu.
-- B: lost `level`-k zápis, jehož kouzlo drží zbývající Savant pick (podtřída po odebrání), zůstane v `spellChoices`; „Spellbook: X“ v dialogu zůstává (uložený zápis odchází).
-- C: `savantSpellsOf` se v Remove level volá s podtřídou po odebrání, ve `spellbookFill` s podtřídou z `character.classes`.
-- D: dialog Remove level jmenuje `Fighting style cantrip: <jméno>` u obou cest (úroveň stylu i odebrání třídy).
-- E: validátor odmítne druhou položku `spellbooks` pro stejnou třídu („spellbooks has more than one entry for Wizard“) a kouzlo dvakrát v jedné knize (klíč jako `spellIdentityKey`: jméno lowercase, zdroj uppercase).
-- F: `prunedBookPicks` má příznak změny per kniha.
-- G (D426): rámeček nad seznamem kouzel, třída `sheet__inventory-notice` (stávající upozornění Inventory tabu, `InventoryTab.tsx:128`), `role="status"`, `aria-label="Savant spells notice"`. Tlačítko „Manage Spells“ (aria-label „Manage Spells for Savant spells“, jen když lze spravovat kouzla) otevře drawer, „Dismiss“ uloží id postavy do `familliar:settings.dismissedSavantNotices`. Nepřipravené = Savant kouzlo aktuální podtřídy, které není pick Wizarda ani Mastery/Signature/class grant.
+- Input `type="number"`, `min=1`, `max=pool max`, `step=1`, aria-label `<name> amount`, `disabled` bez `onChange`. Množství: neprázdné, celé a ≥ 1, jinak 1. „+“ volá `onChange(amount)`, „−“ `onChange(-amount)`; ořez dělá stávající `spendResource`. Aria-labely a disabled pravidla tlačítek beze změny. Pořadí: −, pole, +, „spent / max“, recharge.
+- CSS: šířka 3.5em, `border-radius: 6px` (z globálního `button`), výška přes `align-self: stretch` v inline-flex counteru (= výška tlačítek), text na střed, spinnery skryté (`-webkit-*-spin-button`, `appearance: textfield`). `white-space: nowrap` na counteru zůstává.
+- Sorcery Points XPHB z dat (skript): úroveň = počet od 2, Sorcerer 12 → 12. Scénář g používá Sorcerer 12.
 
 ## Ověření
 
-- typecheck OK; test 194 souborů / 3606 testů OK; validate-data 177/177 OK.
-- lint: 1 error `src/sheet/spellsTabData.ts:229` rules-of-hooks (pre-existing, známý bod h), jinak warningy; výstup byl zkrácený, v mých souborech jsem žádný nález neviděl.
-- e2e: nový soubor 6/6. Celé e2e 820 passed, 1 failed (7,8 min): `subclassSpellcastingPrereq.spec.ts:103` SC-1 a (Eldritch Knight, timeout 60 s na zakázaném Next). S touto změnou nesouvisí; samostatný běh souboru 4/4 passed → timeout pod zátěží paralelního běhu.
-- Scénáře: a) `F-HLSB a` (Wizard 18 Evoker / Fighter 1 → Fighter 2, Mastery na Magic Missile zůstane), b) `F-HLSB b`, c) `F-HLSB c`, d) `F-HLSB d`, e) `F-HLSB e`, f) `F-HLSB f`.
+- typecheck OK; test 194 souborů / 3607 testů OK.
+- lint: 1 error `src/sheet/spellsTabData.ts:229` rules-of-hooks (pre-existing, soubor nedotčen), jinak warningy.
+- e2e: nový soubor 7/7. Celé e2e 827 passed, 1 failed (8,3 min): `subclassSpellcastingPrereq.spec.ts:103` SC-1 a (timeout 60 s na zakázaném Next v průvodci) — stejné selhání jako v minulém reportu; samostatně 4/4 passed. Stávající layOnHands, poolGrantorTracker, proficiencyBonusUses prošly beze změny.
+- validate-data nespuštěno (data nedotčena).
+- Scénáře: a) `LH-2 a`, b) `LH-2 b`, c) `LH-2 c`, d) `LH-2 d`, e) `LH-2 e`, f) `LH-2 f`, g) `LH-2 g`.
 
 ## Rozhodnutí v kódu
 
-- A: místo vrácení `existing` při Editu s aktivní jinou třídou se bere Savant z uložených záznamů. Doslovné „vrátit beze změny“ by u multiclass Editu zahodilo úpravy knihy udělané před přepnutím třídy (`WizardData.spellbook` drží knihu přes přepnutí, D423). Beze změny se vrací jen u level upu jiné třídy.
-- c) e2e: import souboru se dvěma knihami se odmítne chybou (import nevytváří kartu); karta Damaged se ukáže u takového záznamu v úložišti. Scénář testuje obojí.
-- `spellbooksAfterRun` je exportovaná kvůli unit testu.
-- Tlačítko v upozornění má vlastní aria-label, aby se nekřížilo s `getByRole('button', { name: 'Manage Spells', exact: true })` v 11 e2e souborech.
+- Hodnota > max se do pole nepřepisuje; při utracení ji ořízne `spendResource`.
+- Pořadí v řádku podle zadání: [−] [pole] [+] spent / max (dříve bylo „spent / max“ mezi tlačítky).
+- Stav pole je per instance `UseBoxes`: Actions a Features & Traits mají každý své pole.
+- Investigační skript `scripts/investigate-lh2-sorcery-points.js` necommitnut; `git clean` se podle zadání nespouští, zůstává netrackovaný v pracovním stromu.
 
 ## Subagent
 
@@ -51,7 +41,7 @@ Nepoužit.
 
 ## Otázky pro uživatele
 
-Žádné nové.
+- SC-1 a (`subclassSpellcastingPrereq.spec.ts:103`) padá v plném běhu opakovaně na timeout; možná zvýšit timeout nebo počkat na povolení Next.
 
 Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: Spells tab Wizarda Savant (nový rámeček s upozorněním), dialog Remove level (řádky „Fighting style cantrip“).
+Změněné obrazovky: Actions tab (řádky poolů nad 10: Lay on Hands, Font of Magic / Sorcery Points, Focus Points…), Features & Traits tab (tytéž countery).

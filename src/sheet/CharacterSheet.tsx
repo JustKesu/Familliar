@@ -588,7 +588,11 @@ function spellActionRow(spell: SpellActionData, onRoll: (report: RollReport) => 
  * filled from the left by the spent count; a bigger pool (Lay on Hands, Sorcery
  * Points) is a spent / max counter. Same `play.resourceUses` record as ever.
  */
-function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spent: number; max: number; recharge: string | undefined; onChange?: (delta: 1 | -1) => void }): ReactNode {
+function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spent: number; max: number; recharge: string | undefined; onChange?: (delta: number) => void }): ReactNode {
+	const [amountText, setAmountText] = useState('1')
+	const typedAmount = Number(amountText)
+	// D427: the amount is unsaved UI state; anything that is not a whole number of at least 1 counts as 1.
+	const amount = amountText.trim() !== '' && Number.isInteger(typedAmount) && typedAmount >= 1 ? typedAmount : 1
 	return (
 		<span className="sheet__use-boxes" role="group" aria-label={`${name} uses`}>
 			{max <= 10 ? (
@@ -608,13 +612,25 @@ function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spen
 				})
 			) : (
 				<span className="sheet__use-counter">
-					<button type="button" disabled={!onChange || spent <= 0} onClick={() => onChange?.(-1)} aria-label={`Undo a use of ${name}`}>
+					<button type="button" disabled={!onChange || spent <= 0} onClick={() => onChange?.(-amount)} aria-label={`Undo a use of ${name}`}>
 						−
 					</button>
-					<span className="sheet__nowrap">{spent} / {max}</span>
-					<button type="button" disabled={!onChange || spent >= max} onClick={() => onChange?.(1)} aria-label={`Use ${name}`}>
+					<input
+						type="number"
+						className="sheet__use-amount"
+						inputMode="numeric"
+						min={1}
+						max={max}
+						step={1}
+						value={amountText}
+						disabled={!onChange}
+						onChange={(event) => setAmountText(event.target.value)}
+						aria-label={`${name} amount`}
+					/>
+					<button type="button" disabled={!onChange || spent >= max} onClick={() => onChange?.(amount)} aria-label={`Use ${name}`}>
 						+
 					</button>
+					<span className="sheet__nowrap">{spent} / {max}</span>
 				</span>
 			)}
 			{recharge && <span className="sheet__use-recharge">/ {recharge}</span>}
@@ -634,9 +650,9 @@ function FeatureUses({
 	resourceMaxima: ReadonlyMap<string, number>
 	resourceUses: Record<string, number>
 	resourceRecharge: ReadonlyMap<string, string>
-	onSpendResource?: (name: string, delta: 1 | -1) => void
+	onSpendResource?: (name: string, delta: number) => void
 }): ReactNode {
-	const keys: { label: string | null; key: string }[] = subLimitKeys(resourceName) ?? [{ label: null, key: resourceName }]
+	const keys:{ label: string | null; key: string }[] = subLimitKeys(resourceName) ?? [{ label: null, key: resourceName }]
 	const limits = keys.filter(({ key }) => resourceMaxima.has(key))
 	if (limits.length === 0) return null
 	const boxes = (key: string) => (
@@ -809,7 +825,7 @@ function ActionsSection({
 	onOpenBreakdown?: (key: string) => void
 	onOpenAttacksPerAction?: () => void
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
-	onSpendResource?: (name: string, delta: 1 | -1) => void
+	onSpendResource?: (name: string, delta: number) => void
 	/** The inventory rows that feed a weapon firing this ammoType (slice 9d3). */
 	ammoFor: (ammoType: string) => AmmoEntry[]
 	onSpendAmmo?: (entry: AmmoEntry) => void
@@ -971,7 +987,7 @@ function SpellTabRow({
 	onRoll: (report: RollReport) => void
 	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection, pool: CastPool) => void
 	onUse?: (row: SpellsTabActionRow) => void
-	onSpendResource?: (name: string, delta: 1 | -1) => void
+	onSpendResource?: (name: string, delta: number) => void
 	onToggleConcentration?: (spell: { name: string; source: string }) => void
 }): ReactNode {
 	/* D116: open state is this row's own UI state. */
@@ -1184,7 +1200,7 @@ function SpellsSection({
 	onSpendPact?: (max: number, delta: 1 | -1) => void
 	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection, pool: CastPool) => void
 	onUse?: (row: SpellsTabActionRow) => void
-	onSpendResource?: (name: string, delta: 1 | -1) => void
+	onSpendResource?: (name: string, delta: number) => void
 	onToggleConcentration?: (spell: { name: string; source: string }) => void
 	/** R9a (D208): opens the Manage Spells drawer; absent for a non-caster or a read-only sheet. */
 	onManageSpells?: () => void
@@ -1253,7 +1269,7 @@ function SpellsSection({
 												spent={spentOrdinary[level] ?? 0}
 												max={section.ordinarySlots}
 												recharge="Long Rest"
-												onChange={onSpendOrdinary ? (delta) => onSpendOrdinary(level, section.ordinarySlots, delta) : undefined}
+												onChange={onSpendOrdinary ? (delta) => onSpendOrdinary(level, section.ordinarySlots, delta > 0 ? 1 : -1) : undefined}
 											/>
 										)}
 										{/* D11: the pact pool keeps its own boxes and tag, never merged into the ordinary count. */}
@@ -1265,7 +1281,7 @@ function SpellsSection({
 													spent={spentPact}
 													max={section.pactSlots}
 													recharge={pactRecharge}
-													onChange={onSpendPact ? (delta) => onSpendPact(section.pactSlots, delta) : undefined}
+													onChange={onSpendPact ? (delta) => onSpendPact(section.pactSlots, delta > 0 ? 1 : -1) : undefined}
 												/>
 											</span>
 										)}
@@ -1369,7 +1385,7 @@ function FeaturesSection({
 	resourceRecharge: ReadonlyMap<string, string>
 	resourceUses: Record<string, number>
 	resolverData: ResolverData
-	onSpendResource?: (name: string, delta: 1 | -1) => void
+	onSpendResource?: (name: string, delta: number) => void
 	onManageFeats?: () => void
 }): ReactNode {
 	/* D116: which groups show is UI state of this tab only, never written to the character. */
@@ -3724,7 +3740,7 @@ function CharacterSheetBody({
 												spent={spentSpellSlots.ordinary?.[level] ?? 0}
 												max={count}
 												recharge="Long Rest"
-												onChange={onEditSpentSpellSlots ? (delta) => spendOrdinarySlot(level, count, delta) : undefined}
+												onChange={onEditSpentSpellSlots ? (delta) => spendOrdinarySlot(level, count, delta > 0 ? 1 : -1) : undefined}
 											/>
 										</div>
 									)
@@ -3741,7 +3757,7 @@ function CharacterSheetBody({
 									spent={spentSpellSlots.pact ?? 0}
 									max={slotMaxima.pact}
 									recharge={pactShortRest !== null ? 'Short Rest' : 'Long Rest'}
-									onChange={onEditSpentSpellSlots ? (delta) => spendPactSlot(slotMaxima.pact, delta) : undefined}
+									onChange={onEditSpentSpellSlots ? (delta) => spendPactSlot(slotMaxima.pact, delta > 0 ? 1 : -1) : undefined}
 								/>
 							</div>
 						</DrawerSection>

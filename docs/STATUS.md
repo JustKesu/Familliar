@@ -1360,6 +1360,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   "charisma modifier (Pact of the Blade)"; `attackAbility` accepts 'charisma' (schema 69). `e2e/pactWeapon.spec.ts` PC-1 a–c.
 - LH-1 (D418): Lay on Hands pool = 5 x Paladin level (hand table `MULTIPLE_OF_CLASS_LEVEL`, one class's level, not total);
   Actions row + existing spent/max counter, Long Rest only. `e2e/layOnHands.spec.ts` a-c.
+- LH-2 (D427): a pool over 10 is `[−] [amount] [+] spent / max`; the amount field (unsaved UI state, default 1, invalid = 1)
+  sets how much + spends and − gives back, clamped to 0..max. Resource delta type widened to `number`; slot callers stay
+  ±1. `e2e/poolAmountLH2.spec.ts` a-g.
 - FS-1 (D419): the class Fighting Style picker reads the class's `featProgression` categories — Paladin 2 also offers Blessed
   Warrior (FS:P), Ranger 2 Druidic Warrior (FS:R); their 2 cantrips are picked under the list (wizard, level up, Edit), stored
   as `fightingStyles[].filterChoiceSpells` (schema 70) and shown on Spells with CHA / WIS. `e2e/fightingStyleClassFeats.spec.ts` a–c.

@@ -1742,6 +1742,24 @@ label.wizard__field {
   font-size: 13px;
 }
 
+/* D427: same height and radius as the counter's buttons (global button rule). */
+.sheet__use-counter .sheet__use-amount {
+  box-sizing: border-box;
+  align-self: stretch;
+  width: 3.5em;
+  padding: 0 0.25rem;
+  border-radius: 6px;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.sheet__use-amount::-webkit-inner-spin-button,
+.sheet__use-amount::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* D405: a two-limit feature's sets of boxes, one line each. */
 .sheet__use-limits {
   display: inline-flex;

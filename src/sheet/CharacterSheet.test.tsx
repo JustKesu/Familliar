@@ -4913,6 +4913,31 @@ describe('CharacterSheet', () => {
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 4 })
 		})
 
+		it('LH-2 (D427): a pool above 10 has an amount field that + spends; boxes up to 10 have none', async () => {
+			const onEditResourceUses = vi.fn()
+			const big: Character = { ...character, id: 'uses-fighter-amount', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }], play: { resourceUses: { 'Second Wind': 3 } } }
+			const bigClasses = [{ ...CLASSES[0]!, classTableGroups: [{ colLabels: ['Second Wind'], rows: [[2], [2], [2], [3], [25]] }] }]
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(big, bigClasses, RESOLVER))
+			vi.mocked(loadDataFile).mockImplementation(async (path: string) => (path === 'data/classes.json' ? bigClasses : []))
+			const { container, unmount } = render(<CharacterSheet character={big} onEditResourceUses={onEditResourceUses} />)
+			await waitFor(() => expect(container.querySelector('.sheet__use-counter')?.textContent).toContain('3 / 25'))
+			const field = within(actionsPanel()).getByRole('spinbutton', { name: 'Second Wind amount' })
+			expect(field).toHaveProperty('value', '1')
+			fireEvent.change(field, { target: { value: '5' } })
+			fireEvent.click(within(actionsPanel()).getByRole('button', { name: 'Use Second Wind' }))
+			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 8 })
+			unmount()
+
+			const small: Character = { ...character, id: 'uses-fighter-no-amount', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
+			const smallClasses = [{ ...CLASSES[0]!, classTableGroups: [{ colLabels: ['Second Wind'], rows: [[2]] }] }]
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(small, smallClasses, RESOLVER))
+			vi.mocked(loadDataFile).mockImplementation(async (path: string) => (path === 'data/classes.json' ? smallClasses : []))
+			render(<CharacterSheet character={small} onEditResourceUses={vi.fn()} />)
+			await waitFor(() => expect(within(actionsPanel()).getAllByRole('button', { name: 'Use Second Wind' })).toHaveLength(2))
+			expect(within(actionsPanel()).queryByRole('spinbutton')).toBeNull()
+		})
+
 		it('two rows that consume the same resolved resource show the same shared count, and marking either moves both', async () => {
 			const cleric: Character = {
 				...character,

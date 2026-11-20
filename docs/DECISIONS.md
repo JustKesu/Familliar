@@ -5913,3 +5913,11 @@ Signature / class grant), ukazuje nad seznamem rámeček „Savant spells are no
 are only written into your spellbook. Prepare them in Manage Spells.“ s tlačítky „Manage Spells“ (otevře drawer) a
 „Dismiss“. Dismiss ho pro tu postavu skryje natrvalo: id postavy v `familliar:settings.dismissedSavantNotices`, bez změny
 schématu. Zmizí sám, jakmile jsou všechna Savant kouzla připravená. Zadal uživatel přes plánovací chat (F-HLSB) 20. 11. 2026.
+
+## D427 — Pole pro množství u poolů nad 10 (LH-2)
+
+Pool s maximem nad 10 (Lay on Hands, Sorcery Points, Focus Points…) má mezi tlačítky pole pro množství:
+[−] [množství] [+] spent / max, pak obnova jako dosud. „+“ utratí množství, „−“ ho vrátí, ořezáno na 0..max (utratit 5
+při zbývajících 2 skončí na max). Zobrazení zůstává „spent / max“ (rozhodnutí uživatele). Pole je jen stav UI, neukládá
+se: výchozí 1, po kliknutí si hodnotu drží, po reloadu je zpět 1; prázdné, neceločíselné nebo < 1 platí jako 1. Na sheetu
+jen pro čtení je zakázané. Pooly do 10 mají dál políčka. Beze změny schématu. Zadal plánovací chat (LH-2) 20. 11. 2026.
