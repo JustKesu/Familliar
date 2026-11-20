@@ -108,13 +108,16 @@ export function spellbookFill(
 	spellChoices: readonly CharacterSpellChoice[] | undefined,
 	levelOf: (spell: SpellRef) => number | null,
 	subclassSpellChoices?: readonly CharacterSubclassSpellChoice[],
+	/** F-HLSB: the character's classes, so only the current subclass's Savant picks count; absent = every Savant record. */
+	classes?: readonly { className: string; classSource: string; subclass: string | null }[],
 ): CharacterSpellbook[] | null {
 	let next: CharacterSpellbook[] = [...(spellbooks ?? [])]
 	let changed = false
 	for (const choice of spellChoices ?? []) {
 		if (!hasSpellbook(choice.className, choice.classSource)) continue
 		const book = spellbookSpellsOf(next, choice.className, choice.classSource)
-		const savant = savantSpellsOf(subclassSpellChoices, choice.className, choice.classSource)
+		const subclass = classes ? (classes.find((c) => c.className === choice.className && c.classSource === choice.classSource)?.subclass ?? null) : undefined
+		const savant = savantSpellsOf(subclassSpellChoices, choice.className, choice.classSource, subclass)
 		const inBook = new Set([...book, ...savant].map((spell) => spellIdentityKey(spell.name, spell.source)))
 		const missing = choice.spells.filter((spell) => {
 			const level = levelOf(spell)
@@ -128,6 +131,18 @@ export function spellbookFill(
 		])
 	}
 	return changed ? next : null
+}
+
+/** D426: the Savant spells in the book that are neither picked (prepared) nor granted (Mastery, Signature, class grants). */
+export function unpreparedSavantSpells(savant: readonly SpellRef[], picks: readonly SpellRef[], granted: readonly SpellRef[]): SpellRef[] {
+	const prepared = new Set([...picks, ...granted].map((spell) => spellIdentityKey(spell.name, spell.source)))
+	const seen = new Set<string>()
+	return savant.filter((spell) => {
+		const key = spellIdentityKey(spell.name, spell.source)
+		if (prepared.has(key) || seen.has(key)) return false
+		seen.add(key)
+		return true
+	})
 }
 
 /** Character.spellChoices with one class's picks replaced; an empty pick list drops that class's entry. */

@@ -1395,6 +1395,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - F-WM: a Mastery spell that is also a prepared pick shows CAST plus an "At will" row (`spellsTabActionSections`: an
   at-will usage gets its own row beside CAST/USE). Spellbook rows with Mastery/Signature + Remove + Prepare wrap the
   button group under the name (`.manage-spells__line--wrap`, name min 10em). `e2e/spellMasteryWM1b.spec.ts` f, g.
+- F-HLSB (D426, review R-HLSB): `spellbooksAfterRun` keeps the book on a level up of another class and takes Savant
+  picks from the saved records with the Wizard's subclass (Mastery on a Savant spell survives a multiclass run); Remove
+  level keeps a lost book entry prepared while a remaining Savant pick holds it; `savantSpellsOf` filters by the current
+  subclass in `spellbookFill` and Remove level; Remove level names lost fighting style cantrips; validation refuses a
+  second book per class and a spell twice in one book; `prunedBookPicks` per-book change flag. Spells tab notice for
+  unprepared Savant spells (`unpreparedSavantSpells`, `.sheet__inventory-notice`) with Manage Spells and Dismiss
+  (`familliar:settings.dismissedSavantNotices`). `e2e/reviewFixesHLSB.spec.ts` a–f.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

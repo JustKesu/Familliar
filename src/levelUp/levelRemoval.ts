@@ -140,16 +140,21 @@ export function levelRemovalCore(
 	}
 
 	let fightingStyles = character.fightingStyles
+	// F-HLSB: a Blessed or Druidic Warrior style takes its cantrips (D419) with it, and the dialog names them.
+	const dropStyle = (style: NonNullable<Character['fightingStyles']>[number]) => {
+		dropped.push(`Fighting style: ${style.name}`)
+		dropped.push(...(style.filterChoiceSpells?.cantrips ?? []).map((cantrip) => `Fighting style cantrip: ${cantrip.name}`))
+	}
 	const fightingStyle = fightingStyleFor(fightingStyles, characterClass)
 	if (fightingStyle && grantsFightingStyleAt(resolverData.classFeatures, className, classSource) === classLevel) {
-		dropped.push(`Fighting style: ${fightingStyle.name}`)
+		dropStyle(fightingStyle)
 		fightingStyles = fightingStyles?.filter((style) => style !== fightingStyle)
 	}
 	const ofClass = (entry: { className?: string; classSource?: string }): boolean => entry.className === className && entry.classSource === classSource
 	if (classRemoved) {
 		fightingStyles = fightingStyles?.filter((style) => {
 			if (!ofClass(style)) return true
-			dropped.push(`Fighting style: ${style.name}`)
+			dropStyle(style)
 			return false
 		})
 	}
@@ -246,12 +251,11 @@ export function levelRemovalCore(
 					}),
 				)
 			: character.spellbooks
+	const remainingSavant = savantSpellsOf(subclassSpellChoices, className, classSource, subclass)
 	// D424: a lost Savant spell leaves the book, so its pick stops being prepared unless the stored book keeps it.
-	const lostSavantKeys = savantLossUnprepares(
-		lostSavant,
-		spellbookSpellsOf(bookAfterLevel, className, classSource),
-		savantSpellsOf(subclassSpellChoices, className, classSource),
-	)
+	const lostSavantKeys = savantLossUnprepares(lostSavant, spellbookSpellsOf(bookAfterLevel, className, classSource), remainingSavant)
+	// F-HLSB: a lost book entry whose spell a remaining Savant pick keeps in the book stays prepared.
+	const remainingSavantKeys = new Set(remainingSavant.map((spell) => spellIdentityKey(spell.name, spell.source)))
 	// D425: Spell Mastery and Signature Spells go with Wizard 18 / 20, and with their spell when it leaves the book.
 	const prunedPicks =
 		bookAfterLevel && hasSpellbook(className, classSource)
@@ -259,7 +263,7 @@ export function levelRemovalCore(
 					bookAfterLevel,
 					className,
 					classSource,
-					[...spellbookSpellsOf(bookAfterLevel, className, classSource), ...savantSpellsOf(subclassSpellChoices, className, classSource)],
+					[...spellbookSpellsOf(bookAfterLevel, className, classSource), ...remainingSavant],
 					classLevel - 1,
 				)
 			: { spellbooks: bookAfterLevel, dropped: [] }
@@ -276,7 +280,7 @@ export function levelRemovalCore(
 		}
 		const spells = entry.spells.filter((spell) => {
 			const key = spellIdentityKey(spell.name, spell.source)
-			if (!lostBookKeys.has(key) && !lostSavantKeys.has(key)) return true
+			if ((!lostBookKeys.has(key) || remainingSavantKeys.has(key)) && !lostSavantKeys.has(key)) return true
 			dropped.push(`${className} spell: ${spell.name} (no longer prepared)`)
 			droppedSpells.push(spell)
 			return false

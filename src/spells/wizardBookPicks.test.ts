@@ -87,6 +87,14 @@ describe('active and pruned picks (D425)', () => {
 		expect(prunedBookPicks([stored], 'Wizard', 'XPHB', [...spells, ref('Web')], 20).dropped).toEqual([])
 	})
 
+	it('F-HLSB F: a book whose picks all stay is returned untouched, even after another book lost one', () => {
+		const second = book({ mastery: [ref('Web')] })
+		const spells = stored.spells.filter((spell) => spell.name !== 'Sleep')
+		const { spellbooks } = prunedBookPicks([{ ...stored, spells }, second], 'Wizard', 'XPHB', spells, 20)
+		expect(spellbooks[0].mastery).toEqual([ref('Web')])
+		expect(spellbooks[1]).toBe(second)
+	})
+
 	it('withSpellbookSpells keeps the picks; withBookPicks leaves empty lists out', () => {
 		expect(withSpellbookSpells([stored], 'Wizard', 'XPHB', stored.spells)[0].mastery).toEqual(stored.mastery)
 		expect(withBookPicks(stored, { mastery: [], signature: [] })).toEqual(book())

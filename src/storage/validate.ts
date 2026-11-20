@@ -755,18 +755,27 @@ export function describeSpellChoicesError(value: unknown): string | null {
 export function describeSpellbooksError(value: unknown): string | null {
 	if (value === undefined) return null
 	if (!Array.isArray(value)) return `spellbooks must be an array`
+	const owners = new Set<string>()
 	for (let i = 0; i < value.length; i++) {
 		const entry: unknown = value[i]
 		if (!isRecord(entry)) return `spellbooks[${i}] is not an object`
 		if (entry['className'] !== 'Wizard' || entry['classSource'] !== 'XPHB') return `spellbooks[${i}] must belong to Wizard (XPHB)`
+		const owner = `${entry['className']}|${entry['classSource']}`
+		if (owners.has(owner)) return `spellbooks has more than one entry for ${entry['className']}`
+		owners.add(owner)
 		const spells = entry['spells']
 		if (!Array.isArray(spells)) return `spellbooks[${i}].spells must be an array`
+		const written = new Set<string>()
 		for (let j = 0; j < spells.length; j++) {
 			const spell: unknown = spells[j]
 			const label = `spellbooks[${i}].spells[${j}]`
 			if (!isRecord(spell)) return `${label} is not an object`
 			if (!isNonEmptyString(spell['name'])) return `${label}.name is missing or not a string`
 			if (!isNonEmptyString(spell['source'])) return `${label}.source is missing or not a string`
+			// Same identity as spellIdentityKey (subclassPreparedSpells.ts).
+			const key = `${spell['name'].toLowerCase()}|${spell['source'].toUpperCase()}`
+			if (written.has(key)) return `${label} repeats ${spell['name']} in the same spellbook`
+			written.add(key)
 			const origin = spell['origin']
 			if (!isRecord(origin)) return `${label}.origin is not an object`
 			if (origin['kind'] === 'level') {

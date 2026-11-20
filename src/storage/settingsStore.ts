@@ -11,11 +11,13 @@ export type Theme = 'dark' | 'light'
 export interface AppSettings {
 	theme: Theme
 	flame: boolean
+	/** D426: ids of the characters whose Savant notice was dismissed. */
+	dismissedSavantNotices: string[]
 }
 
 export const SETTINGS_KEY = 'familliar:settings'
 
-export const DEFAULT_SETTINGS: AppSettings = { theme: 'dark', flame: true }
+export const DEFAULT_SETTINGS: AppSettings = { theme: 'dark', flame: true, dismissedSavantNotices: [] }
 
 function browserStorage(): KeyValueStorage | null {
 	try {
@@ -28,16 +30,24 @@ function browserStorage(): KeyValueStorage | null {
 export function loadSettings(storage: KeyValueStorage | null = browserStorage()): AppSettings {
 	try {
 		const raw = storage?.getItem(SETTINGS_KEY)
-		if (!raw) return { ...DEFAULT_SETTINGS }
+		if (!raw) return { ...DEFAULT_SETTINGS, dismissedSavantNotices: [] }
 		const parsed: unknown = JSON.parse(raw)
-		const { theme, flame } = (parsed ?? {}) as { theme?: unknown; flame?: unknown }
+		const { theme, flame, dismissedSavantNotices } = (parsed ?? {}) as { theme?: unknown; flame?: unknown; dismissedSavantNotices?: unknown }
 		return {
 			theme: theme === 'light' || theme === 'dark' ? theme : DEFAULT_SETTINGS.theme,
 			flame: typeof flame === 'boolean' ? flame : DEFAULT_SETTINGS.flame,
+			dismissedSavantNotices: Array.isArray(dismissedSavantNotices) ? dismissedSavantNotices.filter((id): id is string => typeof id === 'string') : [],
 		}
 	} catch {
-		return { ...DEFAULT_SETTINGS }
+		return { ...DEFAULT_SETTINGS, dismissedSavantNotices: [] }
 	}
+}
+
+/** D426: remembers for good that this character's Savant notice was dismissed. */
+export function dismissSavantNotice(characterId: string, storage: KeyValueStorage | null = browserStorage()): void {
+	const settings = loadSettings(storage)
+	if (settings.dismissedSavantNotices.includes(characterId)) return
+	saveSettings({ ...settings, dismissedSavantNotices: [...settings.dismissedSavantNotices, characterId] }, storage)
 }
 
 export function saveSettings(settings: AppSettings, storage: KeyValueStorage | null = browserStorage()): void {

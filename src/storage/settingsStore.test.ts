@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { KeyValueStorage } from './characterStore'
-import { DEFAULT_SETTINGS, loadSettings, saveSettings, SETTINGS_KEY } from './settingsStore'
+import { DEFAULT_SETTINGS, dismissSavantNotice, loadSettings, saveSettings, SETTINGS_KEY } from './settingsStore'
 
 class MemoryStorage implements KeyValueStorage {
 	data = new Map<string, string>()
@@ -17,22 +17,22 @@ class MemoryStorage implements KeyValueStorage {
 
 describe('settingsStore', () => {
 	it('defaults to the dark theme with the flame on when nothing is stored', () => {
-		expect(loadSettings(new MemoryStorage())).toEqual({ theme: 'dark', flame: true })
+		expect(loadSettings(new MemoryStorage())).toEqual({ theme: 'dark', flame: true, dismissedSavantNotices: [] })
 		expect(DEFAULT_SETTINGS.theme).toBe('dark')
 		expect(DEFAULT_SETTINGS.flame).toBe(true)
 	})
 
 	it('round-trips a saved theme and flame switch under familliar:settings', () => {
 		const storage = new MemoryStorage()
-		saveSettings({ theme: 'light', flame: false }, storage)
-		expect(JSON.parse(storage.data.get(SETTINGS_KEY)!)).toEqual({ theme: 'light', flame: false })
-		expect(loadSettings(storage)).toEqual({ theme: 'light', flame: false })
+		saveSettings({ theme: 'light', flame: false, dismissedSavantNotices: [] }, storage)
+		expect(JSON.parse(storage.data.get(SETTINGS_KEY)!)).toEqual({ theme: 'light', flame: false, dismissedSavantNotices: [] })
+		expect(loadSettings(storage)).toEqual({ theme: 'light', flame: false, dismissedSavantNotices: [] })
 	})
 
 	it('keeps the flame on for settings saved before it existed or with a non-boolean value', () => {
 		const storage = new MemoryStorage()
 		storage.setItem(SETTINGS_KEY, '{"theme":"light"}')
-		expect(loadSettings(storage)).toEqual({ theme: 'light', flame: true })
+		expect(loadSettings(storage)).toEqual({ theme: 'light', flame: true, dismissedSavantNotices: [] })
 		storage.setItem(SETTINGS_KEY, '{"theme":"light","flame":"off"}')
 		expect(loadSettings(storage).flame).toBe(true)
 	})
@@ -45,5 +45,16 @@ describe('settingsStore', () => {
 		expect(loadSettings(storage)).toEqual(DEFAULT_SETTINGS)
 		storage.setItem(SETTINGS_KEY, 'null')
 		expect(loadSettings(storage)).toEqual(DEFAULT_SETTINGS)
+	})
+
+	it('D426: dismissing a Savant notice keeps the theme and flame, adds the id once, and drops non-string ids on load', () => {
+		const storage = new MemoryStorage()
+		saveSettings({ theme: 'light', flame: false, dismissedSavantNotices: [] }, storage)
+		dismissSavantNotice('a', storage)
+		dismissSavantNotice('a', storage)
+		dismissSavantNotice('b', storage)
+		expect(loadSettings(storage)).toEqual({ theme: 'light', flame: false, dismissedSavantNotices: ['a', 'b'] })
+		storage.setItem(SETTINGS_KEY, '{"dismissedSavantNotices":["c",4,null]}')
+		expect(loadSettings(storage).dismissedSavantNotices).toEqual(['c'])
 	})
 })

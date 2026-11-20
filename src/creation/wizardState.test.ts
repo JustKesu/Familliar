@@ -11,6 +11,7 @@ import {
 	isSpeciesCantripComplete,
 	isStepComplete,
 	saveCharacter,
+	spellbooksAfterRun,
 	unfinishedHeldClasses,
 	visibleSteps,
 	wizardDataFromCharacter,
@@ -2049,6 +2050,38 @@ describe('multiclass Edit (M9a)', () => {
 })
 
 /* FS-1 (D419): Blessed Warrior / Druidic Warrior as the class Fighting Style carry their 2 cantrips. */
+describe('spellbooksAfterRun (F-HLSB A)', () => {
+	const MM = { name: 'Magic Missile', source: 'XPHB' }
+	const wizard = { className: 'Wizard', classSource: 'XPHB', subclass: 'Evoker', level: 18 }
+	const fighter = { className: 'Fighter', classSource: 'XPHB', subclass: null, level: 2 }
+	const savant = [{ subclassName: 'Evoker', subclassSource: 'XPHB', className: 'Wizard', classSource: 'XPHB', picks: [{ grantedAtLevel: 3, slotIndex: 0, ...MM }] }]
+	const existing: Character = {
+		id: 'w',
+		name: 'Mage',
+		classes: [wizard, { ...fighter, level: 1 }],
+		subclassSpellChoices: savant,
+		spellbooks: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Shield', source: 'XPHB', origin: { kind: 'level', level: 1 } }], mastery: [MM] }],
+	}
+	const seeded = (classChoice: WizardData['classChoice'], subclass: WizardData['subclass']): WizardData => ({
+		...completeData(),
+		classChoice,
+		subclass,
+		subclassSpellChoices: [],
+		spellbook: [{ name: 'Shield', source: 'XPHB', level: 1, origin: { kind: 'level', level: 1 } }],
+	})
+
+	it('a level up of another class keeps the book and the Mastery on a Savant spell', () => {
+		const data = seeded({ className: 'Fighter', classSource: 'XPHB', level: 2 }, null)
+		expect(spellbooksAfterRun(existing, data, [wizard, fighter], 20, savant)).toBe(existing.spellbooks)
+	})
+
+	it('a multiclass Edit with another class active takes the Savant picks from the saved records', () => {
+		const data = seeded({ className: 'Fighter', classSource: 'XPHB', level: 1 }, null)
+		expect(spellbooksAfterRun(existing, data, [wizard, { ...fighter, level: 1 }], undefined, savant)?.[0].mastery).toEqual([MM])
+		expect(spellbooksAfterRun(existing, data, [wizard, { ...fighter, level: 1 }], undefined, [])?.[0].mastery).toBeUndefined()
+	})
+})
+
 describe('fighting style cantrips (D419)', () => {
 	const GUIDANCE = { name: 'Guidance', source: 'XPHB' }
 	const SACRED_FLAME = { name: 'Sacred Flame', source: 'XPHB' }

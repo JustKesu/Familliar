@@ -6621,7 +6621,9 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(vi.mocked(loadSubclassSource)).toHaveBeenCalled())
 			const spellsSection = container.querySelector('.sheet__spells')!
 			expect(vi.mocked(loadSubclassChosenSpells)).not.toHaveBeenCalled()
-			expect(spellsSection.textContent).not.toContain('Fire Bolt')
+			// D426: only the notice names it; the spell list does not hold it.
+			expect(spellsSection.querySelector('.sheet__spell-table')?.textContent ?? '').not.toContain('Fire Bolt')
+			expect(screen.getByRole('status', { name: 'Savant spells notice' }).textContent).toContain('Savant spells are not prepared: Fire Bolt.')
 		})
 
 		/*

@@ -194,7 +194,8 @@ import { familiarBonusLines, familiarItemBonuses } from './familiarItemBonuses'
 import { ManageExtrasPanel } from './ManageExtrasPanel'
 import { ManageFeatsPanel } from './ManageFeatsPanel'
 import { ManageInventoryPanel } from './ManageInventoryPanel'
-import { hasSpellbook, savantSpellsOf, spellbookFill, spellbookSpellsOf, withClassPicks, withSpellbookSpells } from './manageSpellsData'
+import { hasSpellbook, savantSpellsOf, spellbookFill, spellbookSpellsOf, unpreparedSavantSpells, withClassPicks, withSpellbookSpells } from './manageSpellsData'
+import { dismissSavantNotice, loadSettings } from '../storage/settingsStore'
 import { collectKnownSpells } from '../spells/knownSpells'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { activeBookPicks, prunedBookPicks, withBookPicks } from '../spells/wizardBookPicks'
@@ -1974,9 +1975,11 @@ function CharacterSheetBody({
 			character.spellChoices,
 			(spell) => findSpellDetail(spellDetails, spell.name, spell.source)?.level ?? null,
 			character.subclassSpellChoices,
+			character.classes,
 		)
 		if (filled) onEditSpellbooks(filled)
 	}, [character, spellDetails, onEditSpellbooks])
+	const [dismissedSavantNotices, setDismissedSavantNotices] = useState(() => loadSettings().dismissedSavantNotices)
 
 	useEffect(() => {
 		let cancelled = false
@@ -2316,6 +2319,14 @@ function CharacterSheetBody({
 					{ className: bookWizard.className, spells: [...(classSpellInfo.find((info) => info.className === bookWizard.className)?.spells ?? []), ...bookPickGrants] },
 				]
 			: classSpellInfo
+	// D426: Savant spells left unprepared by D424 are named once above the spell list.
+	const unpreparedSavant = bookWizard
+		? unpreparedSavantSpells(
+				savantSpellsOf(character.subclassSpellChoices, bookWizard.className, bookWizard.classSource, bookWizard.subclass),
+				character.spellChoices?.find((choice) => choice.className === bookWizard.className && choice.classSource === bookWizard.classSource)?.spells ?? [],
+				[...wizardBookPicks.mastery, ...wizardBookPicks.signature, ...(classSpellInfo.find((info) => info.className === bookWizard.className)?.spells ?? [])],
+			)
+		: []
 	const combinedSpells = combineSpellEntries(
 		character.spellChoices ?? [],
 		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, className: info.className, classSource: info.classSource, spells: info.alwaysPrepared })),
@@ -3331,6 +3342,28 @@ function CharacterSheetBody({
 					onManageSpells={canManageSpells ? () => setDrawer({ kind: 'manageSpells' }) : undefined}
 					notices={
 				<>
+					{unpreparedSavant.length > 0 && !dismissedSavantNotices.includes(character.id) && (
+						<div className="sheet__inventory-notice" role="status" aria-label="Savant spells notice">
+							<p>
+								Savant spells are not prepared: {unpreparedSavant.map((spell) => spell.name).join(', ')}. Since the 2024 rules they are only written into your spellbook. Prepare them in
+								Manage Spells.
+							</p>
+							{canManageSpells && (
+								<button type="button" aria-label="Manage Spells for Savant spells" onClick={() => setDrawer({ kind: 'manageSpells' })}>
+									Manage Spells
+								</button>
+							)}{' '}
+							<button
+								type="button"
+								onClick={() => {
+									dismissSavantNotice(character.id)
+									setDismissedSavantNotices((ids) => [...ids, character.id])
+								}}
+							>
+								Dismiss
+							</button>
+						</div>
+					)}
 					{spellLoadErrors.map((error) => (
 						<p key={error.what} className="error">
 							Could not load {error.what}: {error.message}

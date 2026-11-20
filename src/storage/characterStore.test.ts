@@ -3038,6 +3038,16 @@ describe('spellbooks in storage (SB-1 D422)', () => {
 		expect(() => store.setSpellbooks(created.id, [{ ...book({ kind: 'copied' })[0], signature: three }])).toThrow(ImportValidationError)
 		expect(() => store.setSpellbooks(created.id, [{ ...book({ kind: 'copied' })[0], mastery: [{ name: '', source: 'XPHB' }] }])).toThrow(ImportValidationError)
 	})
+
+	it('F-HLSB E: refuses a second book for the Wizard and a spell written twice in one book', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria', classes: [wizard] })
+		expect(() => store.setSpellbooks(created.id, [...book({ kind: 'copied' }), ...book({ kind: 'migrated' })])).toThrow(/more than one entry for Wizard/)
+		const twice = [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Shield', source: 'XPHB', origin: { kind: 'copied' as const } }, { name: 'shield', source: 'xphb', origin: { kind: 'migrated' as const } }] }]
+		expect(() => store.setSpellbooks(created.id, twice)).toThrow(/repeats shield/)
+		store.setSpellbooks(created.id, [{ className: 'Wizard', classSource: 'XPHB', spells: [twice[0].spells[0], { name: 'Shield', source: 'PHB', origin: { kind: 'copied' } }] }])
+		expect(store.list()[0].spellbooks?.[0].spells).toHaveLength(2)
+	})
 })
 
 describe('pactWeapon and genieKind in storage (PW-1 D401, GN-1 D407, F-Q D408)', () => {

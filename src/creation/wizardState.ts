@@ -75,7 +75,7 @@ import { heldPickOwners, ownedPicks, withOwnedPicks, type HeldPickGrantData, typ
 import { checkNoClassRaised, checkOneClassRaised, classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 import { compareText } from '../text/compareText'
-import { hasSpellbook, savantLossUnprepares, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
+import { hasSpellbook, savantLossUnprepares, savantSpellsOf, spellbookSpellsOf, withSpellbookSpells } from '../sheet/manageSpellsData'
 import { isSavantSubclass } from '../spells/subclassSpellChoiceData'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { resolveSpellbookEntries, spellbookRunStatus, type SpellbookRunMode, type WizardSpellbookEntry } from './wizardSpellbook'
@@ -1708,12 +1708,21 @@ function clearStartingEquipmentFor(choice: StartingEquipmentChoice, origin: 'cla
  * edit (D105) and for a character `maxHp` couldn't be resolved for.
  */
 /** D423: the book the run edited, written while the character holds a spellbook class; otherwise `existing`'s, untouched (D422). */
-function spellbooksAfterRun(existing: Character | undefined, data: WizardData, classes: readonly CharacterClass[], levelUpTo: number | undefined): CharacterSpellbook[] | undefined {
+export function spellbooksAfterRun(
+	existing: Character | undefined,
+	data: WizardData,
+	classes: readonly CharacterClass[],
+	levelUpTo: number | undefined,
+	subclassSpellChoices: readonly CharacterSubclassSpellChoice[] | undefined,
+): CharacterSpellbook[] | undefined {
 	const wizard = classes.find((entry) => hasSpellbook(entry.className, entry.classSource))
 	if (!wizard || data.spellbook === undefined) return existing?.spellbooks
+	// F-HLSB: a level up of another class writes nothing in the book.
+	if (levelUpTo !== undefined && !(data.classChoice && hasSpellbook(data.classChoice.className, data.classChoice.classSource))) return existing?.spellbooks
 	const mode: SpellbookRunMode = levelUpTo !== undefined ? 'levelUp' : existing ? 'edit' : 'create'
 	const spells = resolveSpellbookEntries(data.spellbook ?? [], mode, wizard.level)
-	const savant = data.subclass && isSavantSubclass(data.subclass.name, data.subclass.source) ? data.subclassSpellChoices : []
+	// F-HLSB: the Wizard's own Savant picks as saved, whichever class of a multiclass Edit is active.
+	const savant = savantSpellsOf(subclassSpellChoices, wizard.className, wizard.classSource, wizard.subclass)
 	// D425: an Edit that takes a spell out of the book takes its Mastery or Signature mark too.
 	const next = prunedBookPicks(
 		withSpellbookSpells(existing?.spellbooks ?? [], wizard.className, wizard.classSource, spells),
@@ -1944,7 +1953,7 @@ export function saveCharacter(
 		kenseiWeapons: orNone(heldKenseiWeapons(classes, data.kenseiWeapons)),
 		elegantCourtierSave: hasElegantCourtier(classes) ? (data.elegantCourtierSave ?? undefined) : undefined,
 		genieKind: hasGenie(classes) ? (data.genieKind ?? undefined) : undefined,
-		spellbooks: spellbooksAfterRun(existing, data, classes, levelUpTo),
+		spellbooks: spellbooksAfterRun(existing, data, classes, levelUpTo, perClass.subclassSpellChoices),
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.

@@ -137,4 +137,64 @@ describe('Remove level and Savant picks (D424)', () => {
 		expect(plan.dropped).toEqual(expect.arrayContaining(['Evoker spell choice: Shatter', 'Wizard spell: Shatter (no longer prepared)']))
 		expect(plan.dropped).not.toContain('Wizard spell: Thunderwave (no longer prepared)')
 	})
+
+	it('F-HLSB B: a book entry lost with Wizard 4 stays prepared while a remaining Savant pick keeps it in the book', () => {
+		const character = evoker3()
+		character.classes = [{ className: 'Wizard', classSource: 'XPHB', subclass: 'Evoker', level: 4 }]
+		character.spellbooks = [
+			{
+				className: 'Wizard',
+				classSource: 'XPHB',
+				spells: [
+					{ name: 'Shatter', source: 'XPHB', origin: { kind: 'level', level: 4 } },
+					{ name: 'Shield', source: 'XPHB', origin: { kind: 'level', level: 4 } },
+				],
+			},
+		]
+		const plan = levelRemovalCore(character, CLASSES, RESOLVER, null)
+		if ('reason' in plan) throw new Error(plan.reason)
+		expect(plan.result.spellChoices?.[0].spells.map((spell) => spell.name)).toEqual(['Shatter', 'Thunderwave'])
+		expect(plan.dropped).toEqual(expect.arrayContaining(['Spellbook: Shatter', 'Wizard spell: Shield (no longer prepared)']))
+		expect(plan.dropped).not.toContain('Wizard spell: Shatter (no longer prepared)')
+	})
+
+	it('F-HLSB C: a Savant record of another subclass does not keep a lost book entry prepared', () => {
+		const character = evoker3()
+		character.classes = [{ className: 'Wizard', classSource: 'XPHB', subclass: 'Evoker', level: 4 }]
+		character.subclassSpellChoices = [{ ...character.subclassSpellChoices![0], subclassName: 'Abjurer' }]
+		character.spellbooks = [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Shatter', source: 'XPHB', origin: { kind: 'level', level: 4 } }] }]
+		const plan = levelRemovalCore(character, CLASSES, RESOLVER, null)
+		if ('reason' in plan) throw new Error(plan.reason)
+		expect(plan.dropped).toContain('Wizard spell: Shatter (no longer prepared)')
+	})
+})
+
+describe('Remove level and fighting style cantrips (F-HLSB D)', () => {
+	it('names the Blessed Warrior cantrips that go with the style', () => {
+		const resolver = {
+			...RESOLVER,
+			classFeatures: [
+				...(RESOLVER.classFeatures as unknown[]),
+				{ id: 'cf|fighting style|paladin|xphb|2|xphb', name: 'Fighting Style', className: 'Paladin', classSource: 'XPHB', level: 2, entries: ['You gain a Fighting Style feat.'] },
+			],
+		}
+		const paladin: Character = {
+			id: 'p1',
+			name: 'Paladin',
+			classes: [{ className: 'Paladin', classSource: 'XPHB', subclass: null, level: 2 }],
+			fightingStyles: [
+				{
+					className: 'Paladin',
+					classSource: 'XPHB',
+					name: 'Blessed Warrior',
+					source: 'XPHB',
+					filterChoiceSpells: { cantrips: [{ name: 'Guidance', source: 'XPHB' }, { name: 'Sacred Flame', source: 'XPHB' }], spells: [] },
+				},
+			],
+		}
+		const plan = levelRemovalCore(paladin, CLASSES, resolver as typeof RESOLVER, null)
+		if ('reason' in plan) throw new Error(plan.reason)
+		expect(plan.result.fightingStyles).toEqual([])
+		expect(plan.dropped).toEqual(expect.arrayContaining(['Fighting style: Blessed Warrior', 'Fighting style cantrip: Guidance', 'Fighting style cantrip: Sacred Flame']))
+	})
 })

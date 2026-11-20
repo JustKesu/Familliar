@@ -97,11 +97,16 @@ export function prunedBookPicks(
 		if (book.className !== className || book.classSource !== classSource) return book
 		const before = storedBookPicks(book)
 		const kept = activeBookPicks(book, inBook, wizardLevel)
+		let changed = false
 		for (const kind of ['mastery', 'signature'] as const) {
 			const keptKeys = new Set(kept[kind].map(keyOf))
-			for (const pick of before[kind]) if (!keptKeys.has(keyOf(pick))) dropped.push(`${FEATURE_NAMES[kind]}: ${pick.name}`)
+			for (const pick of before[kind]) {
+				if (keptKeys.has(keyOf(pick))) continue
+				dropped.push(`${FEATURE_NAMES[kind]}: ${pick.name}`)
+				changed = true
+			}
 		}
-		return dropped.length > 0 ? withBookPicks(book, kept) : book
+		return changed ? withBookPicks(book, kept) : book
 	})
 	return { spellbooks: dropped.length > 0 ? next : [...spellbooks], dropped }
 }

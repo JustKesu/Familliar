@@ -5904,3 +5904,12 @@ grant Wizarda (nepočítají se do limitu): Mastery „at will“, Signature 1 p
 level, ztráta Savant) nebo Wizard klesne pod 18 / 20; dialog Remove level ho jmenuje. Karta navíc zobrazuje jen picky
 platné teď. (5) Review level upu u těchto rysů ukazuje „Choose in Manage Spells“, bez pickeru.
 Zadal plánovací chat (WM-1b) 19. 11. 2026.
+
+## D426 — Upozornění na nepřipravená Savant kouzla (F-HLSB G)
+
+Doplňuje D424(6): Savant kouzla zůstávají nepřipravená, ale hráč se to dozví. Spells tab Wizarda XPHB s Savant podtřídou
+(Abjurer, Diviner, Evoker, Illusionist), který má v knize aspoň jedno Savant kouzlo nepřipravené (ani pick, ani Mastery /
+Signature / class grant), ukazuje nad seznamem rámeček „Savant spells are not prepared: <jména>. Since the 2024 rules they
+are only written into your spellbook. Prepare them in Manage Spells.“ s tlačítky „Manage Spells“ (otevře drawer) a
+„Dismiss“. Dismiss ho pro tu postavu skryje natrvalo: id postavy v `familliar:settings.dismissedSavantNotices`, bez změny
+schématu. Zmizí sám, jakmile jsou všechna Savant kouzla připravená. Zadal uživatel přes plánovací chat (F-HLSB) 20. 11. 2026.

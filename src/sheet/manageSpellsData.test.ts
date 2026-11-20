@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
-import { pickCounts, preparedSpellRows, savantLossUnprepares, savantSpellsOf, spellbookFill, withClassPicks, withSpellbookSpells, type SpellRef } from './manageSpellsData'
+import { pickCounts, preparedSpellRows, savantLossUnprepares, savantSpellsOf, spellbookFill, unpreparedSavantSpells, withClassPicks, withSpellbookSpells, type SpellRef } from './manageSpellsData'
 
 const ref = (name: string): SpellRef => ({ name, source: 'XPHB' })
 
@@ -47,6 +47,23 @@ describe('spellbookFill (D422)', () => {
 		const choices = [{ className: 'Wizard', classSource: 'XPHB', spells: [ref('Magic Missile'), ref('Shield')] }]
 		expect(spellbookFill(undefined, choices, wizardLevelOf, savant)).toEqual([{ className: 'Wizard', classSource: 'XPHB', spells: [migrated('Shield')] }])
 		expect(spellbookFill(undefined, [{ className: 'Wizard', classSource: 'XPHB', spells: [ref('Magic Missile')] }], wizardLevelOf, savant)).toBeNull()
+	})
+
+	it('F-HLSB C: a Savant record of a subclass the Wizard no longer has does not count as in the book', () => {
+		const savant = [{ subclassName: 'Evoker', subclassSource: 'XPHB', className: 'Wizard', classSource: 'XPHB', picks: [{ grantedAtLevel: 3, slotIndex: 0, ...ref('Magic Missile') }] }]
+		const choices = [{ className: 'Wizard', classSource: 'XPHB', spells: [ref('Magic Missile')] }]
+		const diviner = [{ className: 'Wizard', classSource: 'XPHB', subclass: 'Diviner' }]
+		const evoker = [{ className: 'Wizard', classSource: 'XPHB', subclass: 'Evoker' }]
+		expect(spellbookFill(undefined, choices, wizardLevelOf, savant, diviner)).toEqual([{ className: 'Wizard', classSource: 'XPHB', spells: [migrated('Magic Missile')] }])
+		expect(spellbookFill(undefined, choices, wizardLevelOf, savant, evoker)).toBeNull()
+	})
+})
+
+describe('unpreparedSavantSpells (D426)', () => {
+	it('names the Savant spells neither picked nor granted, once each', () => {
+		const savant = [ref('Shatter'), ref('Magic Missile'), ref('Fireball'), ref('Shatter')]
+		expect(unpreparedSavantSpells(savant, [ref('Magic Missile')], [{ name: 'fireball', source: 'xphb' }])).toEqual([ref('Shatter')])
+		expect(unpreparedSavantSpells(savant, [ref('Shatter'), ref('Magic Missile'), ref('Fireball')], [])).toEqual([])
 	})
 })
 
