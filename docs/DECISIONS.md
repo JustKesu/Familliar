@@ -5940,3 +5940,10 @@ scrollu. Řádek 1: tlačítko řádku (CAST / USE / štítek), jméno (s rozbal
 Concentration/Ritual, „Attack with“, počítadlo USE). Notes kouzel jen v rozbaleném řádku. Extras: řádek 1 jméno + AC +
 HP, řádek 2 typ, rychlost, poznámky. Karta Armour Class má na mobilu popisek „AC“. Daniel zvolil tuto variantu místo
 vodorovného scrollu 22. 11. 2026.
+
+## D430 — Průvodce na mobilu (M-3)
+
+Na mobilu (≤ 760 px) má průvodce (nová postava, Edit, Level up) nahoře jeden kompaktní sticky řádek „3 / 9 · Background“
+s šipkou a tenkým pruhem postupu; klepnutí otevře seznam kroků jako rozbalovací panel (stejná pravidla skoků, zamčené
+kroky zůstávají zamčené) a v něm je i Cancel. Back a Next (resp. uložení na posledním kroku) jsou pevně dole přes celou
+šířku. Daniel zvolil tuto variantu místo vodorovně scrollujících kroků 22. 11. 2026.

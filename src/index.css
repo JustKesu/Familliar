@@ -5258,6 +5258,148 @@ details.beast > .beast__body {
     border-left: 0;
   }
 
+  /* `.extras-tab__row` above sets display: flex at the same specificity. */
+  .extras-tab__table > .extras-tab__head {
+    display: none;
+  }
+
+  .drawer__close {
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    margin: -8px -10px -8px 0;
+    padding: 0;
+  }
+
+  .drawer input[type='search'] {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* D430: compact step row with a dropdown list on top, Back/Next fixed at the bottom. */
+  .wizard {
+    padding-bottom: 96px;
+  }
+
+  .wizard__bar {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .wizard__mobile-bar {
+    position: relative;
+  }
+
+  .wizard__step-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text);
+    font: 600 14px/1.2 var(--font-body);
+    text-align: left;
+  }
+
+  .wizard__step-toggle:hover:not(:disabled) {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .wizard__step-chevron {
+    color: var(--text-sub);
+  }
+
+  .wizard__progress {
+    height: 3px;
+    background: var(--line);
+  }
+
+  .wizard__progress > span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+
+  .wizard__step-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    padding: 4px 8px 8px;
+    border: 1px solid var(--line);
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+    background: var(--surface);
+  }
+
+  .wizard__step-panel--closed {
+    display: none;
+  }
+
+  .wizard__step-panel .wizard__steps {
+    flex-direction: column;
+  }
+
+  .wizard__step-panel .wizard__step {
+    width: 100%;
+    min-height: 44px;
+    text-align: left;
+  }
+
+  .wizard__step-panel .wizard__cancel {
+    min-height: 44px;
+    margin-top: 4px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-sub);
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .wizard__content > .wizard__nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    margin: 0;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .wizard__content > .wizard__nav .wizard__cancel {
+    display: none;
+  }
+
+  .wizard__content > .wizard__nav .wizard__nav-main {
+    flex: 1 1 100%;
+  }
+
+  .wizard__content > .wizard__nav .wizard__nav-note {
+    flex: 1 1 100%;
+  }
+
+  .wizard__content > .wizard__nav .wizard__nav-main > button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+  }
+
   .roll-toast {
     left: 12px;
     right: 12px;

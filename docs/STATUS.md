@@ -1417,6 +1417,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   ≥ 36px). Spell notes text renders only in the open row on mobile (`.sheet__spell-row-notes`, `useMobileLayout` in
   `SpellTabRow`); weapon/spell notes of the actions table stay on line 2 (no expand there). Mobile AC card label "AC"
   (`ArmourClassCard label`); identity line wraps; ability cards centred. `e2e/mobileRowsM2.spec.ts` a–f.
+- M-3 (D430): phone wizard (new / Edit / Level up). The sticky bar renders `WizardMobileStepBar` instead of the step list
+  and "Quick navigation" group: one row "i / n · Label" with chevron and accent progress bar; it opens the "Wizard steps"
+  list plus Cancel as a dropdown (step tap, outside tap or Escape closes). The "Step navigation" group is fixed to the
+  bottom (Back + Next/save, ≥ 44px, its Cancel hidden); `.wizard` gets 96px bottom padding. Also at ≤ 760px: Extras
+  table head hidden (specificity fix), drawer close 44×44, drawer search inputs full width. `e2e/mobileWizardM3.spec.ts` a–g.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

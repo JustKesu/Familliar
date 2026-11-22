@@ -121,7 +121,8 @@ import { GenieKindChoice } from '../genie/GenieKindChoice'
 import { genieEntryFor, isGenieClass } from '../genie/genie'
 import { useWisdomSaveHeld } from '../kensei/useWisdomSaveHeld'
 import { ConfirmDialog } from '../app/ConfirmDialog'
-import { WizardNavButtons, WizardStepList } from './WizardShell'
+import { WizardMobileStepBar, WizardNavButtons, WizardStepList } from './WizardShell'
+import { useMobileLayout } from '../sheet/useMobileLayout'
 import {
 	emptyWizardData,
 	initialControllerState,
@@ -1877,6 +1878,15 @@ export function CharacterWizard({
 		/>
 	)
 
+	const mobile = useMobileLayout()
+	const stepItems = visibleSteps(stepConditions).map((step) => ({
+		key: step,
+		label: stepLabel(step, classOptionalFeatureGroups),
+		current: step === state.step,
+		reachable: reachable.includes(step),
+	}))
+	const goToStep = (step: string): void => dispatch({ type: 'goTo', step: step as WizardStep, conditions: stepConditions })
+
 	// F-21: focus follows a step change to the heading; the first shown step keeps today's behaviour.
 	const titleRef = useRef<HTMLHeadingElement>(null)
 	const shownStep = useRef<WizardStep | null>(null)
@@ -1924,16 +1934,14 @@ export function CharacterWizard({
 	return (
 		<div className="wizard">
 			<div className="wizard__bar">
-				<WizardStepList
-					steps={visibleSteps(stepConditions).map((step) => ({
-						key: step,
-						label: stepLabel(step, classOptionalFeatureGroups),
-						current: step === state.step,
-						reachable: reachable.includes(step),
-					}))}
-					onGoTo={(step) => dispatch({ type: 'goTo', step: step as WizardStep, conditions: stepConditions })}
-				/>
-				{navButtons('Quick navigation')}
+				{mobile ? (
+					<WizardMobileStepBar steps={stepItems} onGoTo={goToStep} onCancel={handleCancel} />
+				) : (
+					<>
+						<WizardStepList steps={stepItems} onGoTo={goToStep} />
+						{navButtons('Quick navigation')}
+					</>
+				)}
 			</div>
 
 			<div className="wizard__content">
