@@ -17,7 +17,7 @@
  * R4c: the HP card, death saves included, is a caller-built slot (HitPoints.tsx).
  */
 
-import { useContext, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { RollButton } from '../dice/RollButton'
 import { type RollReport } from '../dice/RollHistory'
 import { RollModeContext, RollModeSwitch } from '../dice/RollUi'
@@ -99,31 +99,7 @@ function CardLabel({ stat, text, aria, onOpen }: { stat: StatCard; text: string;
 	)
 }
 
-export function SheetHeader({
-	name,
-	armourClass,
-	armourClassLoading,
-	acFormulaKeysError,
-	initiative,
-	speed,
-	proficiencyBonus,
-	hitPoints,
-	concentratingOn,
-	onDropConcentration,
-	onShortRest,
-	onLongRest,
-	longRestBlockedReason = null,
-	onRoll,
-	onOpenBreakdown,
-	heroicInspiration,
-	onToggleHeroicInspiration,
-	identity,
-	abilities,
-	defenses,
-	conditions,
-	portrait,
-	onEditPortrait,
-}: {
+export type SheetHeaderProps = {
 	/** W-8: the stored portrait; absent shows the name's letter. */
 	portrait?: string
 	/** W3: absent on a read-only sheet — the frame then only shows. */
@@ -165,9 +141,172 @@ export function SheetHeader({
 	/** Why Long Rest cannot be taken right now (0 HP, data still loading); null when it can. */
 	longRestBlockedReason?: string | null
 	onRoll?: (report: RollReport) => void
+}
+
+function ProficiencyCard({ proficiencyBonus, onOpenBreakdown }: Pick<SheetHeaderProps, 'proficiencyBonus' | 'onOpenBreakdown'>): ReactNode {
+	return (
+		<section className="sheet__proficiency-bonus">
+			<CardLabel stat="proficiency" text="Prof." aria="Proficiency bonus breakdown" onOpen={onOpenBreakdown} />
+			<div className="sheet__card-value">
+				<CalculatedValueOnly result={proficiencyBonus} format={formatModifier} />
+			</div>
+		</section>
+	)
+}
+
+function SpeedCard({ speed, onOpenBreakdown }: Pick<SheetHeaderProps, 'speed' | 'onOpenBreakdown'>): ReactNode {
+	return (
+		<section className="sheet__speed">
+			<CardLabel stat="speed" text="Speed" aria="Speed breakdown" onOpen={onOpenBreakdown} />
+			<div className="sheet__card-value">
+				{speed.status === 'unknown' ? (
+					<UnresolvedValue reason={speed.reason} />
+				) : (
+					<>
+						{speed.value.walk}
+						<span className="sheet__card-unit"> ft</span>
+					</>
+				)}
+			</div>
+			{speed.status === 'known' && otherSpeeds(speed.value) && <p className="sheet__card-note">{otherSpeeds(speed.value)}</p>}
+		</section>
+	)
+}
+
+function InitiativeCard({ initiative, onRoll, onOpenBreakdown }: Pick<SheetHeaderProps, 'initiative' | 'onRoll' | 'onOpenBreakdown'>): ReactNode {
+	return (
+		<section className="sheet__initiative">
+			<CardLabel stat="initiative" text="Initiative" aria="Initiative breakdown" onOpen={onOpenBreakdown} />
+			<div className="sheet__card-value">
+				{initiative.status === 'unknown' ? (
+					<UnresolvedValue reason={initiative.reason} />
+				) : (
+					<RollButton modifier={initiative.value} label="initiative" onRoll={onRoll}>
+						{formatModifier(initiative.value)}
+					</RollButton>
+				)}
+			</div>
+		</section>
+	)
+}
+
+function ArmourClassCard({
+	armourClass,
+	armourClassLoading,
+	acFormulaKeysError,
+	onOpenBreakdown,
+}: Pick<SheetHeaderProps, 'armourClass' | 'armourClassLoading' | 'acFormulaKeysError' | 'onOpenBreakdown'>): ReactNode {
+	return (
+		<section className="sheet__armour-class">
+			<CardLabel stat="armour" text="Armour Class" aria="Armour Class breakdown" onOpen={onOpenBreakdown} />
+			{armourClassLoading ? (
+				<p className="sheet__card-value">Loading…</p>
+			) : armourClass.status === 'unknown' ? (
+				<UnresolvedValue reason={armourClass.reason} />
+			) : (
+				<>
+					<p className="sheet__card-value sheet__armour-class-value">{armourClass.value.value}</p>
+					{armourClassNote(armourClass.value, acFormulaKeysError) && <p className="sheet__card-note">{armourClassNote(armourClass.value, acFormulaKeysError)}</p>}
+				</>
+			)}
+		</section>
+	)
+}
+
+function HeroicInspirationCard({ heroicInspiration, onToggleHeroicInspiration }: Pick<SheetHeaderProps, 'heroicInspiration' | 'onToggleHeroicInspiration'>): ReactNode {
+	return (
+		<section className="sheet__heroic-inspiration">
+			<label>
+				<input
+					type="checkbox"
+					aria-label="Heroic Inspiration"
+					checked={heroicInspiration ?? false}
+					disabled={!onToggleHeroicInspiration}
+					onChange={(event) => onToggleHeroicInspiration?.(event.target.checked)}
+				/>
+				<span className="sheet__card-note" aria-hidden="true">
+					HEROIC
+					<br />
+					INSPIRATION
+				</span>
+			</label>
+		</section>
+	)
+}
+
+function ConcentrationCard({ concentratingOn, onDropConcentration }: Pick<SheetHeaderProps, 'concentratingOn' | 'onDropConcentration'>): ReactNode {
+	return (
+		<section className="sheet__status-card sheet__concentration">
+			<h2>Concentration</h2>
+			<span className="sheet__status-text" title={concentratingOn ?? undefined}>{concentratingOn ?? '—'}</span>
+			{concentratingOn !== null && onDropConcentration && (
+				<button type="button" className="sheet__status-drop" aria-label="Drop concentration" onClick={onDropConcentration}>
+					Drop
+				</button>
+			)}
+		</section>
+	)
+}
+
+function LongRestButton({
+	onLongRest,
+	longRestBlockedReason,
+	className,
+	ariaLabel,
+	children,
+}: {
+	onLongRest: () => void
+	longRestBlockedReason: string | null
+	className: string
+	ariaLabel?: string
+	children: ReactNode
 }): ReactNode {
-	const rollMode = useContext(RollModeContext)
 	const [longRestBusy, setLongRestBusy] = useState(false)
+	return (
+		<button
+			type="button"
+			className={className}
+			aria-label={ariaLabel}
+			disabled={longRestBusy || longRestBlockedReason !== null}
+			title={longRestBlockedReason ?? undefined}
+			onClick={() => {
+				// F-7b: Exhaustion −1 is the one non-idempotent part, so a second click must not land before the write has re-rendered.
+				setLongRestBusy(true)
+				window.setTimeout(() => setLongRestBusy(false), 600)
+				onLongRest()
+			}}
+		>
+			{children}
+		</button>
+	)
+}
+
+export function SheetHeader({
+	name,
+	armourClass,
+	armourClassLoading,
+	acFormulaKeysError,
+	initiative,
+	speed,
+	proficiencyBonus,
+	hitPoints,
+	concentratingOn,
+	onDropConcentration,
+	onShortRest,
+	onLongRest,
+	longRestBlockedReason = null,
+	onRoll,
+	onOpenBreakdown,
+	heroicInspiration,
+	onToggleHeroicInspiration,
+	identity,
+	abilities,
+	defenses,
+	conditions,
+	portrait,
+	onEditPortrait,
+}: SheetHeaderProps): ReactNode {
+	const rollMode = useContext(RollModeContext)
 
 	return (
 		<>
@@ -189,21 +328,10 @@ export function SheetHeader({
 							</button>
 						)}{' '}
 						{onLongRest && (
-							<button
-								type="button"
-								className="btn--accent-outline"
-								disabled={longRestBusy || longRestBlockedReason !== null}
-								title={longRestBlockedReason ?? undefined}
-								onClick={() => {
-									// F-7b: Exhaustion −1 is the one non-idempotent part, so a second click must not land before the write has re-rendered.
-									setLongRestBusy(true)
-									window.setTimeout(() => setLongRestBusy(false), 600)
-									onLongRest()
-								}}
-							>
+							<LongRestButton className="btn--accent-outline" onLongRest={onLongRest} longRestBlockedReason={longRestBlockedReason}>
 								<MoonIcon />
 								Long Rest
-							</button>
+							</LongRestButton>
 						)}
 					</div>
 				)}
@@ -212,91 +340,156 @@ export function SheetHeader({
 
 		<div className="sheet__strip">
 			{abilities}
-
-			<section className="sheet__proficiency-bonus">
-				<CardLabel stat="proficiency" text="Prof." aria="Proficiency bonus breakdown" onOpen={onOpenBreakdown} />
-				<div className="sheet__card-value">
-					<CalculatedValueOnly result={proficiencyBonus} format={formatModifier} />
-				</div>
-			</section>
-
-			<section className="sheet__speed">
-				<CardLabel stat="speed" text="Speed" aria="Speed breakdown" onOpen={onOpenBreakdown} />
-				<div className="sheet__card-value">
-					{speed.status === 'unknown' ? (
-						<UnresolvedValue reason={speed.reason} />
-					) : (
-						<>
-							{speed.value.walk}
-							<span className="sheet__card-unit"> ft</span>
-						</>
-					)}
-				</div>
-				{speed.status === 'known' && otherSpeeds(speed.value) && <p className="sheet__card-note">{otherSpeeds(speed.value)}</p>}
-			</section>
-
-			<section className="sheet__initiative">
-				<CardLabel stat="initiative" text="Initiative" aria="Initiative breakdown" onOpen={onOpenBreakdown} />
-				<div className="sheet__card-value">
-					{initiative.status === 'unknown' ? (
-						<UnresolvedValue reason={initiative.reason} />
-					) : (
-						<RollButton modifier={initiative.value} label="initiative" onRoll={onRoll}>
-							{formatModifier(initiative.value)}
-						</RollButton>
-					)}
-				</div>
-			</section>
-
-			<section className="sheet__armour-class">
-				<CardLabel stat="armour" text="Armour Class" aria="Armour Class breakdown" onOpen={onOpenBreakdown} />
-				{armourClassLoading ? (
-					<p className="sheet__card-value">Loading…</p>
-				) : armourClass.status === 'unknown' ? (
-					<UnresolvedValue reason={armourClass.reason} />
-				) : (
-					<>
-						<p className="sheet__card-value sheet__armour-class-value">{armourClass.value.value}</p>
-						{armourClassNote(armourClass.value, acFormulaKeysError) && <p className="sheet__card-note">{armourClassNote(armourClass.value, acFormulaKeysError)}</p>}
-					</>
-				)}
-			</section>
-
-			<section className="sheet__heroic-inspiration">
-				<label>
-					<input
-						type="checkbox"
-						aria-label="Heroic Inspiration"
-						checked={heroicInspiration ?? false}
-						disabled={!onToggleHeroicInspiration}
-						onChange={(event) => onToggleHeroicInspiration?.(event.target.checked)}
-					/>
-					<span className="sheet__card-note" aria-hidden="true">
-						HEROIC
-						<br />
-						INSPIRATION
-					</span>
-				</label>
-			</section>
-
+			<ProficiencyCard proficiencyBonus={proficiencyBonus} onOpenBreakdown={onOpenBreakdown} />
+			<SpeedCard speed={speed} onOpenBreakdown={onOpenBreakdown} />
+			<InitiativeCard initiative={initiative} onRoll={onRoll} onOpenBreakdown={onOpenBreakdown} />
+			<ArmourClassCard armourClass={armourClass} armourClassLoading={armourClassLoading} acFormulaKeysError={acFormulaKeysError} onOpenBreakdown={onOpenBreakdown} />
+			<HeroicInspirationCard heroicInspiration={heroicInspiration} onToggleHeroicInspiration={onToggleHeroicInspiration} />
 			{hitPoints}
 		</div>
 
 		<div className="sheet__status-row">
 			{defenses}
-
 			{conditions}
-
-			<section className="sheet__status-card sheet__concentration">
-				<h2>Concentration</h2>
-				<span className="sheet__status-text" title={concentratingOn ?? undefined}>{concentratingOn ?? '—'}</span>
-				{concentratingOn !== null && onDropConcentration && (
-					<button type="button" className="sheet__status-drop" aria-label="Drop concentration" onClick={onDropConcentration}>
-						Drop
-					</button>
-				)}
-			</section>
+			<ConcentrationCard concentratingOn={concentratingOn} onDropConcentration={onDropConcentration} />
 		</div>
 		</>
+	)
+}
+
+/** D428: Edit / Level up / Remove level behind one button. Their dialogs are portals, so a click inside one must not close the menu that owns them. */
+function MoreActionsMenu({ children }: { children: ReactNode }): ReactNode {
+	const [open, setOpen] = useState(false)
+	const wrapRef = useRef<HTMLDivElement>(null)
+	const id = useId()
+
+	useEffect(() => {
+		if (!open) return
+		function onPointerDown(event: PointerEvent): void {
+			const target = event.target as Element | null
+			if (!target || wrapRef.current?.contains(target) || target.closest('.confirm-dialog__backdrop')) return
+			setOpen(false)
+		}
+		function onKeyDown(event: KeyboardEvent): void {
+			if (event.key === 'Escape' && !document.querySelector('.confirm-dialog')) setOpen(false)
+		}
+		document.addEventListener('pointerdown', onPointerDown)
+		document.addEventListener('keydown', onKeyDown)
+		return () => {
+			document.removeEventListener('pointerdown', onPointerDown)
+			document.removeEventListener('keydown', onKeyDown)
+		}
+	}, [open])
+
+	return (
+		<div className="sheet__more-actions" ref={wrapRef}>
+			<button
+				type="button"
+				className="sheet__more-actions-button"
+				aria-label="More actions"
+				aria-expanded={open}
+				aria-controls={id}
+				onClick={() => setOpen((was) => !was)}
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<circle cx="12" cy="5" r="2" />
+					<circle cx="12" cy="12" r="2" />
+					<circle cx="12" cy="19" r="2" />
+				</svg>
+			</button>
+			{/* Kept mounted while closed: a Level up or Remove level dialog lives inside it. */}
+			<div id={id} className={open ? 'sheet__more-actions-menu sheet__more-actions-menu--open' : 'sheet__more-actions-menu'}>
+				{children}
+			</div>
+		</div>
+	)
+}
+
+/** D428: the phone header — name, HP / AC / Speed, damage and rests — always on screen. */
+export function MobileSheetHeader({
+	name,
+	portrait,
+	onEditPortrait,
+	identityLine,
+	moreActions,
+	hitPoints,
+	damageHealing,
+	armourClass,
+	armourClassLoading,
+	acFormulaKeysError,
+	speed,
+	onOpenBreakdown,
+	onShortRest,
+	onLongRest,
+	longRestBlockedReason = null,
+}: SheetHeaderProps & { identityLine: ReactNode; moreActions: ReactNode; damageHealing: ReactNode }): ReactNode {
+	return (
+		<header className="sheet__persistent-header sheet__mobile-header">
+			<div className="sheet__header-row">
+				<SheetPortrait name={name} portrait={portrait} onChange={onEditPortrait} />
+				<div className="sheet__header-main">
+					<h1>{name}</h1>
+					{identityLine}
+				</div>
+				{moreActions && <MoreActionsMenu>{moreActions}</MoreActionsMenu>}
+			</div>
+			<div className="sheet__strip sheet__mobile-numbers">
+				{hitPoints}
+				<ArmourClassCard armourClass={armourClass} armourClassLoading={armourClassLoading} acFormulaKeysError={acFormulaKeysError} onOpenBreakdown={onOpenBreakdown} />
+				<SpeedCard speed={speed} onOpenBreakdown={onOpenBreakdown} />
+			</div>
+			{(damageHealing || onShortRest || onLongRest) && (
+				<div className="sheet__mobile-actions">
+					{damageHealing}
+					{(onShortRest || onLongRest) && (
+						<div className="sheet__mobile-rest" role="group" aria-label="Rest">
+							{onShortRest && (
+								<button type="button" className="btn--accent-outline" aria-label="Short rest" title="Short rest" onClick={onShortRest}>
+									<FireIcon />
+								</button>
+							)}
+							{onLongRest && (
+								<LongRestButton className="btn--accent-outline" ariaLabel="Long rest" onLongRest={onLongRest} longRestBlockedReason={longRestBlockedReason}>
+									<MoonIcon />
+								</LongRestButton>
+							)}
+						</div>
+					)}
+				</div>
+			)}
+		</header>
+	)
+}
+
+/** D428: the top of the phone Stats view — what the desktop strip and status row carry besides HP, AC and Speed. */
+export function MobileStatsTop({
+	abilities,
+	proficiencyBonus,
+	initiative,
+	onRoll,
+	onOpenBreakdown,
+	heroicInspiration,
+	onToggleHeroicInspiration,
+	defenses,
+	conditions,
+	concentratingOn,
+	onDropConcentration,
+}: SheetHeaderProps): ReactNode {
+	const rollMode = useContext(RollModeContext)
+	return (
+		<div className="sheet__mobile-stats">
+			<RollModeSwitch mode={rollMode.mode} onChange={rollMode.setMode} />
+			{abilities}
+			<div className="sheet__strip sheet__mobile-stat-cards">
+				<ProficiencyCard proficiencyBonus={proficiencyBonus} onOpenBreakdown={onOpenBreakdown} />
+				<InitiativeCard initiative={initiative} onRoll={onRoll} onOpenBreakdown={onOpenBreakdown} />
+				<HeroicInspirationCard heroicInspiration={heroicInspiration} onToggleHeroicInspiration={onToggleHeroicInspiration} />
+			</div>
+			<div className="sheet__status-row">
+				{defenses}
+				{conditions}
+				<ConcentrationCard concentratingOn={concentratingOn} onDropConcentration={onDropConcentration} />
+			</div>
+		</div>
 	)
 }

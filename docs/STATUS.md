@@ -1405,6 +1405,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   second book per class and a spell twice in one book; `prunedBookPicks` per-book change flag. Spells tab notice for
   unprepared Savant spells (`unpreparedSavantSpells`, `.sheet__inventory-notice`) with Manage Spells and Dismiss
   (`familliar:settings.dismissedSavantNotices`). `e2e/reviewFixesHLSB.spec.ts` a–f.
+- M-1 (D428): phone sheet at ≤ 760px (`useMobileLayout`, `@media (max-width: 760px)`). Sticky `MobileSheetHeader`
+  (portrait 40px, name, species · classes, "More actions" menu with Edit / Level up / Remove level; HP card without
+  controls + AC + Speed; Damage / Amount / Heal row from `DamageHealingColumn`, Short/Long rest icon buttons). Page scrolls
+  as a whole (D153 frame desktop only). Fixed bottom nav Stats / Actions / Spells / Inventory / More; Stats = `MobileStatsTop`
+  (roll mode, abilities 3×2, Prof / Initiative / HI, status cards) above the left column stacked in one column; More =
+  pills Features & Traits / Notes / Extras over the existing panels. Drawers full width. Desktop DOM unchanged
+  (SheetHeader split into card components). `e2e/mobileSheetM1.spec.ts` a–g.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

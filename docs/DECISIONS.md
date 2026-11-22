@@ -5921,3 +5921,13 @@ Pool s maximem nad 10 (Lay on Hands, Sorcery Points, Focus Points…) má mezi t
 při zbývajících 2 skončí na max). Zobrazení zůstává „spent / max“ (rozhodnutí uživatele). Pole je jen stav UI, neukládá
 se: výchozí 1, po kliknutí si hodnotu drží, po reloadu je zpět 1; prázdné, neceločíselné nebo < 1 platí jako 1. Na sheetu
 jen pro čtení je zakázané. Pooly do 10 mají dál políčka. Beze změny schématu. Zadal plánovací chat (LH-2) 20. 11. 2026.
+
+## D428 — Mobilní sheet (M-1)
+
+Šířka okna ≤ 760 px je mobil (`@media (max-width: 760px)`, hook `useMobileLayout` tam, kde se liší struktura). Nahoře
+pevná hlavička: portrét, jméno, řádek species · classes, tlačítko „More actions“ (Edit, Level up, Remove level); karty HP
+(polovina šířky), AC, Speed; řádek Damage / Amount / Heal a ikony Short rest / Long rest. Stránka scrolluje celá, vnitřní
+scroll D153 platí jen pro desktop. Dole pevná navigace Stats / Actions / Spells / Inventory / More; Stats nese přepínač
+výhody, schopnosti, Prof / Initiative / Heroic Inspiration, status karty a pod nimi saves, senses, proficiencies a skills
+v jednom sloupci; More má pilulky Features & Traits / Notes / Extras. Drawery na celou šířku. Desktop beze změny.
+Daniel zvolil variantu B mockupu 22. 11. 2026.

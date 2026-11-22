@@ -4750,3 +4750,324 @@ details.beast > .beast__body {
 .beast__block-name {
   color: var(--text);
 }
+
+/* ---- phone sheet (D428) — the elements below are rendered only at ≤ 760px (useMobileLayout) ---- */
+
+.sheet__more-actions {
+  position: relative;
+  flex: none;
+}
+
+.sheet__more-actions-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-sub);
+}
+
+.sheet__more-actions-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 15;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.sheet__more-actions-menu--open {
+  display: flex;
+}
+
+.sheet__more-actions-menu .sheet__header-button {
+  min-width: 0;
+  min-height: 40px;
+  white-space: normal;
+  text-align: left;
+}
+
+.sheet__more-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.sheet__bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.sheet__bottom-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 2px;
+  border: 0;
+  border-top: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sheet__bottom-tab--active {
+  border-top-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  /* D428: the page scrolls as a whole; D153's one-viewport frame is desktop only. */
+  #root:has(> .sheet-view) {
+    display: block;
+    height: auto;
+  }
+
+  .sheet-view {
+    display: block;
+    padding: 0 12px 64px;
+  }
+
+  .sheet-view > .sheet {
+    display: block;
+  }
+
+  .sheet__mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0 -12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .sheet__mobile-header .sheet__header-row {
+    gap: 10px;
+  }
+
+  .sheet__mobile-header .sheet__portrait {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .sheet__mobile-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sheet__mobile-header .sheet__identity {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sheet__mobile-numbers {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .sheet__mobile-numbers > section:not(.sheet__hit-points) {
+    height: 64px;
+    min-width: 0;
+    padding: 0 4px;
+    overflow: hidden;
+  }
+
+  .sheet__mobile-numbers .sheet__card-value {
+    font-size: 22px;
+  }
+
+  .sheet__mobile-numbers .sheet__card-note {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sheet__mobile-numbers > .sheet__hit-points {
+    height: 64px;
+    padding: 0 10px;
+    gap: 10px;
+    justify-content: space-between;
+  }
+
+  .sheet__mobile-numbers .sheet__hit-points-value {
+    font-size: 24px;
+  }
+
+  .sheet__mobile-numbers .sheet__temporary-hit-points {
+    font-size: 20px;
+  }
+
+  .sheet__mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sheet__mobile-actions .sheet__damage-healing {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sheet__mobile-actions .sheet__damage-healing button {
+    min-height: 36px;
+    padding: 0 10px;
+  }
+
+  .sheet__mobile-actions .btn--damage {
+    order: 0;
+  }
+
+  .sheet__mobile-actions .sheet__damage-healing input {
+    order: 1;
+    width: 3.2em;
+    height: 36px;
+  }
+
+  .sheet__mobile-actions .btn--heal {
+    order: 2;
+  }
+
+  .sheet__mobile-rest {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .sheet__mobile-rest button {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    min-width: 0;
+    padding: 0;
+    border-radius: 8px;
+  }
+
+  .sheet__body {
+    display: block;
+    margin-top: 12px;
+  }
+
+  .sheet__body--stats > .sheet__right-panel,
+  .sheet__body--tabs > .sheet__left-column,
+  .sheet__right-panel > .sheet__tabs {
+    display: none;
+  }
+
+  .sheet__left-column {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    overflow-y: visible;
+  }
+
+  .sheet__left-a,
+  .sheet__left-b {
+    flex: none;
+    gap: 12px;
+  }
+
+  .sheet__panels {
+    overflow-y: visible;
+  }
+
+  .sheet__mobile-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sheet__mobile-stats .roll-mode {
+    align-self: flex-start;
+  }
+
+  .sheet__mobile-stats .ability-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 0;
+  }
+
+  .sheet__mobile-stats .ability-card {
+    width: auto;
+  }
+
+  .sheet__mobile-stat-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .sheet__mobile-stat-cards > section {
+    min-width: 0;
+  }
+
+  .sheet__mobile-stats .sheet__status-row {
+    flex-direction: column;
+  }
+
+  .sheet__mobile-stats .sheet__concentration {
+    min-width: 0;
+  }
+
+  .sheet__left-column li.sheet__row,
+  .sheet__left-column .sheet__senses-card > ul > li,
+  .sheet__left-column .sheet__proficiencies li {
+    box-sizing: border-box;
+    min-height: 40px;
+  }
+
+  .sheet__skills li.sheet__row {
+    height: auto;
+  }
+
+  .sheet__senses-card > ul > li {
+    align-items: center;
+  }
+
+  .drawer {
+    left: 0;
+    width: auto;
+    border-left: 0;
+  }
+
+  .roll-toast {
+    left: 12px;
+    right: 12px;
+    bottom: 60px;
+    width: auto;
+  }
+}

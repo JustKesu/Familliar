@@ -177,7 +177,8 @@ import type { CharacterTextField, HitPointFields, RestFields } from '../storage/
 import { matchesConcentration, matchesPick } from '../storage/choiceMatch'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calculatedValue'
-import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
+import { ArmourClassNotes, FireIcon, formatSpeed, MobileSheetHeader, MobileStatsTop, SheetHeader, type SheetHeaderProps, type StatCard } from './SheetHeader'
+import { useMobileLayout } from './useMobileLayout'
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
 import { ConditionRuleText, ConditionsCard, ConditionsPanel } from './Conditions'
@@ -199,7 +200,7 @@ import { dismissSavantNotice, loadSettings } from '../storage/settingsStore'
 import { collectKnownSpells } from '../spells/knownSpells'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { activeBookPicks, prunedBookPicks, withBookPicks } from '../spells/wizardBookPicks'
-import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
+import { DamageHealingColumn, HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
 import { loadSpeciesTraits, speciesTraitsAtLevel, type SpeciesTrait } from './speciesTraitNames'
 import { featuresTabGroups, type FeatureTabGroup, type FeatureTabGroupKind, type FeatureTabOption } from './featuresTabData'
 
@@ -250,6 +251,19 @@ const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
 	{ id: 'features', label: 'Features & Traits' },
 	{ id: 'notes', label: 'Notes' },
 	{ id: 'extras', label: 'Extras' },
+]
+
+/** D428: the phone's More view gathers these three tabs behind pills. */
+const MORE_TABS: readonly SheetTabId[] = ['features', 'notes', 'extras']
+
+type MobileNavId = 'stats' | 'actions' | 'spells' | 'inventory' | 'more'
+
+const MOBILE_NAV: readonly { id: MobileNavId; label: string }[] = [
+	{ id: 'stats', label: 'Stats' },
+	{ id: 'actions', label: 'Actions' },
+	{ id: 'spells', label: 'Spells' },
+	{ id: 'inventory', label: 'Inventory' },
+	{ id: 'more', label: 'More' },
 ]
 
 /** The Notes tab's sections (slice 9d2), in display order — each one Character field. */
@@ -1822,6 +1836,9 @@ function CharacterSheetBody({
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
 	const [activeTab, setActiveTab] = useState<SheetTabId>('actions')
+	/* D428: on a phone the bottom nav adds a Stats view in front of the tab panels. */
+	const mobile = useMobileLayout()
+	const [mobileView, setMobileView] = useState<'stats' | 'tabs'>('stats')
 	/* D163: one drawer at a time, held here and nowhere else — opening another replaces this value. */
 	const [drawer, setDrawer] = useState<DrawerContent | null>(null)
 	/* Slice 9c3b: in memory only, like each button's own result — never written to Character.play. */
@@ -2988,6 +3005,89 @@ function CharacterSheetBody({
 		onDeathSaveRolled: recordDeathSaveRoll,
 	}
 
+	const headerProps: SheetHeaderProps = {
+		name: character.name,
+		portrait: character.portrait,
+		onEditPortrait,
+		armourClass,
+		armourClassLoading: itemRefs === null,
+		acFormulaKeysError,
+		initiative,
+		speed,
+		proficiencyBonus,
+		concentratingOn: concentratingOn?.name ?? null,
+		onDropConcentration: onEditConcentration ? () => onEditConcentration(null) : undefined,
+		onShortRest: onRest ? () => setDrawer({ kind: 'shortRest' }) : undefined,
+		onLongRest: onRest ? takeLongRest : undefined,
+		longRestBlockedReason,
+		onRoll: recordRoll,
+		onOpenBreakdown: (stat) => setDrawer({ kind: 'stat', stat }),
+		heroicInspiration: character.play?.heroicInspiration ?? false,
+		onToggleHeroicInspiration: onEditHeroicInspiration,
+		abilities: (
+			<AbilityModifierCards
+				abilityScores={abilityScores}
+				labels={ABILITY_LABELS}
+				onRoll={recordRoll}
+				onOpenBreakdown={(ability) => setDrawer({ kind: 'ability', ability })}
+			/>
+		),
+		defenses: (
+			<DefensesCard
+				responses={damageResponses}
+				conditionImmunities={conditionImmunities}
+				loading={itemRefs === null || damageResponseData === null}
+				dataError={damageResponseDataError}
+				onOpen={() => setDrawer({ kind: 'defenses' })}
+			/>
+		),
+		conditions: (
+			<ConditionsCard
+				conditions={character.play?.conditions ?? []}
+				exhaustion={character.play?.exhaustion ?? 0}
+				onAdd={() => setDrawer({ kind: 'conditions' })}
+				onOpen={(name) => setDrawer({ kind: 'condition', name })}
+				onRemoveCondition={
+					onEditConditions ? (name) => onEditConditions((character.play?.conditions ?? []).filter((active) => active !== name)) : undefined
+				}
+				onClearExhaustion={onEditExhaustion ? () => onEditExhaustion(0) : undefined}
+			/>
+		),
+	}
+	const speciesName = character.species ? formatSpeciesName(character.species.name, character.species.source) : <UnresolvedValue reason="No species chosen yet." />
+	const classesLine = (
+		<span className="sheet__classes">
+			{character.classes.length === 0 ? (
+				<UnresolvedValue reason="No class chosen yet." />
+			) : (
+				character.classes.map((c, index) => (
+					<span key={index}>
+						{index > 0 ? ' / ' : ''}
+						{c.className} {c.level}
+						{c.subclass ? ` (${c.subclass})` : ''}
+					</span>
+				))
+			)}
+		</span>
+	)
+	const headerActions = (
+		<>
+			{onEditCharacter &&
+				(editBlockedReason !== null ? (
+					<button type="button" className="sheet__edit-character sheet__header-button" disabled title={`Edit unavailable: ${editBlockedReason}`}>
+						Edit character
+					</button>
+				) : (
+					<button type="button" className="sheet__edit-character sheet__header-button" onClick={onEditCharacter}>
+						Edit character
+					</button>
+				))}
+			{onLevelUp && <LevelUpButton character={character} onLevelUp={onLevelUp} />}
+			{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
+		</>
+	)
+	const mobileNavActive: MobileNavId = mobileView === 'stats' ? 'stats' : MORE_TABS.includes(activeTab) ? 'more' : (activeTab as MobileNavId)
+
 	return (
 		<RollModeContext.Provider value={{ mode: rollMode, setMode: setRollMode }}>
 		<article className="sheet">
@@ -2998,107 +3098,55 @@ function CharacterSheetBody({
 					</button>,
 					rollsSlot,
 				)}
-			<SheetHeader
-				name={character.name}
-				portrait={character.portrait}
-				onEditPortrait={onEditPortrait}
-				armourClass={armourClass}
-				armourClassLoading={itemRefs === null}
-				acFormulaKeysError={acFormulaKeysError}
-				initiative={initiative}
-				speed={speed}
-				proficiencyBonus={proficiencyBonus}
-				hitPoints={<HitPointsCard {...hitPointProps} onOpen={() => setDrawer({ kind: 'hitPoints' })} />}
-				concentratingOn={concentratingOn?.name ?? null}
-				onDropConcentration={onEditConcentration ? () => onEditConcentration(null) : undefined}
-				onShortRest={onRest ? () => setDrawer({ kind: 'shortRest' }) : undefined}
-				onLongRest={onRest ? takeLongRest : undefined}
-				longRestBlockedReason={longRestBlockedReason}
-				onRoll={recordRoll}
-				onOpenBreakdown={(stat) => setDrawer({ kind: 'stat', stat })}
-				heroicInspiration={character.play?.heroicInspiration ?? false}
-				onToggleHeroicInspiration={onEditHeroicInspiration}
-				identity={
-					<div className="sheet__header">
+			{mobile ? (
+				<MobileSheetHeader
+					{...headerProps}
+					hitPoints={<HitPointsCard {...hitPointProps} controls={false} onOpen={() => setDrawer({ kind: 'hitPoints' })} />}
+					damageHealing={hitPointProps.onEditHitPoints ? <DamageHealingColumn {...hitPointProps} /> : null}
+					identityLine={
 						<p className="sheet__identity">
-							<span className="sheet__species">
-								{character.species ? formatSpeciesName(character.species.name, character.species.source) : <UnresolvedValue reason="No species chosen yet." />}
-								{character.species && (
-									<span className="sheet__size">
-										{' · '}
-										{size.status === 'unknown' ? <UnresolvedValue reason={size.reason} /> : (SIZE_LABELS[size.value] ?? size.value)}
-									</span>
-								)}
-							</span>
+							<span className="sheet__species">{speciesName}</span>
 							{' · '}
-							<span className="sheet__classes">
-								{character.classes.length === 0 ? (
-									<UnresolvedValue reason="No class chosen yet." />
-								) : (
-									character.classes.map((c, index) => (
-										<span key={index}>
-											{index > 0 ? ' / ' : ''}
-											{c.className} {c.level}
-											{c.subclass ? ` (${c.subclass})` : ''}
-										</span>
-									))
-								)}
-							</span>
-							{character.classes.length > 0 && ` · Level ${totalCharacterLevel(character.classes)}`}
-							{' · '}
-							<span className="sheet__background">
-								{character.background ? character.background.name : <UnresolvedValue reason="No background chosen yet." />}
-							</span>
+							{classesLine}
 						</p>
+					}
+					moreActions={onEditCharacter || onLevelUp || onRemoveLevel ? headerActions : null}
+				/>
+			) : (
+				<SheetHeader
+					{...headerProps}
+					hitPoints={<HitPointsCard {...hitPointProps} onOpen={() => setDrawer({ kind: 'hitPoints' })} />}
+					identity={
+						<div className="sheet__header">
+							<p className="sheet__identity">
+								<span className="sheet__species">
+									{speciesName}
+									{character.species && (
+										<span className="sheet__size">
+											{' · '}
+											{size.status === 'unknown' ? <UnresolvedValue reason={size.reason} /> : (SIZE_LABELS[size.value] ?? size.value)}
+										</span>
+									)}
+								</span>
+								{' · '}
+								{classesLine}
+								{character.classes.length > 0 && ` · Level ${totalCharacterLevel(character.classes)}`}
+								{' · '}
+								<span className="sheet__background">
+									{character.background ? character.background.name : <UnresolvedValue reason="No background chosen yet." />}
+								</span>
+							</p>
 
-						{onEditCharacter &&
-							(editBlockedReason !== null ? (
-								<button type="button" className="sheet__edit-character sheet__header-button" disabled title={`Edit unavailable: ${editBlockedReason}`}>
-									Edit character
-								</button>
-							) : (
-								<button type="button" className="sheet__edit-character sheet__header-button" onClick={onEditCharacter}>
-									Edit character
-								</button>
-							))}
-						{onLevelUp && <LevelUpButton character={character} onLevelUp={onLevelUp} />}
-						{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
-					</div>
-				}
-				abilities={
-					<AbilityModifierCards
-						abilityScores={abilityScores}
-						labels={ABILITY_LABELS}
-						onRoll={recordRoll}
-						onOpenBreakdown={(ability) => setDrawer({ kind: 'ability', ability })}
-					/>
-				}
-				defenses={
-					<DefensesCard
-						responses={damageResponses}
-						conditionImmunities={conditionImmunities}
-						loading={itemRefs === null || damageResponseData === null}
-						dataError={damageResponseDataError}
-						onOpen={() => setDrawer({ kind: 'defenses' })}
-					/>
-				}
-				conditions={
-					<ConditionsCard
-						conditions={character.play?.conditions ?? []}
-						exhaustion={character.play?.exhaustion ?? 0}
-						onAdd={() => setDrawer({ kind: 'conditions' })}
-						onOpen={(name) => setDrawer({ kind: 'condition', name })}
-						onRemoveCondition={
-							onEditConditions ? (name) => onEditConditions((character.play?.conditions ?? []).filter((active) => active !== name)) : undefined
-						}
-						onClearExhaustion={onEditExhaustion ? () => onEditExhaustion(0) : undefined}
-					/>
-				}
-			/>
+							{headerActions}
+						</div>
+					}
+				/>
+			)}
 
-			<div className="sheet__body">
+			<div className={mobile ? `sheet__body sheet__body--${mobileView}` : 'sheet__body'}>
 			{/* Rework R3 (D123/D147): saves, senses (passive values + darkvision + granted senses) and skills — the dissolved stats tab's content, now always visible beside every other tab. B2 (D170) adds Proficiencies (armor/weapons; tools/languages pending). */}
 			<div className="sheet__left-column">
+			{mobile && <MobileStatsTop {...headerProps} />}
 			<div className="sheet__left-a">
 
 			<section className="sheet__saving-throws">
@@ -3249,6 +3297,21 @@ function CharacterSheetBody({
 			 * sections by role no matter which tab is open (jsdom loads no
 			 * stylesheet, so every panel stays reachable there).
 			 */}
+			{mobile && MORE_TABS.includes(activeTab) && (
+				<div className="sheet__more-pills" role="group" aria-label="More sections">
+					{MORE_TABS.map((id) => (
+						<button
+							key={id}
+							type="button"
+							className={activeTab === id ? 'pill pill--active' : 'pill'}
+							aria-pressed={activeTab === id}
+							onClick={() => setActiveTab(id)}
+						>
+							{SHEET_TABS.find((tab) => tab.id === id)?.label}
+						</button>
+					))}
+				</div>
+			)}
 			<nav className="sheet__tabs" role="tablist" aria-label="Sekce listu postavy">
 				{SHEET_TABS.map((tab) => (
 					<button
@@ -3555,6 +3618,31 @@ function CharacterSheetBody({
 			</div>
 			</div>
 			</div>
+
+			{mobile && (
+				<nav className="sheet__bottom-nav" role="tablist" aria-label="Sheet views">
+					{MOBILE_NAV.map((item) => (
+						<button
+							key={item.id}
+							type="button"
+							role="tab"
+							aria-selected={mobileNavActive === item.id}
+							className={mobileNavActive === item.id ? 'sheet__bottom-tab sheet__bottom-tab--active' : 'sheet__bottom-tab'}
+							onClick={() => {
+								if (item.id === 'stats') {
+									setMobileView('stats')
+								} else {
+									setMobileView('tabs')
+									setActiveTab(item.id === 'more' ? (MORE_TABS.includes(activeTab) ? activeTab : 'features') : item.id)
+								}
+								window.scrollTo(0, 0)
+							}}
+						>
+							{item.label}
+						</button>
+					))}
+				</nav>
+			)}
 
 			{/* D163: fixed to the window, so where it sits in the markup decides nothing about the layout. */}
 			{drawer?.kind === 'senses' && (

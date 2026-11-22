@@ -98,7 +98,7 @@ function HpLabel({ text, onOpen }: { text: string; onOpen?: () => void }): React
 	)
 }
 
-function DamageHealingColumn(hp: HitPointProps): ReactNode {
+export function DamageHealingColumn(hp: HitPointProps): ReactNode {
 	const [draft, setDraft] = useState('')
 	const amount = parseAmount(draft)
 	const maximum = knownMax(hp.maxHitPoints)
@@ -185,13 +185,13 @@ function DeathSaveCard({ hp, onOpen }: { hp: HitPointProps; onOpen?: () => void 
  * everything that does not fit — fields, breakdown, manual death save
  * entry — is in the Hit Points drawer (HitPointsPanel). Hit dice are in the Short Rest drawer (D183).
  */
-export function HitPointsCard({ onOpen, ...hp }: HitPointProps & { onOpen?: () => void }): ReactNode {
+export function HitPointsCard({ onOpen, controls = true, ...hp }: HitPointProps & { onOpen?: () => void; /** D428: the phone header puts them in a row of their own. */ controls?: boolean }): ReactNode {
 	const temporary = hp.temporaryHitPoints ?? 0
 	// D111: only while dying, and "not set" is not 0 (D43).
 	const dying = hp.currentHp === 0 && hp.onEditHitPoints !== undefined
 	return (
 		<section className="sheet__hit-points">
-			{hp.onEditHitPoints && <DamageHealingColumn {...hp} />}
+			{controls && hp.onEditHitPoints && <DamageHealingColumn {...hp} />}
 			{dying ? (
 				<DeathSaveCard hp={hp} onOpen={onOpen} />
 			) : (
