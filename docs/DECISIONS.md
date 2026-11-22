@@ -5931,3 +5931,12 @@ scroll D153 platí jen pro desktop. Dole pevná navigace Stats / Actions / Spell
 výhody, schopnosti, Prof / Initiative / Heroic Inspiration, status karty a pod nimi saves, senses, proficiencies a skills
 v jednom sloupci; More má pilulky Features & Traits / Notes / Extras. Drawery na celou šířku. Desktop beze změny.
 Daniel zvolil variantu B mockupu 22. 11. 2026.
+
+## D429 — Dvouřádkové řádky tabulek na mobilu (M-2)
+
+Na mobilu (≤ 760 px) je každý řádek tabulky akcí, seznamu kouzel a tabulky Extras dvouřádkový blok bez vodorovného
+scrollu. Řádek 1: tlačítko řádku (CAST / USE / štítek), jméno (s rozbalením u kouzel), vpravo hit/DC a damage/effect
+(stejná tlačítka). Řádek 2, 12 px tlumeně, odděleno „ · “: ostatní krátké sloupce (čas, dosah, podtitul se zdroji a
+Concentration/Ritual, „Attack with“, počítadlo USE). Notes kouzel jen v rozbaleném řádku. Extras: řádek 1 jméno + AC +
+HP, řádek 2 typ, rychlost, poznámky. Karta Armour Class má na mobilu popisek „AC“. Daniel zvolil tuto variantu místo
+vodorovného scrollu 22. 11. 2026.

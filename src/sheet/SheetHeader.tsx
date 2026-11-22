@@ -195,10 +195,11 @@ function ArmourClassCard({
 	armourClassLoading,
 	acFormulaKeysError,
 	onOpenBreakdown,
-}: Pick<SheetHeaderProps, 'armourClass' | 'armourClassLoading' | 'acFormulaKeysError' | 'onOpenBreakdown'>): ReactNode {
+	label = 'Armour Class',
+}: Pick<SheetHeaderProps, 'armourClass' | 'armourClassLoading' | 'acFormulaKeysError' | 'onOpenBreakdown'> & { label?: string }): ReactNode {
 	return (
 		<section className="sheet__armour-class">
-			<CardLabel stat="armour" text="Armour Class" aria="Armour Class breakdown" onOpen={onOpenBreakdown} />
+			<CardLabel stat="armour" text={label} aria="Armour Class breakdown" onOpen={onOpenBreakdown} />
 			{armourClassLoading ? (
 				<p className="sheet__card-value">Loading…</p>
 			) : armourClass.status === 'unknown' ? (
@@ -435,7 +436,7 @@ export function MobileSheetHeader({
 			</div>
 			<div className="sheet__strip sheet__mobile-numbers">
 				{hitPoints}
-				<ArmourClassCard armourClass={armourClass} armourClassLoading={armourClassLoading} acFormulaKeysError={acFormulaKeysError} onOpenBreakdown={onOpenBreakdown} />
+				<ArmourClassCard label="AC" armourClass={armourClass} armourClassLoading={armourClassLoading} acFormulaKeysError={acFormulaKeysError} onOpenBreakdown={onOpenBreakdown} />
 				<SpeedCard speed={speed} onOpenBreakdown={onOpenBreakdown} />
 			</div>
 			{(damageHealing || onShortRest || onLongRest) && (

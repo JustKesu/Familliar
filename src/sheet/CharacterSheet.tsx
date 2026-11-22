@@ -1006,6 +1006,7 @@ function SpellTabRow({
 }): ReactNode {
 	/* D116: open state is this row's own UI state. */
 	const [open, setOpen] = useState(false)
+	const mobile = useMobileLayout()
 	const { entry, detail, action } = row
 	// D206: a CAST row is worked out at its section's slot level (a D189 pact row too), every other row at the spell's own.
 	const effect = detail
@@ -1136,7 +1137,8 @@ function SpellTabRow({
 					</div>
 					<div className="sheet__spell-notes">
 						{counter}
-						{spellNotes(entry, detail, action.kind !== 'cast', characterLevel)}
+						{/* D429: on a phone the notes text lives in the open row only. */}
+						{!mobile && spellNotes(entry, detail, action.kind !== 'cast', characterLevel)}
 					</div>
 				</>
 			) : (
@@ -1146,6 +1148,7 @@ function SpellTabRow({
 			)}
 			{open && (
 				<div className="sheet__spell-row-text">
+					{mobile && detail && <p className="sheet__spell-row-notes">{spellNotes(entry, detail, action.kind !== 'cast', characterLevel)}</p>}
 					{detail && <SpellDetailBody detail={detail} resolverData={resolverData} />}
 					<p className="sheet__spell-provenance">{provenanceLabel(entry, multiclass)}</p>
 					{detail?.concentration && onToggleConcentration && (

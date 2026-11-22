@@ -1412,6 +1412,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   (roll mode, abilities 3×2, Prof / Initiative / HI, status cards) above the left column stacked in one column; More =
   pills Features & Traits / Notes / Extras over the existing panels. Drawers full width. Desktop DOM unchanged
   (SheetHeader split into card components). `e2e/mobileSheetM1.spec.ts` a–g.
+- M-2 (D429): at ≤ 760px the actions table, spell rows and Extras rows are two-line flex blocks (CSS only: `display:
+  contents` on the name cells, `order`, `::after` line break, " · " separators; headers hidden; roll/CAST/name targets
+  ≥ 36px). Spell notes text renders only in the open row on mobile (`.sheet__spell-row-notes`, `useMobileLayout` in
+  `SpellTabRow`); weapon/spell notes of the actions table stay on line 2 (no expand there). Mobile AC card label "AC"
+  (`ArmourClassCard label`); identity line wraps; ability cards centred. `e2e/mobileRowsM2.spec.ts` a–f.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`
