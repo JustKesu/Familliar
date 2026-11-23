@@ -1,58 +1,40 @@
-# M-3 — mobile wizard step row and bottom buttons, drawer fixes (D430)
+# SC-1 fix — stabilní e2e test „SC-1 a“
 
-Setup: fetch, `merge --ff-only` (already up to date), npm ci, e2e:install; HEAD 3c692bc — OK.
+Setup: fetch, `merge --ff-only` (already up to date), npm ci, e2e:install; HEAD 61d0174 — OK.
 
-## STEP 1 — wizard buttons and where they land at ≤ 760 px
+## Chyba
+Nebyla to pomalost, ale race na kroku Proficiencies. Reprodukováno i v samostatném běhu (2. spuštění souboru):
 
-| Button | Shown in | Flows | Mobile |
-|---|---|---|---|
-| Step buttons 1..n | sticky bar, nav "Wizard steps" | all | dropdown panel under the compact row "i / n · Label" |
-| Cancel | sticky bar, group "Quick navigation" | all | dropdown panel |
-| Cancel | group "Step navigation" | all | hidden (CSS), stays in DOM |
-| Back | both groups | all | bar copy not rendered; "Step navigation" copy = fixed bottom bar |
-| Next | both groups | all steps but Review | same as Back |
-| Create character | both groups | new, Review | same as Back |
-| Save changes | both groups | Edit, Review | same as Back |
-| Save level N | both groups | Level up, Review | same as Back |
-| note (grant load error) | both groups | Review | bottom bar, line above the buttons |
-| Cancel (seed error, no bar) | `.wizard > .wizard__nav` | Edit/Level up | unchanged, in flow |
+```
+Test timeout of 60000ms exceeded.
+Error: locator.click: Test timeout of 60000ms exceeded.
+  - locator resolved to <button disabled type="button" class="btn--accent">Next</button>
+  at next (e2e/wizard.ts:110) ← walkToAsi (subclassSpellcastingPrereq.spec.ts:83)
+```
 
-Every button has a place.
+Krok: Proficiencies, „Choose 2 more languages (0/2 chosen)“. `waitForLoadState('networkidle')` se ustálil dřív, než se vykreslil seznam jazyků → `count()` checkboxu Dwarvish vrátil 0 → jazyky se nezaškrtly → Next zůstal disabled až do globálního timeoutu. Celkový timeout byl jen důsledek visícího `click`.
 
-## Changed
+## Změna (jen `e2e/subclassSpellcastingPrereq.spec.ts`)
+- :67 `walkToAsi(page, options: { languages?: boolean })`.
+- :72–73 při `languages` na kroku Proficiencies `expect(checkbox Dwarvish).toBeVisible()` před `count()`. SC-1 b (level-up bez jazyků) se nemění.
+- :106 `test.slow()` jako první řádek SC-1 a (dle zadání, protože v kroku 2 prošel); samotnou příčinu řeší čekání výše.
 
-- `src/creation/WizardShell.tsx`: new `WizardMobileStepBar` — toggle row "i / n · Label" + ▾/▴ (aria-expanded), accent
-  progress bar, panel `#wizard-step-panel` holding the unchanged `WizardStepList` ("Wizard steps", aria-current) and Cancel.
-  Panel stays in the DOM, closed by class `--closed` (display none) so `[aria-current="step"]` keeps working; closes on
-  step tap, Cancel, pointerdown outside, Escape.
-- `CharacterWizard.tsx`: `useMobileLayout()`; on mobile the bar renders `WizardMobileStepBar` instead of the step list +
-  "Quick navigation" group (not rendered → only one Next in the DOM). Step items/goTo factored to `stepItems`/`goToStep`.
-- `index.css` (inside `@media (max-width: 760px)` only): "Step navigation" group fixed at the bottom, its Cancel hidden,
-  Back/primary `flex: 1 1 0`, min-height 44px, note on its own line; `.wizard` padding-bottom 96px; panel absolute under
-  the sticky bar, max-height `100vh - 140px`, scrolls.
-- B: `.extras-tab__head` was hidden in M-2 but `.extras-tab__row { display: flex }` came later at equal specificity and
-  won; now `.extras-tab__table > .extras-tab__head { display: none }`.
-- C: `.drawer__close` 44×44 grid-centred, negative margins keep the header height; glyph size unchanged.
-- D: `.drawer input[type='search']` width 100%, min-width 0 (the Manage panels already had `manage-spells__search`
-  width 100%; the rule covers any drawer search).
-- Docs: D430 added, STATUS.md M-3 entry.
+## Časy
+- Krok 1 (soubor samostatně): 1. běh 4/4 pass, 37 s (bez per-test časů); 2. běh s `--reporter=list`: SC-1 a FAIL po 1,0 min (viz výše), soubor 1,6 min.
+- Krok 2 (plný e2e před opravou): 849/849 pass, 8,9 min — SC-1 a tentokrát prošel.
+- Krok 4: soubor po opravě 4/4, SC-1 a 2,0 s; plný e2e 849/849 pass, 8,4 min (přes 3 min limit z CLAUDE.md — délka celé sady, ne tohoto testu).
 
-## Verified
+## Kontroly
+- typecheck: OK
+- test: 194 souborů / 3607 testů pass
+- lint: **exit 1** — předchozí chyba v kódu aplikace, nesouvisí se změnou: `src/sheet/spellsTabData.ts:229:134 react-hooks(rules-of-hooks): React Hook "useLabel" is called in function "spellsTabActionSections"`. Zbytek jsou warningy. Neopravováno (mimo povolený rozsah).
+- e2e: 849/849 pass
 
-- `e2e/mobileWizardM3.spec.ts` a–g, 8 tests, pass (a compact row + fixed Next, the only Next in the DOM; b dropdown,
-  Cancel → confirm dialog, locked Background, jump back, outside tap; c new Fighter saved; d Level up 1→2 saved;
-  e every step of a level-4 Fighter: scrollWidth ≤ 390, no visible button past 390; f Extras head hidden/visible,
-  Manage Spells close ≥ 44×44, search width = parent content width; g 1366: step list + Quick navigation Cancel/Back/Next).
-- typecheck, test (194 files / 3607), validate-data (177/177) pass.
-- Full e2e: 848 passed, 1 failed (8.6 min, over the 3-minute guideline) — only the known flaky SC-1 a
-  (`subclassSpellcastingPrereq.spec.ts:103`, timeout); the spec alone passes 4/4.
+## K rozhodnutí uživatele
+- Lint chyba v `spellsTabData.ts:229` — samostatný úkol.
+- Stejný vzor `networkidle` + `count()` může být i v jiných spec souborech; neprověřováno (mimo rozsah).
 
-## Decisions / questions
+Subagent: nepoužit.
 
-- Outside-tap closing is on pointerdown; Escape also closes (not asked for, invisible otherwise).
-- Pre-existing untracked `scripts/investigate-lh2-sorcery-points.js` left alone, not committed (task forbids git clean).
-- No subagent used.
-
-Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Changed screens (≤ 760 px): wizard (new / Edit / Level up) top bar, open step dropdown, bottom Back/Next bar; Extras tab
-(no header row); every drawer header (close button); Manage Spells / Inventory / Feats / Extras search fields.
+## Manual browser check for the user
+Žádný — změna jen v testu.

@@ -64,12 +64,14 @@ async function fillSpells(page: Page): Promise<void> {
 }
 
 /** Walks Next from the current step to the ASI / Feat step, filling the steps that need picks on the way. */
-async function walkToAsi(page: Page): Promise<void> {
+async function walkToAsi(page: Page, options: { languages?: boolean } = {}): Promise<void> {
   for (let i = 0; i < 10; i++) {
     const step = (await current(page).textContent()) ?? ''
     if (/ASI \/ Feat/.test(step)) return
     // The step's data loads after the step header shows; count() below does not wait for it.
     await page.waitForLoadState('networkidle')
+    // networkidle can settle before the language list renders; count() would then see 0 and Next stays disabled.
+    if (/Proficiencies/.test(step) && options.languages) await expect(page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' })).toBeVisible()
     if (/Proficiencies/.test(step) && (await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).count()) > 0) {
       await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).check()
       await page.getByRole('checkbox', { name: 'Elvish (XPHB)' }).check()
@@ -101,8 +103,9 @@ async function expectWarCasterTakeable(page: Page, level: number): Promise<void>
 }
 
 test('SC-1 a: creation wizard Fighter 4 Eldritch Knight — War Caster has no "needs" text and can be taken', async ({ page }) => {
+  test.slow()
   await fillUpToBackground(page, { name: 'Knight Caster', level: 4, species: 'Dwarf|XPHB', subclass: 'Eldritch Knight' })
-  await walkToAsi(page)
+  await walkToAsi(page, { languages: true })
   await expectWarCasterTakeable(page, 4)
 })
 
