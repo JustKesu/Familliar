@@ -120,7 +120,7 @@ export interface SpellsTabActionRow extends SpellsTabRow {
 
 export type SpellsTabActionSection = Omit<SpellsTabSection, 'rows'> & { rows: SpellsTabActionRow[] }
 
-function useLabel(usage: SpellUsage): string {
+function usageCounterLabel(usage: SpellUsage): string {
 	if (usage.kind !== 'resource') return shortUsageLabel(usage)
 	const initials = resolveResourceName(usage.resourceName)
 		.split(/\s+/)
@@ -226,7 +226,7 @@ export function spellsTabActionSections({
 					...base,
 					unavailable: false,
 					key: `${spellKey}#use:${counter.key}`,
-					action: { kind: 'use', grant, counterKey: counter.key, cost: counter.cost, max: resourceMaxima.get(counter.key) ?? null, label: useLabel(grant.usage) },
+					action: { kind: 'use', grant, counterKey: counter.key, cost: counter.cost, max: resourceMaxima.get(counter.key) ?? null, label: usageCounterLabel(grant.usage) },
 				},
 			})
 		}
