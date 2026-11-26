@@ -12,9 +12,11 @@ Windows. VS Code + Claude Code. Node.js and npm installed.
 Repo: https://github.com/JustKesu/Familliar
 Local path: C:\Users\Danik\Documents\Familliar
 
-Source data (gitignored, never modified):
+Source data (never modified):
   data-source/5etools-src-main/5etools-src-main/data/
   NOTE the doubled folder name — the zip nests one level.
+  Since DS-1 this folder is tracked in git, so extraction also works in cloud
+  sessions; the rest of data-source/ stays gitignored.
 Generated output (tracked in git): data/
 
 Run:

@@ -1,25 +1,25 @@
-# REPORT — LINT-1
+# REPORT — DS-1
 
-Setup: fetch, `merge --ff-only` (already up to date), `npm ci`, `e2e:install`. HEAD = e6fa344.
+Setup: `git fetch origin`, `git merge --ff-only origin/main` (fast-forward 4cb8912 → 2ff1b0d). HEAD = 2ff1b0d. Větev main.
 
 ## Co se změnilo
-- `src/sheet/spellsTabData.ts:123` — `function useLabel` → `function usageCounterLabel`.
-- `src/sheet/spellsTabData.ts:229` — volání `useLabel(grant.usage)` → `usageCounterLabel(grant.usage)`.
-- Grep `useLabel` v `src/`: jen tato definice a jedno volání, nikde neexportováno. Jiná změna kódu žádná, chování stejné.
+
+- `.gitignore`: místo `data-source/` negační vzory po úrovních (`data-source/*` → `!data-source/5etools-src-main/` → `.../5etools-src-main/*` → `!.../5etools-src-main/5etools-src-main/` → `.../5etools-src-main/5etools-src-main/*` → `!.../data/`), s komentářem DS-1.
+- Do gitu přidána složka `data-source/5etools-src-main/5etools-src-main/data/`: **503 souborů**, `git diff --cached --stat`: 504 files changed (vč. `.gitignore`), 3 020 512 insertions.
+- Velikost: `git count-objects -vH` po stagingu — loose objekty 47.05 MiB (zlib), pack 7.33 MiB. Nekomprimovaně cca 110 MB.
+- Největší soubor: žádný ≥ 10 MB (kontrola přes `git ls-tree -r -l` na indexový strom), tedy hluboko pod limitem GitHubu 100 MB.
+- `docs/DATA.md` ř. 15–19: věta, že od DS-1 je složka trackovaná a zbytek `data-source/` zůstává ignorovaný; z nadpisu odstraněno „gitignored“.
 
 ## Ověření
-- Lint před: exit 1, 1 error `react-hooks(rules-of-hooks)` na `spellsTabData.ts:229:134`.
-- Lint po: exit 0, 0 errorů, 62 warningů (exhaustive-deps, only-export-components, no-unused-vars; 13 z nich v `scripts/investigate-*.js`).
-- `npm run typecheck`: OK.
-- `npm test`: 194 souborů, 3607 testů, vše prošlo (104 s).
-- `npm run e2e` (celá sada): 849 passed, 10.5 min — přes limit ~3 min z CLAUDE.md. SC-1 a (`subclassSpellcastingPrereq.spec.ts`) prošel.
-- Omylem jednou spuštěno `npx --no oxlint --format=json --quiet` (porušení pravidla „nikdy npx“); skončilo chybou „No files found to lint“, nic nezměnilo.
 
-## Subagent
-Nepoužit.
+- `git status --short --untracked-files=normal --ignored data-source`: vše pod `data-source/` kromě `data/` je `!!` (web 5etools, audio, fonts, js, search, homebrew, `data-source/homebrew/` …).
+- `git status --short --ignored .../data`: žádný `!!` uvnitř `data/` — vnořený `.gitignore` 5etools (sám ignorovaný) nic z `data/` nevyřadil.
+- Žádné npm skripty, testy ani extraktor nespuštěny (dle zadání). Kód, `data/`, `homebrew/`, `src/` beze změny.
 
-## Rozhodnutí / otázky
-Žádné.
+## Problémy / rozhodnutí
+
+- Žádné. Stará untracked šablona `scripts/*.js` a další untracked soubory v rootu ponechány (git clean zakázán zadáním).
 
 ## Manual browser check for the user
-Žádný — pouze přejmenování.
+
+None — no UI change.

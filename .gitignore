@@ -1,4 +1,10 @@
-data-source/
+# The 5etools data folder is tracked so extraction works in cloud sessions (DS-1).
+data-source/*
+!data-source/5etools-src-main/
+data-source/5etools-src-main/*
+!data-source/5etools-src-main/5etools-src-main/
+data-source/5etools-src-main/5etools-src-main/*
+!data-source/5etools-src-main/5etools-src-main/data/
 node_modules/
 
 # Per-machine Claude Code permissions. Local to this checkout, not shared.
