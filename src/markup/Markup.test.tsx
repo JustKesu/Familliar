@@ -1,10 +1,28 @@
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Entries, Markup } from './Markup'
+import { Entries, Markup, MarkupRollContext } from './Markup'
 import { unknownEntryWarnings, unknownTagWarnings } from './warnings'
 
 const html = (node: ReactNode): string => renderToStaticMarkup(<>{node}</>)
+
+describe('MarkupRollContext (D436)', () => {
+	const source = '{@hit 4} to hit. {@h}5 ({@damage 1d6 + 2}) or {@dice 1d4 × 10}'
+	it('without it, hit and damage stay text', () => {
+		expect(html(<Markup text={source} />)).not.toContain('<button')
+	})
+	it('with it, hit and parseable damage become roll buttons; "×" stays text', () => {
+		const out = html(
+			<MarkupRollContext.Provider value={{ prefix: 'Wolf · Bite', onRoll: () => {} }}>
+				<Markup text={source} />
+			</MarkupRollContext.Provider>,
+		)
+		expect(out).toContain('aria-label="Roll Wolf · Bite to hit"')
+		expect(out).toContain('aria-label="Roll Wolf · Bite damage"')
+		expect(out.match(/<button/g)).toHaveLength(2)
+		expect(out).toContain('1d4 × 10')
+	})
+})
 
 /** The rendered text with all tags stripped, for readability assertions. */
 const text = (node: ReactNode): string =>

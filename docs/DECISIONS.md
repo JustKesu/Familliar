@@ -6017,3 +6017,15 @@ accent; klik na vyplněné vyprázdní je i další, na prázdné vyplní až po
 (nahoře sekce „Tracked uses“), v řádku zkratky „LR 2/3 · LA 0/3 · PB spent“ (bez kouzel). Desktop: až dvě karty
 vedle sebe, nejnovější první. Mobil ≤ 760 px: spodní lišta ve dvou řádcích (počet, SAVE, + Condition / Amount 70 px,
 DAMAGE a HEAL po 44 px), řádky bez prázdného místa vpravo, podtitul „Dire Wolf · CR 1“. Zadání MON-5, 27. 11. 2026.
+
+## D436 — Hody ze stat blocku monstra v DM části (MON-6)
+
+Ve stat blocku (Bestiář i karta v boji) je hodnota sama tlačítkem (`roll-value`): `{@hit N}` = d20 + N, modifikátor
+vlastnosti = ověření, „save +N“ = záchrana, bonus každé dovednosti = ověření dovednosti; tyto respektují režim
+Normal/Advantage/Disadvantage, který se po hodu d20 vrací na Normal. `{@damage}` a `{@dice}` sčítají kostky a režim
+ignorují; nerozpoznaný tvar („1d4 × 10“) zůstává textem. Ne iniciativa, `{@dc}` ani recharge. Popisky „<tvor> ·
+<blok> to hit/damage“, „<tvor> · DEX save“, „<tvor> · STR check“, „<tvor> · Stealth“; tvor = jméno člena v boji, jinak
+jméno monstra; mimo pojmenovaný blok „<tvor> · Lair“. Tlačítka vznikají jen přes kontext, který dává DM stránka; jinde
+(list, kouzla, předměty, Wild Shape) se markup nemění. Výsledek: toast a historie (nejnovější první, neukládá se,
+sdílená Bestiářem a střetnutími, dokud je DM stránka otevřená), přepínač a „Rolls“ v řádku záložek DM. Mobil ≤ 760 px:
+toast nahoře, aby ho nezakryla spodní lišta. Zadání MON-6, 27. 11. 2026.

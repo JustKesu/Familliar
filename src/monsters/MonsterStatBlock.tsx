@@ -1,6 +1,10 @@
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { abilityModifier } from '../calculation/abilityScores'
-import { Entries, Markup } from '../markup'
+import { RollButton } from '../dice/RollButton'
+import type { RollReport } from '../dice/RollHistory'
+import { RollReportContext } from '../dice/RollUi'
+import { plainName } from '../encounters/trackedUses'
+import { Entries, Markup, MarkupRollContext } from '../markup'
 import { ABILITY_COLUMNS, formatModifier, formatSize, titleCase } from '../sheet/BeastStatBlock'
 import { monsterInitiative, monsterSave, type LegendaryGroup, type Monster, type MonsterEntryBlock } from './monsterData'
 import { challengeText, defenceText, formatAc, formatAlignment, formatMonsterSpeed, formatMonsterType, legendaryUsesText, spellcastingFor } from './monsterFormat'
@@ -14,7 +18,24 @@ function Line({ label, values }: { label: string; values: string[] }): ReactNode
 	)
 }
 
-function Blocks({ title, blocks, intro }: { title: string; blocks: MonsterEntryBlock[]; intro?: string }): ReactNode {
+type Rolls = { creature: string; onRoll: (report: RollReport) => void } | null
+
+/** D436: without a DM roll handler the value is plain text, as before. */
+function Value({ rolls, modifier, label, children }: { rolls: Rolls; modifier: number; label: string; children: string }): ReactNode {
+	if (!rolls) return children
+	return (
+		<RollButton modifier={modifier} label={`${rolls.creature} · ${label}`} onRoll={rolls.onRoll}>
+			{children}
+		</RollButton>
+	)
+}
+
+function RollScope({ rolls, name, children }: { rolls: Rolls; name: string; children: ReactNode }): ReactNode {
+	if (!rolls) return children
+	return <MarkupRollContext.Provider value={{ prefix: `${rolls.creature} · ${name}`, onRoll: rolls.onRoll }}>{children}</MarkupRollContext.Provider>
+}
+
+function Blocks({ title, blocks, intro, rolls }: { title: string; blocks: MonsterEntryBlock[]; intro?: string; rolls: Rolls }): ReactNode {
 	if (blocks.length === 0) return null
 	return (
 		<section className="beast__blocks" aria-label={title}>
@@ -32,15 +53,17 @@ function Blocks({ title, blocks, intro }: { title: string; blocks: MonsterEntryB
 					)
 					return (
 						<li key={index} className="monster-card__block">
-							{lead !== null ? (
-								<p className="mk-p">
-									{name}
-									<Markup text={lead} />
-								</p>
-							) : (
-								name
-							)}
-							<Entries entries={lead !== null ? entries.slice(1) : entries} />
+							<RollScope rolls={rolls} name={block.name ? plainName(block.name) : 'Lair'}>
+								{lead !== null ? (
+									<p className="mk-p">
+										{name}
+										<Markup text={lead} />
+									</p>
+								) : (
+									name
+								)}
+								<Entries entries={lead !== null ? entries.slice(1) : entries} />
+							</RollScope>
 						</li>
 					)
 				})}
@@ -49,7 +72,10 @@ function Blocks({ title, blocks, intro }: { title: string; blocks: MonsterEntryB
 	)
 }
 
-export function MonsterStatBlock({ monster, group }: { monster: Monster; group?: LegendaryGroup }): ReactNode {
+export function MonsterStatBlock({ monster, group, rollName }: { monster: Monster; group?: LegendaryGroup; rollName?: string }): ReactNode {
+	const onRoll = useContext(RollReportContext)
+	const rolls: Rolls = onRoll ? { creature: rollName ?? monster.name, onRoll } : null
+	const skills = Object.entries(monster.skill ?? {})
 	const senses = [...(monster.senses ?? [])]
 	if (monster.passive !== undefined) senses.push(`Passive Perception ${monster.passive}`)
 	const initiative = formatModifier(monsterInitiative(monster)) + (monster.initiative?.advantageMode === 'adv' ? ' (advantage)' : '')
@@ -80,18 +106,52 @@ export function MonsterStatBlock({ monster, group }: { monster: Monster; group?:
 				<ul className="beast__abilities monster-card__abilities">
 					{ABILITY_COLUMNS.map(([key, label]) => {
 						const save = monsterSave(monster, key)
+						const modifier = abilityModifier(monster[key])
 						return (
 							<li key={key}>
 								<span className="beast__ability-label">{label}</span>
 								<span className="beast__ability-score">{monster[key]}</span>
-								<span className="beast__ability-modifier">({formatModifier(abilityModifier(monster[key]))})</span>
-								<span className={save.proficient ? 'monster-card__save monster-card__save--proficient' : 'monster-card__save'}>save {formatModifier(save.bonus)}</span>
+								<span className="beast__ability-modifier">
+									(
+									<Value rolls={rolls} modifier={modifier} label={`${label} check`}>
+										{formatModifier(modifier)}
+									</Value>
+									)
+								</span>
+								<span className={save.proficient ? 'monster-card__save monster-card__save--proficient' : 'monster-card__save'}>
+									save{' '}
+									<Value rolls={rolls} modifier={save.bonus} label={`${label} save`}>
+										{formatModifier(save.bonus)}
+									</Value>
+								</span>
 							</li>
 						)
 					})}
 				</ul>
 
-				<Line label="Skills" values={Object.entries(monster.skill ?? {}).map(([skill, bonus]) => `${titleCase(skill)} ${bonus}`)} />
+				{rolls && skills.length > 0 ? (
+					<p className="beast__line">
+						<strong>Skills</strong>{' '}
+						{skills.map(([skill, bonus], index) => {
+							const modifier = Number.parseInt(bonus, 10)
+							return (
+								<span key={skill}>
+									{index > 0 && ', '}
+									{titleCase(skill)}{' '}
+									{Number.isNaN(modifier) ? (
+										bonus
+									) : (
+										<Value rolls={rolls} modifier={modifier} label={titleCase(skill)}>
+											{bonus}
+										</Value>
+									)}
+								</span>
+							)
+						})}
+					</p>
+				) : (
+					<Line label="Skills" values={skills.map(([skill, bonus]) => `${titleCase(skill)} ${bonus}`)} />
+				)}
 				<Line label="Senses" values={senses} />
 				<Line label="Languages" values={monster.languages ?? []} />
 				<Line label="Immunities" values={(monster.immune ?? []).map(defenceText)} />
@@ -102,13 +162,14 @@ export function MonsterStatBlock({ monster, group }: { monster: Monster; group?:
 					<strong>CR</strong> {challengeText(monster)}
 				</p>
 
-				<Blocks title="Traits" blocks={monster.trait ?? []} />
-				<Blocks title="Actions" blocks={[...(monster.action ?? []), ...spellcastingFor(monster, 'action')]} />
-				<Blocks title="Bonus Actions" blocks={[...(monster.bonus ?? []), ...spellcastingFor(monster, 'bonus')]} />
-				<Blocks title="Reactions" blocks={[...(monster.reaction ?? []), ...spellcastingFor(monster, 'reaction')]} />
-				<Blocks title="Legendary Actions" blocks={legendary} intro={legendaryUsesText(monster)} />
+				<Blocks title="Traits" blocks={monster.trait ?? []} rolls={rolls} />
+				<Blocks title="Actions" blocks={[...(monster.action ?? []), ...spellcastingFor(monster, 'action')]} rolls={rolls} />
+				<Blocks title="Bonus Actions" blocks={[...(monster.bonus ?? []), ...spellcastingFor(monster, 'bonus')]} rolls={rolls} />
+				<Blocks title="Reactions" blocks={[...(monster.reaction ?? []), ...spellcastingFor(monster, 'reaction')]} rolls={rolls} />
+				<Blocks title="Legendary Actions" blocks={legendary} intro={legendaryUsesText(monster)} rolls={rolls} />
 
 				{group && (group.lairActions?.length || group.regionalEffects?.length) ? (
+					<RollScope rolls={rolls} name="Lair">
 					<section className="beast__blocks monster-card__lair" aria-label="Lair">
 						<h4>Lair</h4>
 						{group.lairActions && group.lairActions.length > 0 && (
@@ -124,6 +185,7 @@ export function MonsterStatBlock({ monster, group }: { monster: Monster; group?:
 							</>
 						)}
 					</section>
+					</RollScope>
 				) : null}
 			</div>
 		</article>

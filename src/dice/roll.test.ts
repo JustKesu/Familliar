@@ -1,5 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parseDiceExpression, rollDice, rollKeepOne } from './roll'
+import { parseDamageDice, parseDiceExpression, rollDice, rollKeepOne } from './roll'
+
+describe('parseDamageDice (MON-6, D436): the {@damage}/{@dice} shapes in data/monsters.json', () => {
+	it.each([
+		['1d6 + 2', { count: 1, sides: 6, modifier: 2 }],
+		['2d8', { count: 2, sides: 8, modifier: 0 }],
+		['1d4 - 1', { count: 1, sides: 4, modifier: -1 }],
+		['d20', { count: 1, sides: 20, modifier: 0 }],
+		['3d6+1', { count: 3, sides: 6, modifier: 1 }],
+	])('%s', (text, expected) => expect(parseDamageDice(text)).toEqual(expected))
+
+	it.each(['1d4 × 10', '2d6 + 1d4', '0d6', '', '5'])('%s stays text', (text) => expect(parseDamageDice(text)).toBeNull())
+})
 
 function sequence(values: number[]): () => number {
 	let i = 0

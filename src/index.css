@@ -5412,9 +5412,30 @@ details.beast > .beast__body {
 
 .dm__tabs {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
   margin: 0 0 16px;
   border-bottom: 1px solid var(--line);
+}
+
+.dm__tablist {
+  display: flex;
+  gap: 20px;
+}
+
+.dm__rolls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.dm__rolls-button {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
 }
 
 .dm__tab {
@@ -6603,5 +6624,12 @@ details.beast > .beast__body {
   .combat__stats--full {
     position: static;
     max-height: none;
+  }
+
+  /* D436: the combat bottom bar and save panel own the bottom of the screen, so DM rolls show at the top. */
+  .dm .roll-toast {
+    top: 12px;
+    bottom: auto;
+    z-index: 22;
   }
 }

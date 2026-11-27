@@ -2270,3 +2270,6 @@ Counted over data/monsters.json (648):
   Wolf XMM CR 1/4 = 50 XP, Dire Wolf XMM CR 1 = 200 XP. `xpBudgetPerCharacter` level 1 = 50/75/100, level 2 = 100/150/200,
   level 3 = 150/225/400 (Low/Moderate/High).
 - legendary-groups.json: only Murgaxor (SCC) has `lairActions`; 39 groups have `regionalEffects` (strings + `list`).
+- MON-6 survey of roll tags in monsters.json (args never piped): `{@hit N}` 862 (all non-negative integers); `{@damage}`
+  "NdN + N" 857, "NdN" 691, "NdN - N" 4; `{@dice}` "NdN" 97, "dN" 5, "NdN + N" 3, "NdN × N" 1. Spaces around +/−/×.
+  `skill` values "+N" 999 and "+N (+N while in snake form)" 3. Wolf XMM Bite: `{@hit 4}`, `{@damage 1d6 + 2}`.

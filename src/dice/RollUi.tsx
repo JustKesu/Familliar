@@ -5,6 +5,9 @@ import type { RollReport } from './RollHistory'
 /* D165: the advantage switch is one sheet-wide choice, not one per button. */
 export const RollModeContext = createContext<{ mode: RollMode; setMode: (mode: RollMode) => void }>({ mode: 'normal', setMode: () => {} })
 
+/** D436: set only by the DM page, so a monster stat block rolls there and nowhere else. */
+export const RollReportContext = createContext<((report: RollReport) => void) | null>(null)
+
 /** The nav element the "Rolls" button is portalled into while a sheet is open (D165). */
 export const RollsNavSlot = createContext<HTMLElement | null>(null)
 

@@ -1462,6 +1462,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   saved). Up to two stat block cards side by side on desktop. Mobile: two-row bottom bar (Amount 70px, DAMAGE/HEAL 44px),
   flex rows, subtitle "Dire Wolf · CR 1" with saves on their own line. Spellcasting `recharge` lists (12 blocks) are not
   tracked. `e2e/dmTrackedUses.spec.ts` a–f.
+- MON-6 (D436): rolls from the DM stat block (Bestiary and encounter card). `MarkupRollContext` (Markup.tsx) turns
+  `{@hit}`/`{@damage}`/`{@dice}` into roll-value buttons only inside `MonsterStatBlock` when the DM page provides
+  `RollReportContext`; elsewhere markup is unchanged. Ability modifier = check, "save +N" = save, each skill bonus = check
+  (roll mode applies); damage/dice ignore it. `parseDamageDice` (roll.ts): NdN, dN, NdN ± N; "1d4 × 10" stays text.
+  Labels "<creature> · <block> to hit|damage", dice "<creature> · <block>", lair "<creature> · Lair…"; creature = member
+  name in encounters. DmPage: toast, in-memory history drawer (Rolls) and roll mode switch in the tabs row; mobile toast at
+  the top. `e2e/dmRolls.spec.ts` a–h.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

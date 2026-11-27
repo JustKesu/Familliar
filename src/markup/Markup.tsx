@@ -13,8 +13,11 @@
  * source and category — so adding links later is a change to this file alone.
  */
 
-import { Fragment, type ReactNode } from 'react'
-import { parseMarkup } from './parseMarkup'
+import { createContext, Fragment, useContext, type ReactNode } from 'react'
+import { parseDamageDice } from '../dice/roll'
+import { DamageRollButton, RollButton } from '../dice/RollButton'
+import type { RollReport } from '../dice/RollHistory'
+import { parseMarkup, type MarkupTagNode } from './parseMarkup'
 import { resolveTag } from './tags'
 import {
 	asArray,
@@ -34,13 +37,41 @@ import { unknownEntryWarnings } from './warnings'
  * SECTION 1 — MARKUP STRINGS
  * ==========================================================================*/
 
+/** D436: provided only by the DM monster stat block; without it hit/damage/dice tags stay text. */
+export const MarkupRollContext = createContext<{ prefix: string; onRoll: (report: RollReport) => void } | null>(null)
+
+function TagRoll({ node, display, rolls }: { node: MarkupTagNode; display: string; rolls: { prefix: string; onRoll: (report: RollReport) => void } }): ReactNode {
+	const arg = node.args[0] ?? ''
+	if (node.name === 'hit') {
+		if (!/^[+-]?\d+$/.test(arg.trim())) return null
+		return (
+			<RollButton modifier={Number(arg)} label={`${rolls.prefix} to hit`} onRoll={rolls.onRoll}>
+				{display}
+			</RollButton>
+		)
+	}
+	const dice = parseDamageDice(arg)
+	if (!dice) return null
+	return (
+		<DamageRollButton {...dice} label={node.name === 'damage' ? `${rolls.prefix} damage` : rolls.prefix} onRoll={rolls.onRoll}>
+			{display}
+		</DamageRollButton>
+	)
+}
+
 export function Markup({ text }: { text: string }): ReactNode {
+	const rolls = useContext(MarkupRollContext)
 	const nodes = parseMarkup(text)
 
 	return nodes.map((node, index) => {
 		if (node.kind === 'text') return <Fragment key={index}>{node.text}</Fragment>
 
 		const tag = resolveTag(node)
+
+		if (rolls && (node.name === 'hit' || node.name === 'damage' || node.name === 'dice')) {
+			const button = TagRoll({ node, display: tag.display, rolls })
+			if (button) return <Fragment key={index}>{button}</Fragment>
+		}
 
 		// The display text may itself contain tags, so recurse. This is what
 		// makes nested tags work, and it is the only place nesting is handled.

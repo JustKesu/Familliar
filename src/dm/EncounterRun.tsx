@@ -495,7 +495,7 @@ function CombatScreen({
 					{mobile ? '← Back' : 'Close'}
 				</button>
 				<TrackedUses info={info} combat={combat} update={update} />
-				<MonsterStatBlock monster={info.monster} group={findLegendaryGroup(info.monster, data.legendaryGroups)} />
+				<MonsterStatBlock monster={info.monster} group={findLegendaryGroup(info.monster, data.legendaryGroups)} rollName={info.member.name} />
 			</section>
 		)
 	}

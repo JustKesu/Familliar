@@ -1,50 +1,45 @@
-# REPORT — MON-5: sledovaná použití, připomínka recharge, dvě karty, mobilní úpravy boje
+# REPORT — MON-6: hody ze stat blocku monstra (útok, zranění, záchrany, ověření, dovednosti)
 
-Setup: `git fetch` + `merge --ff-only` = „Already up to date“, HEAD a103751.
+Setup: `git fetch` + `merge --ff-only` = „Already up to date“, HEAD bae8f4d.
 
 ## Co se změnilo
-- A: nový `src/encounters/trackedUses.ts` (`trackedUses(monster, inLair)`, `hasLairUses`, `plainName`). `combat.ts`:
-  volitelné `uses`/`lair` (validace jen když jsou), `usedCount`, `setUsed`, `toggleUseBox`, `toggleLair`, `rollRecharge`,
-  `rollD6`; `nextTurn` doplní legendární akce členům položky na tahu. Schema zůstává 2, starý boj se načte (nic použito).
-- `EncounterRun.tsx`: karta patří členovi (`stats: memberId[]`), sekce „Tracked uses“ nahoře, počty v řádku
-  (`.combat__use-counts`), pruh připomínek recharge po Next turn (ROLL d6, výsledek, ×).
-- B: `.combat__cards` až dvě karty vedle sebe (nejnovější první, každá Close). Mobil dál jedna přes celou obrazovku.
-- C1: spodní lišta = dva řádky (`.combat__bottom-row`); Amount bez labelu, `aria-label`, 70 px border-box; DAMAGE/HEAL flex 1, 44 px.
-- C2: příčina prázdného místa — mřížka 5 sloupců, ale bez save štítku jen 4 děti, tlačítko spadlo do `auto` a 44px sloupec
-  zůstal prázdný. Mobilní řádek je teď flex, jméno flex 1.
-- C3: podtitul „Dire Wolf · CR 1“, zkrácené záchrany na vlastním řádku.
-- Docs: D435, STATUS, DATA.md (průzkum tvarů „/Day“, Domain, Adult Green Dragon, restLong u ježibab).
+- `src/dice/roll.ts`: `parseDamageDice` — NdN, dN, NdN ± N (mezery volitelné). Ostatní (× násobek, víc skupin) = null.
+- `src/dice/RollUi.tsx`: `RollReportContext` (handler hodů), nastavuje ho jen DmPage.
+- `src/markup/Markup.tsx`: `MarkupRollContext` `{prefix, onRoll}`; jen když je nastaven, `{@hit}` → `RollButton`,
+  `{@damage}`/`{@dice}` → `DamageRollButton` (třída `roll-value`, text = hodnota). Bez kontextu výstup beze změny.
+- `src/monsters/MonsterStatBlock.tsx`: prop `rollName`; s `RollReportContext` obalí každý blok `MarkupRollContext`
+  (prefix „<tvor> · <jméno bloku bez tagů>“), sekci Lair prefixem „<tvor> · Lair“; modifikátor vlastnosti, „save +N“ a
+  bonus každé dovednosti jsou `RollButton`. Bez kontextu (mimo DM) render jako dřív.
+- `src/dm/DmPage.tsx`: historie (paměť, nejnovější první, sdílená Bestiářem a střetnutími), `RollToast`, `RollModeContext`;
+  v řádku záložek vpravo `RollModeSwitch` + „Rolls“ (Drawer „Roll history“). Taby v `.dm__tablist` (role tablist zachována).
+- `EncounterRun.tsx`: `rollName={info.member.name}` → „Wolf 3 · Bite to hit“, „Alpha · …“.
+- CSS: `.dm__tabs` flex-wrap + `.dm__rolls`; ≤ 760 px `.dm .roll-toast` nahoře (top 12 px, z-index 22).
+- Docs: D436, STATUS (MON-6), DATA.md (průzkum tvarů roll tagů).
 
 ## Ověřeno
-- typecheck OK, lint 0 chyb (jen staré varování), unit 199 souborů / 3670 testů OK, validate-data 191/191.
-- `src/encounters/trackedUses.test.ts` nad skutečnými daty: Adult Green Dragon (LR 3/4 v doupěti, Poison Breath recharge 5,
-  LA 3/4, Geas 1/Day shared), Aboleth (Dominate Mind 2/Day), Animal Lord (bez přepínače), Barlgura (2e/1e řádek na kouzlo),
-  Green Hag (restLong, at-will ne), Ankheg (holé `{@recharge}` = 6); doplnění LA na tahu, reset nového boje, recharge
-  hod 4/5, starý boj bez polí.
-- `e2e/dmTrackedUses.spec.ts`: a) políčka + reload, b) In lair → 4, c) USE dechu, kolo dokola, připomínka, házet do READY,
-  d) LA se doplní na tahu draka, e) dvě karty vedle sebe, f) 390×844 lišta, řádky, „Dire Wolf · CR 1“, bez přetečení.
-- Celé e2e: 860 passed (3.1 min, těsně nad hranicí ~3 min).
+- Data (`scripts/mon6-dice.js`, nekomitováno): hit 862; damage „NdN + N“ 857, „NdN“ 691, „NdN - N“ 4; dice „NdN“ 97,
+  „dN“ 5, „NdN + N“ 3, „NdN × N“ 1; žádné argumenty s `|`. Dovednosti „+N“ 999, „+N (+N while in snake form)“ 3.
+- Nerozparsované, zůstávají textem: `{@dice 1d4 × 10}` (1×). Dovednost se závorkou hází prvním číslem.
+- Unit: `roll.test.ts` (tvary výše + odmítnuté), `Markup.test.tsx` (bez kontextu žádné tlačítko, s kontextem 2 tlačítka, × text).
+- e2e `e2e/dmRolls.spec.ts`: a) Wolf Bite to hit, 1 kostka; b) damage 1 kostka, „+ 2 =“; c) DEX save, STR check,
+  Stealth; d) historie nejnovější první; e) Advantage → damage nemění režim, to hit 2 kostky, zpět Normal; f) „Wolf 3 ·
+  Bite to hit“ v boji; g) 390×844: toast ve viewportu, po Back nad spodní lištou, switch a Rolls dostupné; h) popis
+  Fireballu na listu má `{@damage}` jako text bez tlačítka.
+- typecheck OK, test 199 souborů / 3682 testů OK, validate-data 191/191, e2e 864/864 za 3,8 min (nad 3 min).
+  Po přechodu na sdílený `plainName` znovu typecheck, test a `dmRolls.spec.ts` (4/4).
 
 ## Rozhodnutí v kódu
-- „or M/Day in Domain“ (17 monster) = stejný přepínač „In lair“; přepínač i u monstra jen s `legendaryActionsLair`.
-- Klíč „N“ u `daily`/`restLong` = jeden společný řádek „N/Day shared“ se seznamem kouzel; „Ne“ = řádek na kouzlo.
-- Seznam `recharge` u kouzlení (12 bloků) se nesleduje — zadání ho nezmiňuje.
-- Klik na vyplněné políčko vyprázdní je i všechna další; na prázdné vyplní až po něj.
-- SPENT je tlačítko, které ručně vrátí READY („flip“); pruh připomínky má také ROLL d6 a ×; pruh se neukládá (reload ho smaže).
-- Počty v řádku jen pro trait/akce/legendární/recharge, ne pro kouzla (řádek by byl dlouhý); recharge jen když je „spent“.
-- Zkratka = počáteční písmena slov (LR, LA, PB), jednoslovný název prvních 6 znaků.
-- Mobilní SAVE tlačítko si nechává text „Save: none / Save: DEX DC 13“ (ukazuje zvolenou záchranu).
-- Karta stat blocku je teď po členech (ne po skupině), protože použití jsou per člen; aria-label „Stat block <jméno>“.
+- `{@dice}` v pojmenovaném bloku má popisek „<tvor> · <blok>“ (bez „damage“); `{@damage}` v Lair „<tvor> · Lair damage“.
+- Ověření vlastnosti: tlačítkem je modifikátor v závorce, závorky zůstávají text. U dovednosti je tlačítkem jen bonus.
+- Jméno bloku do popisku přes existující `plainName` z `trackedUses.ts` („Fire Breath {@recharge 5}“ → „Fire Breath“).
+- Řádky Skills/Senses/AC a iniciativa mimo bloky hody nedělají (iniciativa záměrně).
+- Mobil: switch a Rolls zůstávají v řádku záložek DM, který je vidět i v boji a nad kartou přes celou obrazovku.
+- Toast na mobilu v DM nahoře místo nad lištou — lišta i panel save mají proměnnou výšku.
 
-## Otázky
-- Žádná nová.
-
-## Změněné obrazovky
-- Boj (desktop): řádek s počty použití, pruh připomínek recharge, sekce Tracked uses v kartě, dvě karty vedle sebe.
-- Boj (mobil): spodní lišta ve dvou řádcích, řádky přes celou šířku, podtitul s CR, karta se sekcí Tracked uses.
-
-## Subagent use
-- Žádný subagent nebyl použit.
+## Subagent
+Nepoužit.
 
 ## Manual browser check for the user
-none - the planning chat checks the looks from screenshots.
+None - the planning chat checks the looks from screenshots.
+Změněné obrazovky: DM řádek záložek (switch + Rolls, desktop i mobil), Bestiář — karta monstra (hodnoty jako tlačítka),
+karta v boji (desktop i mobil), toast v DM na mobilu nahoře, drawer Roll history v DM.

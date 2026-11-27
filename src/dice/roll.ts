@@ -43,3 +43,13 @@ export function parseDiceExpression(text: string): { count: number; sides: numbe
 	const sides = Number(match[2])
 	return count > 0 && sides > 0 ? { count, sides } : null
 }
+
+/** Reads a {@damage}/{@dice} argument: "2d6", "d20", "1d6 + 2", "1d4 - 1". Anything else (a "×" multiplier, several groups) is null. */
+export function parseDamageDice(text: string): { count: number; sides: number; modifier: number } | null {
+	const match = /^(\d*)d(\d+)(?:\s*([+-])\s*(\d+))?$/.exec(text.trim())
+	if (!match) return null
+	const count = match[1] === '' ? 1 : Number(match[1])
+	const sides = Number(match[2])
+	const modifier = match[3] ? Number(match[4]) * (match[3] === '-' ? -1 : 1) : 0
+	return count > 0 && sides > 0 ? { count, sides, modifier } : null
+}

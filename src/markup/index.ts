@@ -19,7 +19,7 @@ export {
 } from './tags'
 export type { ResolvedTag, TagKind, TagReference } from './tags'
 
-export { Markup, Entries, Entry } from './Markup'
+export { Markup, Entries, Entry, MarkupRollContext } from './Markup'
 
 export { unknownEntryWarnings, unknownTagWarnings } from './warnings'
 export type { WarnOnceRegistry } from './warnings'
