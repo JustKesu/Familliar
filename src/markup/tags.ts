@@ -247,7 +247,8 @@ function attackTagToFull(raw: string, isRoll: boolean): string {
 		return `${type}${method}`
 	})
 
-	return `${parts.join(' or ')}Attack${isRoll ? ' Roll' : ''}:`
+	const words = parts.map((part) => part.trimEnd()).filter(Boolean).join(' or ')
+	return `${words ? `${words} ` : ''}Attack${isRoll ? ' Roll' : ''}:`
 }
 
 const ORDINAL_WORDS = [
@@ -275,6 +276,10 @@ const LABEL_TAGS: Record<string, (args: string[]) => string> = {
 	h: () => 'Hit: ',
 
 	atkr: (args) => attackTagToFull(args[0] ?? '', true),
+	// The pre-2024 wording, still in some 2024-source stat blocks (MON-1):
+	// "{@atk mw}" -> "Melee Weapon Attack:".
+	atk: (args) => attackTagToFull(args[0] ?? '', false),
+	hom: () => 'Hit or Miss:',
 
 	// "{@actSave dex}" -> "Dexterity Saving Throw:"
 	actSave: (args) => `${ABILITY_FULL_NAMES[args[0] ?? ''] ?? args[0] ?? ''} Saving Throw:`,
@@ -282,6 +287,9 @@ const LABEL_TAGS: Record<string, (args: string[]) => string> = {
 	// An argument numbers the failure step ("{@actSaveFail 1}" -> "First
 	// Failure:"), used by effects that worsen on a second failed save.
 	actSaveFail: (args) => (args[0] ? `${ordinalWord(args[0])} Failure:` : 'Failure:'),
+	// "{@actSaveFailBy 5}" -> "Failure by 5 or More:"
+	actSaveFailBy: (args) => `Failure by ${args[0] ?? ''} or More:`,
+	actSaveSuccessOrFail: () => 'Failure or Success:',
 
 	actTrigger: () => 'Trigger:',
 	// A dice-carrying response is written with a dash rather than a colon.

@@ -1030,6 +1030,65 @@ function validateBeasts() {
 	checkExpectedCounts(entries, "beasts");
 }
 
+const REQUIRED_MONSTER_FIELDS = ["name", "source", "size", "type", "ac", "hp", "str", "dex", "con", "int", "wis", "cha", "cr", "crNumber", "xp"];
+
+// MON-1: monsters.json, legendary-groups.json and encounter-rules.json are checked together
+// because each one's references point into another.
+function validateMonsters() {
+	console.log("\n--- monsters.json, legendary-groups.json, encounter-rules.json ---");
+
+	const monsters = loadOutputFile("monsters.json");
+	const groups = loadOutputFile("legendary-groups.json");
+	const rulesPath = path.join(OUTPUT_DIR, "encounter-rules.json");
+	const rules = fs.existsSync(rulesPath) ? readJson(rulesPath) : null;
+	recordSimpleCheck("encounter-rules: file exists", rules !== null, rulesPath);
+	if (!monsters || !groups || !rules) return;
+
+	console.log(`  (${monsters.length} monsters, ${groups.length} legendary groups loaded)`);
+
+	recordSimpleCheck("monsters: file is not empty", monsters.length > 0, `${monsters.length} entries`);
+	recordSimpleCheck("legendary-groups: file is not empty", groups.length > 0, `${groups.length} entries`);
+	checkNoLeftoverCopyKeys(monsters, "monsters");
+	checkNoDuplicates(monsters, "monsters");
+	checkNoLeftoverCopyKeys(groups, "legendary-groups");
+	checkNoDuplicates(groups, "legendary-groups");
+
+	const fieldFailures = [];
+	monsters.forEach((entry, index) => {
+		for (const field of REQUIRED_MONSTER_FIELDS) {
+			const value = entry[field];
+			if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) {
+				fieldFailures.push({ label: describeEntry(entry, index), detail: `missing or empty "${field}"` });
+			}
+		}
+	});
+	recordCheck(`monsters: every entry has all ${REQUIRED_MONSTER_FIELDS.length} required fields`, fieldFailures);
+
+	const groupKeys = new Set(groups.map((group) => `${group.name}|${group.source}`));
+	const groupFailures = [];
+	monsters.forEach((entry, index) => {
+		if (!entry.legendaryGroup) return;
+		const key = `${entry.legendaryGroup.name}|${entry.legendaryGroup.source}`;
+		if (!groupKeys.has(key)) groupFailures.push({ label: describeEntry(entry, index), detail: `legendaryGroup ${key} not in legendary-groups.json` });
+	});
+	recordCheck("monsters: every legendaryGroup reference resolves", groupFailures);
+
+	const xpByCr = Array.isArray(rules.xpByCr) ? rules.xpByCr : [];
+	const budget = Array.isArray(rules.xpBudgetPerCharacter) ? rules.xpBudgetPerCharacter : [];
+	recordSimpleCheck("encounter-rules: xpByCr is not empty", xpByCr.length > 0, `${xpByCr.length} rows`);
+
+	const crNumbers = new Set(xpByCr.map((row) => row.crNumber));
+	const missingCr = [...new Set(monsters.map((entry) => entry.crNumber))].filter((crNumber) => !crNumbers.has(crNumber));
+	recordCheck(
+		"encounter-rules: xpByCr covers every crNumber in monsters.json",
+		missingCr.map((crNumber) => ({ label: `crNumber ${crNumber}`, detail: "no row in xpByCr" })),
+	);
+
+	const levels = budget.map((row) => row.level).join(",");
+	const expectedLevels = Array.from({ length: 20 }, (_, i) => i + 1).join(",");
+	recordSimpleCheck("encounter-rules: budget has levels 1-20", levels === expectedLevels, `levels ${levels}`);
+}
+
 /*
  * D187: XPHB only, via extract-data.js's own ACTIONS_SOURCE — not exported
  * from there, so the literal is repeated here.
@@ -1714,6 +1773,7 @@ function main() {
 	validateItemEntries();
 	validateLanguages();
 	validateBeasts();
+	validateMonsters();
 	validateActions();
 	validateConditions();
 	validateRuleTexts();

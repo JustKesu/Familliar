@@ -2169,6 +2169,224 @@ function extractBeasts() {
 	return warnings;
 }
 
+// D431: 2024 rules only.
+const MONSTER_SOURCES = ["XMM", "XPHB", "XDMG", "EFA", "SCC", "RHW"];
+
+const MONSTER_KEPT_FIELDS = [
+	"name",
+	"source",
+	"size",
+	"type",
+	"alignment",
+	"ac",
+	"hp",
+	"speed",
+	"str",
+	"dex",
+	"con",
+	"int",
+	"wis",
+	"cha",
+	"save",
+	"skill",
+	"senses",
+	"passive",
+	"languages",
+	"cr",
+	"initiative",
+	"immune",
+	"resist",
+	"vulnerable",
+	"conditionImmune",
+	"trait",
+	"action",
+	"bonus",
+	"reaction",
+	"legendary",
+	"legendaryActions",
+	"legendaryActionsLair",
+	"legendaryHeader",
+	"legendaryGroup",
+	"spellcasting",
+	"environment",
+];
+
+const LEGENDARY_GROUP_KEPT_FIELDS = ["name", "source", "lairActions", "regionalEffects", "mythicEncounter"];
+
+function parseBookNumber(text) {
+	const value = Number(String(text).replace(/,/g, ""));
+	if (Number.isNaN(value)) throw new Error(`encounter-rules: not a number: ${JSON.stringify(text)}`);
+	return value;
+}
+
+function findTableByCaption(bookFile, caption, expectedRows) {
+	const found = [];
+	const walk = (node) => {
+		if (Array.isArray(node)) node.forEach(walk);
+		else if (node && typeof node === "object") {
+			if (node.type === "table" && node.caption === caption) found.push(node);
+			Object.values(node).forEach(walk);
+		}
+	};
+	walk(readJson(path.join(SOURCE_DATA_DIR, "book", bookFile)));
+	if (found.length !== 1) throw new Error(`encounter-rules: "${caption}" found ${found.length}x in ${bookFile}, expected 1`);
+	if (found[0].rows.length !== expectedRows) {
+		throw new Error(`encounter-rules: "${caption}" has ${found[0].rows.length} rows, expected ${expectedRows}`);
+	}
+	return found[0];
+}
+
+function extractEncounterRules() {
+	console.log("\n--- ENCOUNTER RULES ---");
+
+	const budget = findTableByCaption("book-xdmg.json", "XP Budget per Character", 20);
+	const budgetHeader = budget.colLabelRows[budget.colLabelRows.length - 1].join("|");
+	if (budgetHeader !== "Party's Level|Low|Moderate|High") {
+		throw new Error(`encounter-rules: unexpected budget columns ${budgetHeader}`);
+	}
+	const xpBudgetPerCharacter = budget.rows.map((row) => ({
+		level: parseBookNumber(row[0]),
+		low: parseBookNumber(row[1]),
+		moderate: parseBookNumber(row[2]),
+		high: parseBookNumber(row[3]),
+	}));
+
+	const byCr = findTableByCaption("book-xmm.json", "Experience Points by Challenge Rating", 34);
+	if (byCr.colLabels.join("|") !== "CR|XP") throw new Error(`encounter-rules: unexpected CR columns ${byCr.colLabels.join("|")}`);
+	const xpByCr = byCr.rows.map(([cr, xpText]) => {
+		const crNumber = crToNumber(cr);
+		if (crNumber === undefined) throw new Error(`encounter-rules: bad CR ${JSON.stringify(cr)}`);
+		// XMM prints CR 0 as "0 or 10"; D431 stores 10 with 0 as the alternative.
+		if (xpText === "0 or 10") return { cr, crNumber, xp: 10, xpAlt: 0 };
+		return { cr, crNumber, xp: parseBookNumber(xpText) };
+	});
+
+	console.log(`XP budget rows: ${xpBudgetPerCharacter.length}, XP by CR rows: ${xpByCr.length}`);
+	const rules = { xpBudgetPerCharacter, xpByCr };
+	const outputFile = path.join(OUTPUT_DIR, "encounter-rules.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, rules))})`);
+	return rules;
+}
+
+function crBand(crNumber) {
+	if (crNumber < 1) return "0-1/2";
+	if (crNumber <= 4) return "1-4";
+	if (crNumber <= 10) return "5-10";
+	if (crNumber <= 16) return "11-16";
+	return "17-30";
+}
+
+function extractMonsters(xpByCr) {
+	console.log("\n--- MONSTERS ---");
+
+	const bestiaryDir = path.join(SOURCE_DATA_DIR, "bestiary");
+	const files = fs
+		.readdirSync(bestiaryDir)
+		.filter((name) => name.startsWith("bestiary-") && name.endsWith(".json"));
+
+	// D25: whole bestiary in, source filter last, as in extractBeasts().
+	const pool = [];
+	for (const file of files) {
+		pool.push(...(readJson(path.join(bestiaryDir, file)).monster || []));
+	}
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(pool, "monsters");
+
+	console.log(`Bestiary files read:          ${files.length}`);
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
+
+	const xpLookup = new Map(xpByCr.map((row) => [row.crNumber, row.xp]));
+	const sources = new Set(MONSTER_SOURCES);
+	const kept = [];
+	const withoutCr = [];
+	for (const entry of resolved) {
+		if (!sources.has(entry.source)) continue;
+
+		const crNumber = crToNumber(entry.cr);
+		// Summoned creatures (Steel Defender, the spirits of summon spells) have
+		// no CR and no XP; they are not encounter monsters.
+		if (crNumber === undefined) {
+			withoutCr.push(entry.name);
+			continue;
+		}
+
+		const monster = {};
+		for (const field of MONSTER_KEPT_FIELDS) {
+			if (entry[field] !== undefined) monster[field] = entry[field];
+		}
+		monster.cr = crToDisplay(entry.cr);
+		monster.crNumber = crNumber;
+		// A CR 0 stat block may state its own XP (0) — the "0" of the book's "0 or 10".
+		const statedXp = typeof entry.cr === "object" && entry.cr !== null ? entry.cr.xp : undefined;
+		monster.xp = statedXp !== undefined ? statedXp : xpLookup.get(crNumber);
+		if (monster.xp === undefined) warnings.push(`monsters: "${entry.name}" (${entry.source}) CR ${monster.cr} has no XP row`);
+		if (typeof entry.cr === "object" && entry.cr !== null && entry.cr.xpLair !== undefined) {
+			monster.xpLair = entry.cr.xpLair;
+		}
+		kept.push(monster);
+	}
+
+	kept.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
+
+	const keptLabels = new Set(kept.map((monster) => `"${monster.name}" (${monster.source})`));
+	const ownWarnings = (list, labels) => list.filter((warning) => [...labels].some((label) => warning.includes(label)));
+	const monsterWarnings = ownWarnings(warnings, keptLabels);
+	console.log(`prepareEntries warnings:      ${warnings.length}, of them on kept monsters: ${monsterWarnings.length}`);
+
+	const count =(predicate) => kept.filter(predicate).length;
+	const tally = (keyOf) => {
+		const out = {};
+		for (const monster of kept) out[keyOf(monster)] = (out[keyOf(monster)] || 0) + 1;
+		return out;
+	};
+	const entryNames = (monster) =>
+		["trait", "action", "bonus", "reaction", "legendary"].flatMap((field) =>
+			asArray(monster[field]).map((item) => (item && typeof item.name === "string" ? item.name : "")),
+		);
+	const bands = tally((monster) => crBand(monster.crNumber));
+
+	console.log(`Kept:                         ${kept.length} (sources ${MONSTER_SOURCES.join(", ")})`);
+	console.log(`Dropped without CR:           ${withoutCr.length} (e.g. ${withoutCr.slice(0, 3).join(", ")})`);
+	console.log(`By source: ${Object.entries(tally((monster) => monster.source)).map(([k, v]) => `${k}=${v}`).join(", ")}`);
+	console.log(`By CR band: ${["0-1/2", "1-4", "5-10", "11-16", "17-30"].map((band) => `${band}=${bands[band] || 0}`).join(", ")}`);
+	console.log(`With legendary:               ${count((monster) => monster.legendary)}`);
+	console.log(`With legendaryGroup:          ${count((monster) => monster.legendaryGroup)}`);
+	console.log(`With xpLair:                  ${count((monster) => monster.xpLair !== undefined)}`);
+	console.log(`With spellcasting:            ${count((monster) => monster.spellcasting)}`);
+	console.log(`With {@recharge} in a name:   ${count((monster) => entryNames(monster).some((name) => name.includes("{@recharge")))}`);
+	console.log(`With "/Day" in a name:        ${count((monster) => entryNames(monster).some((name) => name.includes("/Day")))}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "monsters.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
+
+	const referenced = new Set(
+		kept.filter((monster) => monster.legendaryGroup).map((monster) => makeNameSourceKey(monster.legendaryGroup.name, monster.legendaryGroup.source)),
+	);
+	const rawGroups = readJson(path.join(bestiaryDir, "legendarygroups.json")).legendaryGroup || [];
+	const groupResult = prepareEntries(rawGroups, "legendaryGroups");
+	const groupLabels = new Set(
+		kept.filter((monster) => monster.legendaryGroup).map((monster) => `"${monster.legendaryGroup.name}" (${monster.legendaryGroup.source})`),
+	);
+	monsterWarnings.push(...ownWarnings(groupResult.warnings, groupLabels));
+	const groups = [];
+	for (const entry of groupResult.entries) {
+		if (!referenced.has(makeNameSourceKey(entry.name, entry.source))) continue;
+		const group = {};
+		for (const field of LEGENDARY_GROUP_KEPT_FIELDS) {
+			if (entry[field] !== undefined) group[field] = entry[field];
+		}
+		groups.push(group);
+	}
+	groups.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
+	console.log(`Legendary groups: ${groups.length} of ${referenced.size} referenced (_copy resolved: ${groupResult.copyStats.copiesResolved})`);
+	if (groups.length !== referenced.size) monsterWarnings.push(`legendaryGroups: ${referenced.size - groups.length} referenced group(s) not found`);
+	const groupsFile = path.join(OUTPUT_DIR, "legendary-groups.json");
+	console.log(`Wrote: ${groupsFile} (${formatBytes(writeJson(groupsFile, groups))})`);
+
+	return monsterWarnings;
+}
+
 /* ============================================================================
  * SECTION 4b — CLASS FEATURE REFERENCES ("uids")
  * ----------------------------------------------------------------------------
@@ -2894,6 +3112,7 @@ function main() {
 	allWarnings.push(...extractConditions());
 	allWarnings.push(...extractRuleTexts());
 	allWarnings.push(...extractBeasts());
+	allWarnings.push(...extractMonsters(extractEncounterRules().xpByCr));
 	// ---------------------------------------------------------------
 
 	console.log(`\n${"=".repeat(64)}`);

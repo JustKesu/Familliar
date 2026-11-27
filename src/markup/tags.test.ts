@@ -68,6 +68,10 @@ const TAG_CASES: ReadonlyArray<[tag: string, markup: string, display: string]> =
 	['actTrigger', '{@actTrigger}', 'Trigger:'],
 	['actResponse', '{@actResponse}', 'Response:'],
 	['recharge', '{@recharge 5}', '(Recharge 5–6)'],
+	['atk', '{@atk ms,rs}', 'Melee or Ranged Spell Attack:'],
+	['hom', '{@hom}', 'Hit or Miss:'],
+	['actSaveFailBy', '{@actSaveFailBy 5}', 'Failure by 5 or More:'],
+	['actSaveSuccessOrFail', '{@actSaveSuccessOrFail}', 'Failure or Success:'],
 	['note', '{@note Additionally, the Help action may be used to {@book stabilize a creature|XPHB|1|Stabilizing a Character}.}', 'Additionally, the Help action may be used to {@book stabilize a creature|XPHB|1|Stabilizing a Character}.'],
 ]
 
@@ -85,8 +89,8 @@ describe('resolveTag — every tag found in data/', () => {
 	// {@…} tags: {#itemEntry} is resolved before rendering by
 	// src/inventory/itemEntryResolver.ts, and {{spellcasting_mod}} is not
 	// consumed by this layer at all. Only the {@…} tags belong here.
-	it('covers all 47 {@…} tags the inventory found', () => {
-		expect(TAG_CASES).toHaveLength(47)
+	it('covers all 51 {@…} tags the inventory found', () => {
+		expect(TAG_CASES).toHaveLength(51)
 	})
 
 	it('exercises every tag the module claims to handle', () => {
@@ -106,6 +110,14 @@ describe('resolveTag — value semantics', () => {
 	it('signs a to-hit bonus, including a negative one', () => {
 		expect(resolve('{@hit 5}').display).toBe('+5')
 		expect(resolve('{@hit -1}').display).toBe('-1')
+	})
+
+	it('words the older {@atk} without "Roll"', () => {
+		expect(resolve('{@atk mw}').display).toBe('Melee Weapon Attack:')
+		expect(resolve('{@atk rw}').display).toBe('Ranged Weapon Attack:')
+		expect(resolve('{@atk ms}').display).toBe('Melee Spell Attack:')
+		expect(resolve('{@atk rs}').display).toBe('Ranged Spell Attack:')
+		expect(resolve('{@atk mw,rw}').display).toBe('Melee or Ranged Weapon Attack:')
 	})
 
 	it('leaves a non-numeric to-hit alone', () => {

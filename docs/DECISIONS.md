@@ -5947,3 +5947,14 @@ Na mobilu (≤ 760 px) má průvodce (nová postava, Edit, Level up) nahoře jed
 s šipkou a tenkým pruhem postupu; klepnutí otevře seznam kroků jako rozbalovací panel (stejná pravidla skoků, zamčené
 kroky zůstávají zamčené) a v něm je i Cancel. Back a Next (resp. uložení na posledním kroku) jsou pevně dole přes celou
 šířku. Daniel zvolil tuto variantu místo vodorovně scrollujících kroků 22. 11. 2026.
+
+## D431 — Bestiář monster a tabulky XP pro střetnutí, jen pravidla 2024 (MON-1)
+
+Monstra se berou jen ze zdrojů XMM, XPHB, XDMG, EFA, SCC a RHW — knihy pravidel 2024 a knihy, které aplikace už používá;
+starší bestiáře (MM 2014 a dobrodružství) ne, protože by kombinovaly dvě verze pravidel. Výstupy: `data/monsters.json`,
+`data/legendary-groups.json` (jen skupiny, na které kept monstrum odkazuje) a `data/encounter-rules.json`
+(`xpBudgetPerCharacter` z XDMG, `xpByCr` z XMM). `data/beasts.json` zůstává samostatný beze změny.
+Záznamy bez CR (57 summonů z kouzel a featur, např. Steel Defender) se vyřazují — nejsou to monstra pro střetnutí.
+`cr` je zobrazovací řetězec („1/4“) jako v beasts.json, vedle něj `crNumber`, `xp` a `xpLair`, má-li ho stat block.
+CR 0 je v tabulce „0 or 10“: uloženo `xp: 10`, `xpAlt: 0`; monstrum s vlastním `cr.xp` (Giant Fly, Seahorse,
+Shrieker Fungus = 0) dostane tuto hodnotu. Daniel schválil 27. 11. 2026.

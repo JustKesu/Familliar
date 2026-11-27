@@ -2203,3 +2203,39 @@ scripts/investigate-wm1.js, 2026-11-12:
   tag, but its limit sentence ("you can't cast them in this way again until you finish a Short Rest or Long Rest")
   does not match `EXPENDED_USES`, so it is not a resource today. Spell Mastery's rest tag is only the Long Rest
   swap sentence.
+
+## Monsters (MON-1)
+
+`extractMonsters()` loads all 107 `bestiary-*.json` (4528 entries, `_copy` 1141, `_versions` 186 → 416), runs
+`prepareEntries`, then keeps sources XMM, XPHB, XDMG, EFA, SCC, RHW (D431). 57 kept-source entries have no `cr` — all
+summoned stat blocks (XPHB spirits, Steel Defender, …) incl. their `_versions` variants — and are dropped, so XPHB
+contributes 0. 196 prepareEntries warnings, none on a kept monster (total run stays at 246).
+
+data/monsters.json — 648 (XMM 506, RHW 69, SCC 47, EFA 25, XDMG 1 = Giant Fly), 1.28 MB, sorted name, source.
+CR bands: 0–1/2 = 146, 1–4 = 218, 5–10 = 175, 11–16 = 64, 17–30 = 45.
+Fields kept when present: name, source, size, type, alignment, ac, hp, speed, str…cha, save, skill, senses, passive,
+languages, cr, initiative, immune, resist, vulnerable, conditionImmune, trait, action, bonus, reaction, legendary,
+legendaryActions, legendaryActionsLair, legendaryHeader (0 occur), legendaryGroup, spellcasting, environment (553).
+Added: `crNumber`, `xp`, `xpLair`. Source `cr` is a string or `{cr, xpLair}` (53) or `{cr: "0", xp: 0}` (3: Giant Fly,
+Seahorse, Shrieker Fungus); written as the display string, `xp` from the entry's own `cr.xp` else from `xpByCr`.
+
+Limited uses — no structured field; the markers are:
+- `{@recharge N}` in a trait/action/bonus/reaction/legendary name: 171 monsters. Forms: `{@recharge 5}` 120,
+  `{@recharge 4}` 24, bare `{@recharge}` 27 (= recharge 6).
+- "(N/Day)" in a name: 127 monsters, e.g. "Dominate Mind (2/Day)", "Legendary Resistance (3/Day, or 4/Day in Lair)".
+- `spellcasting` (205 monsters, 270 blocks): `will` 179, `daily` 214 with keys "1e"/"2e"/"3e" (each spell N/day) and
+  "1"/"2"/"3" (shared pool), `restLong` 4 (key "1"), `recharge` 12. `displayAs` action 190, bonus 46, reaction 21,
+  legendary 9, absent 4.
+- Legendary: 77 monsters; `legendaryActions` only on 2 (= 2), absent means the default 3. `legendaryActionsLair` 36
+  (all 4). legendaryGroup 54.
+- Stat-block markup new to data/: `{@atk}`, `{@hom}`, `{@actSaveFailBy N}`, `{@actSaveSuccessOrFail}`.
+
+data/legendary-groups.json — 40 groups (all referenced ones found; 16 via `_copy`), fields name, source, lairActions,
+regionalEffects, mythicEncounter. The `_templates` warnings on MM/FTD/BAM dragon groups are not on kept groups.
+
+data/encounter-rules.json — tables found by caption walking the book JSON; the extractor throws on a missing caption
+or a different row count:
+- "XP Budget per Character", book-xdmg.json, 20 rows, header in `colLabelRows` ("Party's Level|Low|Moderate|High"),
+  numbers with thousands commas → `xpBudgetPerCharacter: [{level, low, moderate, high}]`.
+- "Experience Points by Challenge Rating", book-xmm.json, 34 rows (`colLabels` CR|XP) → `xpByCr: [{cr, crNumber, xp}]`;
+  CR 0 prints "0 or 10" → `xp: 10, xpAlt: 0`.
