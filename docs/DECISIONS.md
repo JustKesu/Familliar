@@ -6053,3 +6053,15 @@ přes zápis HP listu (dočasné HP první, nikdy nad max, death saves jako na l
 Next turn přeskočí a neháže záchrany. Tlačítko listu otevře plný list přes celou obrazovku s „← Back to encounter“;
 boj zůstává pod ním beze změny. Smazané NPC se ukáže jako „<jméno> (NPC deleted)“ s Remove (v boji odebere i položku
 pořadí). Zadání NPC-2, 27. 11. 2026.
+
+## D439 — Odhad CR pro NPC metodou DMG 2014 (NPC-3)
+
+Knihy 2024 pravidlo pro CR postavy nemají; použita tabulka DMG 2014 „Monster Statistics by Challenge Rating“
+(`data/cr-statistics.json` z `msbcr.json`, 34 řádků, CR shodné s `encounter-rules` xpByCr). Obranné CR: řádek, kam
+spadá max HP, pak o krok za každé celé 2 body AC nad/pod AC řádku. Útočné CR: DPR nejsilnější možnosti = max(průměr
+nejlepšího zbraňového útoku × útoky za akci Attack, průměr nejlepšího damage cantripu), řádek podle DPR, pak o krok za
+celé 2 body útočného bonusu (u záchranného cantripu DC) proti řádku. Výsledek = průměr obou, zaokrouhlený na nejbližší
+CR (při shodě nahoru); mimo tabulku se ořízne na krajní řádky; necelé DPR padá do nižšího řádku. Nepočítají se kouzla
+1+, rysy (Sneak Attack, Rage), odolnosti ani léčení. Čísla ze stejných volání jako list. Karta NPC ukazuje „≈ CR x“
+s tooltipem; Add NPC v setupu CR předvyplní (jen CR, které výběr nabízí), DM ho může změnit či smazat; uložená NPC si
+nechávají uložené CR včetně prázdného. Zadání NPC-3, 27. 11. 2026.

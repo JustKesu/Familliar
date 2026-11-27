@@ -61,6 +61,10 @@ test('NPC-2 a, b: Add NPC with and without CR changes the difficulty; an NPC is 
   await addMira(page)
   const total = page.locator('.encounter-difficulty__total')
   await expect(page.getByRole('region', { name: 'Mira NPC' })).toContainText('NPC · Fighter 3')
+  // NPC-3 (D439): prefilled with the estimate (unarmed Mira = CR 1/8, 25 XP); cleared to test the uncounted note.
+  await expect(page.getByRole('combobox', { name: 'Mira CR' })).toHaveValue('1/8')
+  await expect(total).toHaveText('75 XP')
+  await page.getByRole('combobox', { name: 'Mira CR' }).selectOption('')
   await expect(total).toHaveText('50 XP')
   await expect(page.locator('.encounter-difficulty__note')).toHaveText('1 NPC without CR not counted')
   await page.getByRole('combobox', { name: 'Mira CR' }).selectOption('1')
@@ -83,6 +87,8 @@ test('NPC-2 a, b: Add NPC with and without CR changes the difficulty; an NPC is 
 test('NPC-2 c–h: initiative, shared HP and conditions, sheet save bonus, sheet and back', async ({ page }) => {
   await seed(page)
   await addMira(page)
+  await expect(page.getByRole('combobox', { name: 'Mira CR' })).toHaveValue('1/8')
+  await page.getByRole('combobox', { name: 'Mira CR' }).selectOption('')
   await page.getByRole('button', { name: 'Start' }).click()
 
   // c) Mira is rolled as d20 + 2.

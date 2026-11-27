@@ -1087,6 +1087,19 @@ function validateMonsters() {
 	const levels = budget.map((row) => row.level).join(",");
 	const expectedLevels = Array.from({ length: 20 }, (_, i) => i + 1).join(",");
 	recordSimpleCheck("encounter-rules: budget has levels 1-20", levels === expectedLevels, `levels ${levels}`);
+
+	// D439: the DMG 2014 table the NPC CR estimate reads must cover the same CR list the app counts XP by.
+	const statsPath = path.join(OUTPUT_DIR, "cr-statistics.json");
+	const stats = fs.existsSync(statsPath) ? readJson(statsPath) : null;
+	recordSimpleCheck("cr-statistics: file exists", stats !== null, statsPath);
+	if (!stats) return;
+	recordSimpleCheck("cr-statistics: 34 rows", stats.length === 34, `${stats.length} rows`);
+	const statCrs = stats.map((row) => row.cr).join(" ");
+	const ruleCrs = xpByCr.map((row) => row.cr).join(" ");
+	recordSimpleCheck("cr-statistics: CRs match encounter-rules xpByCr in order", statCrs === ruleCrs, statCrs === ruleCrs ? `${stats.length} CRs` : `${statCrs} vs ${ruleCrs}`);
+	const fields = ["crNumber", "ac", "hpMin", "hpMax", "attackBonus", "dprMin", "dprMax", "saveDc"];
+	const badRows = stats.filter((row) => fields.some((field) => typeof row[field] !== "number"));
+	recordCheck("cr-statistics: every row has numeric fields", badRows.map((row) => ({ label: `CR ${row.cr}`, detail: "missing number" })));
 }
 
 /*

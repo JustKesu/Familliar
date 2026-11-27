@@ -3,6 +3,7 @@ import { ConfirmDialog } from '../app/ConfirmDialog'
 import { crXpTable, difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, uncountedNpcs, type Thresholds } from '../encounters/encounterDifficulty'
 import { addMonster, MAX_GROUP_COUNT, setGroupCount } from '../encounters/encounterEdit'
 import { EncounterStore, type EncounterGroup, type EncounterInput, type EncounterNpc, type EncounterParty } from '../encounters/encounterStore'
+import { loadNpcCr } from '../encounters/npcCr'
 import { classLine } from '../encounters/npcStats'
 import { loadMonsterData, type Monster } from '../monsters/monsterData'
 import type { Navigate } from '../navigation/useRoute'
@@ -214,9 +215,16 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 	const note = uncountedNote(uncountedNpcs(draft.npcs))
 	const addable = npcCharacters.filter((character) => !draft.npcs.some((npc) => npc.characterId === character.id))
 	const addNpc = (characterId: string) => {
-		const character = addable.find((c) => c.id === characterId)
-		if (character) update({ npcs: [...draft.npcs, { id: crypto.randomUUID(), characterId, name: character.name, cr: null }] })
 		setNpcPick('')
+		const character = addable.find((c) => c.id === characterId)
+		if (!character) return
+		const id = crypto.randomUUID()
+		update({ npcs: [...draft.npcs, { id, characterId, name: character.name, cr: null }] })
+		// D439: prefilled once the estimate arrives, unless the DM already picked a CR; a CR the select does not offer is left empty.
+		void loadNpcCr(character).then((estimate) => {
+			const cr = estimate && crs.some((row) => row.cr === estimate.cr) ? estimate.cr : null
+			if (cr) setDraft((current) => ({ ...current, npcs: current.npcs.map((n) => (n.id === id && n.cr === null ? { ...n, cr } : n)) }))
+		})
 	}
 
 	const addPlayer = () => {

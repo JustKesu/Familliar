@@ -2268,6 +2268,28 @@ function extractEncounterRules() {
 	return rules;
 }
 
+// D439: DMG 2014 "Monster Statistics by Challenge Rating" — the 2024 books have no CR rule for a character.
+const CR_STATISTICS_FIELDS = ["pb", "ac", "hpMin", "hpMax", "attackBonus", "dprMin", "dprMax", "saveDc"];
+
+function extractCrStatistics() {
+	console.log("\n--- CR STATISTICS (msbcr) ---");
+	const rows = readJson(path.join(SOURCE_DATA_DIR, "msbcr.json")).cr;
+	if (!Array.isArray(rows) || rows.length !== 34) throw new Error(`cr-statistics: expected 34 rows, got ${rows?.length}`);
+	const kept = rows.map((row) => {
+		const crNumber = crToNumber(row._cr);
+		if (crNumber === undefined) throw new Error(`cr-statistics: bad CR ${JSON.stringify(row._cr)}`);
+		const entry = { cr: row._cr, crNumber };
+		for (const field of CR_STATISTICS_FIELDS) {
+			if (typeof row[field] !== "number") throw new Error(`cr-statistics: CR ${row._cr} has no number "${field}"`);
+			entry[field] = row[field];
+		}
+		return entry;
+	});
+	const outputFile = path.join(OUTPUT_DIR, "cr-statistics.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))}) — ${kept.length} rows`);
+	return [];
+}
+
 function crBand(crNumber) {
 	if (crNumber < 1) return "0-1/2";
 	if (crNumber <= 4) return "1-4";
@@ -3113,6 +3135,7 @@ function main() {
 	allWarnings.push(...extractRuleTexts());
 	allWarnings.push(...extractBeasts());
 	allWarnings.push(...extractMonsters(extractEncounterRules().xpByCr));
+	allWarnings.push(...extractCrStatistics());
 	// ---------------------------------------------------------------
 
 	console.log(`\n${"=".repeat(64)}`);

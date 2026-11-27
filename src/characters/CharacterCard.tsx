@@ -9,6 +9,7 @@ export function CharacterCard({
 	onExport,
 	onRequestDelete,
 	onRequestDuplicate,
+	badge,
 }: {
 	character: Character
 	onOpen: (id: string) => void
@@ -16,6 +17,7 @@ export function CharacterCard({
 	onExport: (id: string) => void
 	onRequestDelete: (id: string) => void
 	onRequestDuplicate?: (id: string) => void
+	badge?: { text: string; title: string } | null
 }): ReactNode {
 	const { id, name, portrait } = character
 	const [menuOpen, setMenuOpen] = useState(false)
@@ -83,6 +85,11 @@ export function CharacterCard({
 					<span className="char-card__name">{name}</span>
 				)}
 				<span className="char-card__sub">{characterSummary(character)}</span>
+				{badge && (
+					<span className="char-card__sub char-card__badge" title={badge.title}>
+						{badge.text}
+					</span>
+				)}
 			</span>
 		</>
 	)

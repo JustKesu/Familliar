@@ -2246,6 +2246,16 @@ or a different row count:
 - "Experience Points by Challenge Rating", book-xmm.json, 34 rows (`colLabels` CR|XP) → `xpByCr: [{cr, crNumber, xp}]`;
   CR 0 prints "0 or 10" → `xp: 10, xpAlt: 0`.
 
+data/cr-statistics.json (NPC-3, D439) — DMG 2014 "Monster Statistics by Challenge Rating" from the top-level
+`data/msbcr.json` (not a book table): `{cr: [34 rows]}`, row `{_cr, pb, ac, hpMin, hpMax, attackBonus, dprMin, dprMax,
+saveDc}`, all numbers, `_cr` as a string ("0", "1/8" … "30"). Kept as `{cr, crNumber, pb, ac, hpMin, hpMax,
+attackBonus, dprMin, dprMax, saveDc}`. The CR list equals encounter-rules `xpByCr` in the same order. DPR ranges are
+contiguous integers (0-1, 2-3, 4-5, 6-8 …), so a fractional DPR falls between rows. HP ranges are contiguous except at
+the top, where they share an endpoint: CR 28 ends at 760 and CR 29 starts at 760; CR 29 ends at 805 and CR 30 starts at
+805. The monsters in data/monsters.json cover 30 of the 34 CRs (no 26-29).
+`npm run extract-data` currently rewrites data/monsters.json and legendary-groups.json with a large diff against the
+committed files (NPC-3 noticed it and restored them; cause not investigated).
+
 ### Monster stat-block field shapes (MON-2 survey)
 
 Counted over data/monsters.json (648):

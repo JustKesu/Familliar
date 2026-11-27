@@ -100,8 +100,8 @@ export function wizardBookGrants(character: Character, classSpellInfo: ClassSpel
 	return { bookWizard, wizardBookPicks, classGrantInfo }
 }
 
-/** The sheet's whole spell list without the sheet: the same loads and the same combine. */
-export async function loadCombinedSpells(character: Character): Promise<SheetSpellEntry[]> {
+/** The sheet's whole spell list without the sheet: the same loads and the same combine, plus the loads the spell numbers need (D439). */
+export async function loadCombinedSpellParts(character: Character) {
 	const [spellSlotsClassData, spellDetails] = await Promise.all([loadSpellSlotsClassData(), loadSpellDetails()])
 	const [{ classInfos, subclassInfos }, featSpells, optionalFeatureSpells, raceSpells] = await Promise.all([
 		loadClassAndSubclassSpellInfo(character, spellSlotsClassData),
@@ -110,7 +110,7 @@ export async function loadCombinedSpells(character: Character): Promise<SheetSpe
 		loadRaceSpells(character),
 	])
 	const { classGrantInfo } = wizardBookGrants(character, classInfos, spellDetails)
-	return combineSpellEntries(
+	const entries = combineSpellEntries(
 		character.spellChoices ?? [],
 		subclassInfos.map((info) => ({ subclassName: info.subclassName, className: info.className, classSource: info.classSource, spells: info.alwaysPrepared })),
 		featSpells,
@@ -118,4 +118,9 @@ export async function loadCombinedSpells(character: Character): Promise<SheetSpe
 		raceSpells.spells,
 		classGrantInfo,
 	)
+	return { entries, spellDetails, subclassInfos, featSpells, raceSpells: raceSpells.spells }
+}
+
+export async function loadCombinedSpells(character: Character): Promise<SheetSpellEntry[]> {
+	return (await loadCombinedSpellParts(character)).entries
 }

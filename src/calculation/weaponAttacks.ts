@@ -275,7 +275,7 @@ function toHitFor(
 	)
 }
 
-function averageOf(dice: string): number {
+export function averageOf(dice: string): number {
 	const match = /^(\d+)d(\d+)$/.exec(dice.trim())
 	return match ? (Number(match[1]) * (Number(match[2]) + 1)) / 2 : 0
 }

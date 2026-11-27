@@ -1485,6 +1485,12 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   difficulty note. EncounterRun: NPC initiative, `NpcRow` (desktop/mobile), deleted row with Remove, full-screen sheet
   (`DmPage.sheet` → CharacterManager) with "← Back to encounter". `e2e/dmNpcCombat.spec.ts` a–j; unit
   `src/encounters/npcCombat.test.ts`.
+- NPC-3 (D439): estimated CR. `data/cr-statistics.json` (DMG 2014 msbcr, 34 rows; extractor `extractCrStatistics`,
+  validate: 34 rows, CRs = xpByCr in order). `src/encounters/npcCr.ts`: `estimateCr` (pure), `loadNpcOffence` (best of
+  weapon average × attacks per Attack action and damage cantrips, via `computeWeaponAttacks`/`computeAttacksPerAction`/
+  `spellActionRows`), `loadNpcCr`, `crTitle`. `combinedSpells.ts` gained `loadCombinedSpellParts`; `averageOf` exported.
+  CharacterCard optional `badge`; NpcList shows "≈ CR x" with tooltip (`useNpcCrs`); EncounterSetup Add NPC prefills the
+  CR (only a CR the select offers, never over a DM pick). `e2e/dmNpcCr.spec.ts` a–e; unit `src/encounters/npcCr.test.ts`.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

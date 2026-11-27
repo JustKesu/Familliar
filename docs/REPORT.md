@@ -1,50 +1,51 @@
-# REPORT — NPC-2: NPC ve střetnutích se sdílenými HP a stavy (D438)
+# REPORT — NPC-3: odhad CR pro NPC (D439)
 
-Start z 7e7c823 (`git log --oneline -1`). Varianta 1 z minulého STOPu: skládání seznamu kouzel přesunuto z listu do sdíleného modulu.
+Start z 85f7a52 (`git log --oneline -1`, fetch + ff-only: Already up to date). STOP podmínky (a)/(b) nenastaly: zbraně i cantripy jdou spočítat mimo list skládáním exportovaných volání, tabulka má očekávaný tvar.
 
-## Krok 1 — soupis změn (19 souborů)
+## Krok 1 — soupis změn
 
 | Soubor | Funkce / místo | Změna |
 |---|---|---|
-| src/sheet/combinedSpells.ts (nový) | `loadClassAndSubclassSpellInfo`, `wizardBookGrants`, `loadCombinedSpells` | přesun ř. ~2083–2132 a ~2333–2375 z listu beze změny logiky |
-| src/sheet/CharacterSheet.tsx | efekt class/subclass grants, `classGrantInfo`, importy | volá modul; chování beze změny |
-| src/sheet/HitPoints.tsx | nová `healHitPoints` | zápis healu listu pro NPC (sloupec listu beze změny) |
-| src/encounters/encounterStore.ts | `EncounterNpc`, `isNpc`, `isEncounter`, `migrateV2`, `readRaw`, schema 3 | |
-| src/encounters/encounterDifficulty.ts | `crXpTable`, `encounterXp(+npcs,crXp)`, `uncountedNpcs` | |
-| src/encounters/combat.ts | entry `npc`, `isEntry`, `entryKey`, `initiativeEntries(+npcs)`, `entryMemberIds`, `isEntryDown/nextTurn(+npcDown)`, `damageTaken`, `removeEntry` | |
-| src/encounters/npcStats.ts (nový) | `loadNpcStats`, `classLine` | AC/iniciativa/záchrany/max HP výpočty listu |
-| src/encounters/npcCharacter.ts (nový) | `damageNpc`, `healNpc`, `npcConditions`, `add/removeNpcCondition` | |
-| src/dm/EncounterSetup.tsx | `Draft`, `toInput`, `DifficultyBar` (note), `NpcCard`, `storedNpcs`, `uncountedNote`, Add NPC | |
-| src/dm/EncounterRun.tsx | `useNpcs`, `npcInfos`, `EncounterRun` (overlay, removeNpc, writeNpcs), `InitiativeStep`, `SaveBonuses(saves)`, `NpcRow`, `CombatScreen` | |
-| src/dm/DmPage.tsx, src/App.tsx | prop `sheet` → CharacterManager se sheet route | |
-| src/index.css | NPC karta, note, `.npc-overlay` | |
-| testy | encounters.test.ts, npcCombat.test.ts (nový); e2e dmCombat/dmRolls/dmTrackedUses (schema 3 + `npcs: []`), dmNpcCombat.spec.ts (nový) | |
-| docs | DECISIONS D438, STATUS, REPORT | |
+| scripts/extract-data.js | `extractCrStatistics` (nová), `main` | msbcr.json → data/cr-statistics.json |
+| scripts/validate-data.js | `validateMonsters` | guard: 34 řádků, CR = encounter-rules xpByCr v pořadí, čísla |
+| data/cr-statistics.json | — | nový výstup |
+| src/encounters/npcCr.ts | `estimateCr`, `extractCrStatistics`, `loadCrStatistics`, `loadNpcOffence`, `loadNpcCr`, `crTitle` | nový |
+| src/encounters/npcCr.test.ts | — | nový |
+| src/calculation/weaponAttacks.ts | `averageOf` | export |
+| src/sheet/combinedSpells.ts | `loadCombinedSpellParts` (nová), `loadCombinedSpells` | vrací i spellDetails, subclassInfos, featSpells, raceSpells |
+| src/characters/CharacterCard.tsx | prop `badge` | volitelný štítek s title |
+| src/dm/NpcList.tsx | `useNpcCrs` (nový), `NpcList` | „≈ CR x“ |
+| src/dm/EncounterSetup.tsx | `addNpc` | předvyplnění CR |
+| e2e/dmNpcCr.spec.ts | — | nový, a–e |
+| e2e/dmNpcCombat.spec.ts | NPC-2 a, c–h | počítá s předvyplněným CR |
+| docs/DECISIONS.md, STATUS.md, DATA.md | — | D439, NPC-3, cr-statistics |
+
+## Co se změnilo
+- `estimateCr(rows, maxHp, ac, offence)`: řádek = poslední s min ≤ hodnota (pod tabulkou první), posun `trunc(rozdíl/2)` kroků, ořez na 0..33; průměr crNumber obou, nejbližší CR, shoda nahoru.
+- `loadNpcOffence`: `computeWeaponAttacks` + `computeAttacksPerAction` se stejnými argumenty jako CharacterSheet (item bonusy, pact, Bracers); cantripy přes `spellActionRows` se stejnými spellcasting entries (třída, feat, species, subclass D371, item spells). Max DPR vyhrává, jeho bonus (útok, u záchranného cantripu DC).
+- Karta NPC: `.char-card__badge` (stávající styl `.char-card__sub`, žádné nové CSS). Setup: NPC se přidá s `cr: null`, po načtení odhadu se doplní.
 
 ## Ověření
-
-- typecheck OK; `npm test` 201 souborů / 3702 testů OK (beze změny existujících testů listu); validate-data 191/191.
-- `npm run e2e`: 875 passed (2,9 min), včetně upravených dmCombat/dmRolls/dmTrackedUses.
-- Unit: migrace 1→3 a 2→3, duplicitní NPC odmítnuto, XP CR 1 = 200 / bez CR nepočítáno, `loadNpcStats` seeded Fighter 3 (AC 12, init +2, STR +4, CON +3, DEX +2, max HP 25 — z reálných data/), iniciativa a save bonus, Next turn přeskočí NPC na 0, damage (temp HP první, stop na 0) / heal (max) / stavy+Exhaustion zapisují postavu.
-- e2e `dmNpcCombat.spec.ts`: a+b (setup, CR, note, jen jednou, uložení schema 3), c–h (iniciativa d20 +2, řádek AC 12 / 20/25 / záchrany listu, damage 5 NPC+vlk → 15/25 a 6/11 i v uložené postavě, Prone → `play.conditions`, d20=1 → „STR 5“, list přes celou obrazovku ukáže 15/25 a Prone, heal 4 na listu → po „← Back to encounter“ řádek 19/25, stejné kolo a tah, NPC na 0 přeskočeno), i (smazané NPC v boji i setupu, Remove), j (390×844).
+- typecheck OK; npm test 202 souborů / 3711 testů OK; validate-data 195/195 OK; e2e celý běh 878/879 (3.0 min), jediná chyba `dmNpcCombat.spec.ts` c–h čekal po Add NPC prázdné CR (řádek ukazoval „NPC · CR 1/8“ místo třídy). Spec upraven na nové chování (a: předvyplněno 1/8 = 75 XP, pak vymazáno; c–h: počká na 1/8 a vymaže), samostatný běh souboru 4/4 OK. Celý suite po úpravě znovu nespuštěn.
+- Unit (`npcCr.test.ts`): tabulka 1/8 = ac 13 hp 7-35 atk 3 dpr 2-3; AC kroky, průměr 1.625 → 2, shoda 0.1875 → 1/4, DC cantrip, necelé DPR, ořez, null. Seed Fighter 5 + Greatsword: DPR 18, +5, HP 39, AC 12 → CR 2 (obrana 1/4, útok 3). Seed Wizard 5 + Fire Bolt: DPR 11, +5, HP 27, AC 12 → CR 1 (1/8, 2).
+- e2e `dmNpcCr.spec.ts`: a) karta „≈ CR 1/2“ + title, b) Add NPC předvyplní 1/2, 50 → 150 XP, c) smazání → 50 XP + poznámka, uloženo `cr: null`, d) uložené NPC s prázdným CR zůstane prázdné, e) 390×844 štítek v kartě, žádný prvek se scrollWidth > clientWidth.
 
 ## Rozhodnutí v kódu
+- Data do samostatného `data/cr-statistics.json` (ne do encounter-rules: jiná kniha).
+- Necelé DPR (3.5) padá do nižšího řádku; HP na sdílené hranici (760, 805) do vyššího CR.
+- Shoda při zaokrouhlení průměru → vyšší CR.
+- Eldritch Blast: průměr × počet paprsků z `beamNote`; u cantripu jen první řádek škody (zásah, ne „secondary creature“); „+ mod“ bez známého modifikátoru = jen kostky.
+- Útoky za akci Attack z listu platí pro každou zbraň (Thirsting Blade se tím počítá i mimo pact weapon, jako číslo listu).
+- Unarmed Strike je kandidát jako každý zbraňový řádek; Lifedrinker a další kostky mimo průměr se nepočítají.
+- Setup předvyplní jen CR, které výběr nabízí (crXpTable z bestiáře nemá 26–29); jinak zůstane prázdné. Odhad nepřepíše CR, které DM mezitím vybral.
+- Chyba načtení dat → žádný štítek / žádné předvyplnění.
+- Známá mez: když DM nastaví „No CR“ dřív, než odhad dorazí (desítky ms), odhad ho ještě doplní (rozliší se jen vybrané CR, ne prázdné).
 
-- XP podle CR z monsters.json (`crXpTable`, CR 0 = 10 XP, vyšší hodnota). `data/encounter-rules.json` má i `xpByCr` (validate: pokrývá všechny CR) — lze přepnout, výsledek stejný.
-- NPC bez `currentHp` začíná na max; první damage/heal ho zapíše.
-- Exhaustion přidaná z boje = úroveň 1 (jen je-li 0), odebrání = 0; čip bez úrovně (D434).
-- Smazané NPC: do iniciativy nevstupuje, v běžícím boji = „down“ (Next turn ho přeskočí), Remove ho odebere ze setupu i pořadí (`removeEntry`, tah zůstane na stejném tvoru).
-- Nenačtené statistiky (chyba dat): AC „—“, bonusy +0, max HP = current HP.
-- Záložka listu: overlay `position: fixed` z-index 15 (pod DM roll toastem 20), boj zůstává namountovaný (`hidden`), takže výběr, Amount a karty přežijí. Třída `npc-overlay`, ne `*sheet*`: guard D153 (`sheetLayout.test.ts`) hlídá vlastní scroll jen u kontejnerů listu.
-- NPC řádek na mobilu bez ADV (jako monstrum na mobilu).
-- Sheet v overlay běží v DmPage, takže hody z listu jdou do DM historie hodů.
-
-## Subagent
-
-Nepoužit.
+## Pro uživatele
+- `npm run extract-data` dnes přepíše data/monsters.json (~4200 řádků diff) a legendary-groups.json oproti commitu — nesouvisí s úkolem, vráceno `git checkout`, zapsáno v DATA.md. Příčinu stojí za to prověřit samostatně.
+- Subagent nepoužit.
+- Nesledované pomocné skripty (scripts/npc3-msbcr.js a starší) necommitnuty.
 
 ## Manual browser check for the user
-
-none - the planning chat checks the looks from screenshots. Změněné obrazovky: DM setup střetnutí (sekce NPCs, Add NPC, CR, poznámka u obtížnosti), DM boj (řádek NPC desktop/mobil, smazané NPC), list NPC přes celou obrazovku s „← Back to encounter“.
-
-e2e: celá sada 875 passed (2,9 min).
+none - the planning chat checks the looks from screenshots.
+Změněné obrazovky: DM → NPCs (karta NPC se štítkem „≈ CR x“), DM → Encounter setup (CR předvyplněné po Add NPC).

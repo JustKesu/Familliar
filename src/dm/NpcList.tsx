@@ -1,7 +1,28 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import { CharacterCard } from '../characters/CharacterCard'
+import { crTitle, loadNpcCr, type CrEstimate } from '../encounters/npcCr'
 import type { Character } from '../storage/character'
+
+/** D439: the estimate per stored character object, so an edited NPC recomputes; undefined while loading. */
+export function useNpcCrs(npcs: Character[]): (npc: Character) => CrEstimate | null | undefined {
+	const cache = useRef(new WeakMap<Character, CrEstimate | null | 'loading'>())
+	const [, rerender] = useState(0)
+	useEffect(() => {
+		for (const npc of npcs) {
+			if (cache.current.has(npc)) continue
+			cache.current.set(npc, 'loading')
+			void loadNpcCr(npc).then((estimate) => {
+				cache.current.set(npc, estimate)
+				rerender((n) => n + 1)
+			})
+		}
+	}, [npcs])
+	return (npc) => {
+		const entry = cache.current.get(npc)
+		return entry === 'loading' ? undefined : entry
+	}
+}
 
 export function NpcList({
 	npcs,
@@ -24,6 +45,7 @@ export function NpcList({
 }): ReactNode {
 	const [deletingId, setDeletingId] = useState<string | null>(null)
 	const [duplicating, setDuplicating] = useState<{ id: string; name: string } | null>(null)
+	const crOf = useNpcCrs(npcs)
 	const deleting = npcs.find((npc) => npc.id === deletingId)
 	const duplicateSource = duplicating && npcs.find((npc) => npc.id === duplicating.id)
 
@@ -40,17 +62,21 @@ export function NpcList({
 				</p>
 			)}
 			<ul className="char-grid">
-				{npcs.map((npc) => (
+				{npcs.map((npc) => {
+					const estimate = crOf(npc)
+					return (
 					<CharacterCard
 						key={npc.id}
 						character={npc}
+						badge={estimate ? { text: `≈ CR ${estimate.cr}`, title: crTitle(estimate) } : null}
 						onOpen={onOpen}
 						onRename={onRename}
 						onExport={onExport}
 						onRequestDelete={setDeletingId}
 						onRequestDuplicate={(id) => setDuplicating({ id, name: `${npc.name} copy` })}
 					/>
-				))}
+					)
+				})}
 			</ul>
 			{npcs.length === 0 && <p className="char-empty">No NPCs yet.</p>}
 
