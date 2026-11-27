@@ -1,45 +1,55 @@
-# REPORT — NPC-1: záložka NPCs v DM části (NPC s plným listem, Duplicate, Delete)
+# REPORT — NPC-2: STOP před úpravami (podmínka a: AC postavy nejde spočítat mimo list)
 
-Setup: `git fetch` + `merge --ff-only origin/main` = „Already up to date“, HEAD 3bfffb0.
+Setup: `git fetch` + `merge --ff-only origin/main` = „Already up to date“, HEAD bb02b89. Žádný kód nezměněn, commitnut jen tento report. typecheck/test/validate-data/e2e nespuštěny (beze změny kódu nemají co ověřit).
 
-## Co se změnilo
-- Model: `Character.npc?: true`, schema 73, migrace 72→73 jen označí verzi. `validate.ts` přijme jen `true` (jinak
-  „npc must be true when present“), `toCharacter` ho přenese. Export/import nesou příznak beze změny.
-- `CharacterStore`: `update` zachová uložený příznak (Edit, level up, odebrání úrovně jdou přes `update`); nové `markNpc(id)`
-  a `duplicateAsNpc(id, name)` (structuredClone celé postavy, nové id, oříznuté jméno, `npc: true`; prázdné jméno → chyba).
-- Routy: `DmTab` + `'npcs'`, `DmRoute.newNpc`; `#/dm/npcs`, `#/dm/npcs/new`.
-- `App.tsx`: `#/dm/npcs` = DmPage s panelem `<CharacterManager route=…>` (prop `npcs`), `#/dm/npcs/new` = CharacterManager
-  sám (průvodce jako `#/new`). CharacterManager: větev `dm` → `src/dm/NpcList.tsx`, větev `newNpc` → CharacterWizard,
-  `onSaved` = `markNpc` + list, Cancel → `#/dm/npcs`. Domovský seznam filtruje `!npc`.
-- `NpcList.tsx`: „New NPC“ (toolbar jako Encounters), mřížka `CharacterCard`, Delete přes ConfirmDialog (Keep/Delete),
-  Duplicate přes ConfirmDialog s polem „Name of the copy“. `CharacterCard`: volitelná položka menu Duplicate (jen NPC).
-  `ConfirmDialog`: volitelné `destructiveDisabled`. CSS `.npcs__name`.
-- Průvodce o NPC neví nic (0 míst v CharacterWizard/wizardState) — příznak přidá až `onSaved`.
+## Proč STOP
+
+Zadání: zastavit, pokud AC, záchrany, iniciativu nebo max HP uložené postavy nejde spočítat mimo list bez kopírování logiky listu. Stav:
+
+| Hodnota | Mimo list? | Cesta |
+|---|---|---|
+| Max HP | ano | `loadCharacterMaxHp` (src/hitPoints/hpDefault.ts:43), už sdílené s wizardem |
+| Iniciativa | ano | `computeInitiative(character, feats, itemFlatBonuses.initiative, itemAbilityGrants)` — vstupy z `loadFeatEffectEntries`, `loadItemRefs`, `buildItemFlatBonusGrants`/`flatBonusesByTarget`, `buildItemAbilityGrants` |
+| Záchrany | ano | `computeSavingThrows` (CharacterSheet.tsx:2508) — vstupy z `loadSavingThrowClassData`, featy, item grants (`buildItemProficiencyGrants` ap.), vše loadery + čisté funkce |
+| **AC** | **ne** | `computeArmourClass(…, acFormulaKeys, …)` (CharacterSheet.tsx:2518). `acFormulaKeys = loadAcFormulaKeys(character, knowsMageArmor)` (:2406) a `knowsMageArmor = hasMageArmor(combinedSpells)` (:2375) |
+
+`combinedSpells` se skládá jen uvnitř `CharacterSheet`:
+- CharacterSheet.tsx:2083–2132 — inline efekt: class always-prepared + subclass always-prepared (`loadSubclassSource`, `pactSlotsByLevel` ze `spellSlotsClassData`, `genieEntryFor`, d6b volby, D424 Savant filtr), `dedupeAlwaysPreparedSpells`;
+- :2134–2248 — `loadFeatGrantedSpells`, `loadOptionalFeatureGrantedSpells` (Armor of Shadows!), `loadRaceSpells`;
+- :2333–2375 — D425 Wizard book grants (`activeBookPicks`, `spellDetails`) → `classGrantInfo` → `combineSpellEntries`.
+
+Zkratka `hasMageArmor(character.spellChoices)` by dala jiné AC než list u každé postavy s Mage Armor z invokace/subclassu/featu/rasy (Warlock s Armor of Shadows) — tiché rozejití s listem, proto ji nevolím.
+
+## Otázka pro uživatele
+
+1. **Vytáhnout skládání seznamu kouzel z listu** do sdíleného modulu (např. `src/sheet/combinedSpells.ts`, `loadCombinedSpells(character)` = řádky 2083–2132 + 2333–2375, list ho pak volá taky). Čistý přesun, AC v encounteru = AC na listu. Cena: zásah do CharacterSheet.tsx (efekt se `spellGrantsSettled`, závislost na `spellSlotsClassData`), samostatný krok před NPC-2 nebo jeho součást.
+2. **AC bez Mage Armor mimo list** (`knowsMageArmor` = jen `spellChoices`), s poznámkou v D438. Rychlé, ale AC v řádku může být nižší než na listu.
+3. **AC v řádku NPC nezobrazovat** („—“, jako neznámé monstrum), plný AC jen na listu přes tlačítko statbloku.
+
+Doporučení: 1 (jediná varianta, kde řádek a list nikdy nenesouhlasí).
+
+## Plánovaný rozsah (krok 1, pro navazující session)
+
+| Soubor | Funkce / místo | Změna |
+|---|---|---|
+| src/encounters/encounterStore.ts | `ENCOUNTER_SCHEMA_VERSION`, `Encounter`, `isEncounter`, `readRaw`, migrace | schema 3, `npcs: {id, characterId, cr: string|null}[]`, migrace 2→3 `npcs: []` |
+| src/encounters/encounterDifficulty.ts | `encounterXp` (+ `crXp` z monster dat) | XP NPC s CR, počet nezapočtených |
+| src/encounters/combat.ts | `InitiativeEntry`, `isEntry`, `entryKey`, `initiativeEntries`, `isEntryDown`, `nextTurn`, `rollSaves`, `applyDamage`/`applyHeal` | kind `npc`, HP/podmínky NPC mimo `combat.hp` |
+| src/encounters/npcCombat.ts (nový) | načtení AC/záchran/iniciativy/max HP, zápis HP a podmínek do `CharacterStore` | |
+| src/dm/EncounterSetup.tsx | `Draft`, `toInput`, `DifficultyBar`, nová `NpcCard`, „Add NPC“ | |
+| src/dm/EncounterRun.tsx | `InitiativeStep`, `entryLabel`, `CombatScreen` (list, damage/heal/condition/saves, stat tlačítko), nový `NpcRow`, overlay listu s „← Back to encounter“ | |
+| src/styles (CSS encounteru) | řádek NPC, overlay | |
+| testy: encounterStore/encounterDifficulty/combat/npcCombat .test.ts; e2e dmCombat, dmTrackedUses, dmRolls (+ další seed) schemaVersion 3; nový e2e/dmNpcCombat.spec.ts | | |
+| docs: DECISIONS.md D438, STATUS.md | | |
 
 ## Rozhodnutí v kódu
-- Příznak se při vytvoření zapisuje druhým zápisem (`markNpc`) po uložení průvodcem; selže-li, postava zůstane hráčská a
-  chyba se ukáže nad listem.
-- Karta NPC má i Rename a Export (stejná karta jako doma); Duplicate je v menu „⋯“, ne jako samostatné tlačítko.
-- Import zůstává jen na domovském seznamu; NPC soubor se uloží jako NPC a objeví se jen v záložce NPCs (doma nic nepřibude).
-- Duplikát hráčské postavy by vznikl jako NPC — v UI nedostupné (Duplicate je jen v NPCs).
-- Výstupy z NPC: Cancel nového NPC → `#/dm/npcs`; Edit/level up Cancel → list NPC (jako dnes); zpět v prohlížeči z listu
-  vede na `#/dm/npcs`, protože odtud byl otevřen. Wordmark i tlačítko DM v hlavičce beze změny. Přesměrování z neznámého id
-  (smazaná postava) dál vede domů — u neexistujícího id nelze poznat, zda šlo o NPC.
-- Prázdný seznam: „No NPCs yet.“; chyba načtení / akce se ukáže nad mřížkou.
-- STOP podmínky (a), (b) nenastaly: počty, intro a import běžných souborů se nemění; průvodce nebylo nutné měnit.
 
-## Ověření
-- `npm run typecheck` OK; `npm test` 200 souborů / 3693 testů OK (nové `src/storage/npc.test.ts`: migrace 72 bez
-  příznaku, validace, export/import, update, markNpc, duplicate; `migrations.test.ts` 72→73; `route.test.ts` 2 routy).
-- `npm run validate-data` 191/191.
-- `npm run e2e`: 871 passed (2,8 min). Nový `e2e/dmNpcs.spec.ts` (7 scénářů, a–h, + b2 Cancel), schemaVersion 73 v
-  levelOrder/stableIds/spellbookSB1. `e2e/wizard.ts`: volba `alreadyOpen` (průvodce bez `goto('/#/new')`).
-- Subagent nepoužit.
+Žádná (nic neimplementováno).
 
-## Změněné obrazovky
-- DM: třetí záložka „NPCs“ (seznam karet, New NPC, dialog Duplicate, dialog Delete).
-- Domovský seznam: bez NPC.
-- Menu karty postavy: v NPCs navíc „Duplicate“.
+## Subagent
+
+Nepoužit.
 
 ## Manual browser check for the user
-none - the planning chat checks the looks from screenshots.
+
+none - the planning chat checks the looks from screenshots. Změněné obrazovky: žádné.
