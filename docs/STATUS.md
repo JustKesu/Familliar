@@ -1427,6 +1427,14 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   checked by `validateMonsters()` in validate-data.js. Markup renderer handles `{@atk}`, `{@hom}`, `{@actSaveFailBy}`,
   `{@actSaveSuccessOrFail}`; `attackTagToFull` no longer doubles the space in combined attack labels. Nothing reads the
   monster files yet.
+- MON-2 (D432): DM area. Routes `#/dm` (Encounters tab, placeholder line) and `#/dm/bestiary`; header button "DM" opens
+  the Bestiary; `App.tsx` renders `src/dm/DmPage.tsx` instead of CharacterManager. `src/monsters/monsterData.ts`
+  (loader for monsters.json + legendary-groups.json, `monsterProficiencyBonus`, `monsterInitiative`, `monsterSave`,
+  `monsterTypes`), `bestiaryFilter.ts` (name search, CR min/max, Type, Environment, Book; sorted by name),
+  `monsterFormat.ts`, `MonsterStatBlock.tsx` (full 2024 stat block incl. spellcasting by `displayAs`, legendary uses,
+  Lair from the legendary group). `src/dm/Bestiary.tsx`: list + card side by side; ≤ 760px the card replaces the list
+  with "← Back to list". The DM header button is hidden on the phone sheet (header would exceed 390px). Load failure = error card. BeastStatBlock only gained `export` on helpers. No encounters, HP
+  tracking or rolling yet. `e2e/dmBestiary.spec.ts` a–f.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

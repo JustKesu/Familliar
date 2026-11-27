@@ -2239,3 +2239,23 @@ or a different row count:
   numbers with thousands commas → `xpBudgetPerCharacter: [{level, low, moderate, high}]`.
 - "Experience Points by Challenge Rating", book-xmm.json, 34 rows (`colLabels` CR|XP) → `xpByCr: [{cr, crNumber, xp}]`;
   CR 0 prints "0 or 10" → `xp: 10, xpAlt: 0`.
+
+### Monster stat-block field shapes (MON-2 survey)
+
+Counted over data/monsters.json (648):
+- `ac`: number 623, `{ac, from}` 25 (`from` e.g. "natural armor"); never more than one value.
+- `hp`: always `{average, formula}`. `alignment`: letter codes L/N/C/G/E/U/A, joined per entry ("NE" 91, "U" 151, "A" 22).
+- `type`: string 446, `{type, tags}` 185, `{type, swarmSize[, tags]}` 15; Empyrean and Empyrean Iota have
+  `type.type = {choose: ["celestial", "fiend"]}`. Tags are plain strings.
+- `speed`: values are a number or `{number, condition}` ("(hover)") with a separate `canHover: true`; `alternate`
+  (7, `{walk: [{number, condition}]}`) and one `choose` `{from, amount, note}`.
+- `resist` has 3 `{special}` entries; `vulnerable` 1 and `conditionImmune` 2 conditional groups `{<field>: [...], note, cond}`;
+  the note can carry markup (`{@spell Bless|XPHB}`). All other list entries are plain lowercase strings.
+- `save`/`skill` values are already-totalled strings ("+6"); `save` lists only proficient saves (Lich INT 21, CR 21: "+12" = +5 + PB 7).
+- `initiative`: absent 417, `{proficiency: 1}` 164, `{proficiency: 2}` 66, `{advantageMode: "adv"}` 1 (First-Year Student).
+  PB from CR uses the 2 + 1-per-4 step with CR < 1 as 1 (Adult Green Dragon DEX 12, CR 15, proficiency 2 → +11).
+- `environment` values include compound strings such as "planar, abyss"; 95 monsters have none.
+- Spellcasting `hidden` (95 blocks) names the lists already written out in `headerEntries`; all other blocks need their
+  `will`/`daily`/`restLong`/`recharge`/`legendary` lists printed. All list and header values are strings.
+- Trait/action/... blocks are `{name, entries}` with string or `list` entries only.
+- legendary-groups.json: only Murgaxor (SCC) has `lairActions`; 39 groups have `regionalEffects` (strings + `list`).

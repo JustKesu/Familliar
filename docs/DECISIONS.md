@@ -5958,3 +5958,15 @@ Záznamy bez CR (57 summonů z kouzel a featur, např. Steel Defender) se vyřaz
 `cr` je zobrazovací řetězec („1/4“) jako v beasts.json, vedle něj `crNumber`, `xp` a `xpLair`, má-li ho stat block.
 CR 0 je v tabulce „0 or 10“: uloženo `xp: 10`, `xpAlt: 0`; monstrum s vlastním `cr.xp` (Giant Fly, Seahorse,
 Shrieker Fungus = 0) dostane tuto hodnotu. Daniel schválil 27. 11. 2026.
+
+## D432 — DM oblast a bestiář jen ke čtení (MON-2)
+
+V hlavičce je tlačítko „DM“, které otevře `#/dm/bestiary`. DM oblast má dvě záložky: ENCOUNTERS (`#/dm`, zatím jen
+řádek „Encounters come in the next update.“) a BESTIARY (`#/dm/bestiary`). Bestiář: hledání v názvu (obsahuje, bez
+ohledu na velikost písmen), filtry CR od/do, typ, prostředí a kniha, počet „N monsters“, seznam řazený podle jména
+(NAME, CR, TYPE). Klik na řádek ukáže stat block; na desktopu vedle seznamu, na mobilu (≤ 760 px) místo seznamu
+s tlačítkem zpět. Vybrané monstrum se do URL neukládá. Stat block ukazuje u každé vlastnosti modifikátor a „save +X“;
+záchrana ze dat (`save`) je zdatná a zvýrazněná, jinak je to modifikátor. Initiative = DEX mod + PB × `initiative.proficiency`,
+PB podle CR. Kouzlení se řadí do sekce podle `displayAs` (výchozí Actions). Legendary Action Uses = `legendaryActions`
+nebo 3, plus „(N in Lair)“ z `legendaryActionsLair`. Sekce Lair bere `lairActions` a `regionalEffects` z legendární
+skupiny. Chyba načtení dat = chybová karta (D43). Karty Wild Shape a familiárů zůstávají beze změny. Zadání MON-2, 27. 11. 2026.

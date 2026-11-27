@@ -40,7 +40,7 @@ vi.mock('./levelUp/levelRemoval', async (importOriginal) => {
 
 function Harness() {
 	const [route, navigate] = useRoute()
-	const characterRoute: CharacterRoute = route.view === 'markup-demo' ? { view: 'list' } : route
+	const characterRoute: CharacterRoute = route.view === 'markup-demo' || route.view === 'dm' ? { view: 'list' } : route
 	return <CharacterManager route={characterRoute} navigate={navigate} />
 }
 

@@ -11,6 +11,9 @@ export function AppHeader({ navigate, rollsSlotRef }: { navigate: Navigate; roll
 			</button>
 			{/* D165: CharacterSheet portals its "Rolls" button in here, so it exists only while a sheet is open. */}
 			<span ref={rollsSlotRef} className="app-header__slot" />
+			<button type="button" className="tabs__button tabs__theme app-header__dm" onClick={() => navigate({ view: 'dm', tab: 'bestiary' })}>
+				DM
+			</button>
 			<FlameToggle />
 			<ThemeToggle />
 		</header>

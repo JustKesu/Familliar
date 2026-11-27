@@ -13,7 +13,9 @@ export type CharacterRoute =
 	/** D329: the class gaining the level rides in the URL for a multiclass character, so F5 keeps it. */
 	| { view: 'level-up'; id: string; levelClass?: { className: string; classSource: string } }
 
-export type Route = CharacterRoute | { view: 'markup-demo' }
+export type DmTab = 'encounters' | 'bestiary'
+
+export type Route = CharacterRoute | { view: 'markup-demo' } | { view: 'dm'; tab: DmTab }
 
 const LIST_ROUTE: CharacterRoute = { view: 'list' }
 
@@ -23,6 +25,8 @@ export function parseRoute(hash: string): Route {
 	if (path === '' || path === '/') return LIST_ROUTE
 	if (path === '/new') return { view: 'new' }
 	if (path === '/markup-demo') return { view: 'markup-demo' }
+	if (path === '/dm') return { view: 'dm', tab: 'encounters' }
+	if (path === '/dm/bestiary') return { view: 'dm', tab: 'bestiary' }
 
 	const sheetMatch = /^\/character\/([^/]+)$/.exec(path)
 	if (sheetMatch) return { view: 'sheet', id: decodeURIComponent(sheetMatch[1]) }
@@ -53,6 +57,8 @@ export function formatRoute(route: Route): string {
 			return '#/new'
 		case 'markup-demo':
 			return '#/markup-demo'
+		case 'dm':
+			return route.tab === 'bestiary' ? '#/dm/bestiary' : '#/dm'
 		case 'sheet':
 			return `#/character/${encodeURIComponent(route.id)}`
 		case 'edit':

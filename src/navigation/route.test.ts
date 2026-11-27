@@ -11,6 +11,8 @@ describe('route parse/format round trip', () => {
 		{ route: { view: 'level-up', id: 'abc-123', levelClass: { className: 'Sorcerer', classSource: 'XPHB' } }, hash: '#/character/abc-123/level-up/Sorcerer/XPHB' },
 		{ route: { view: 'level-up', id: 'abc', levelClass: { className: 'Blood Hunter', classSource: 'A/B' } }, hash: '#/character/abc/level-up/Blood%20Hunter/A%2FB' },
 		{ route: { view: 'markup-demo' }, hash: '#/markup-demo' },
+		{ route: { view: 'dm', tab: 'encounters' }, hash: '#/dm' },
+		{ route: { view: 'dm', tab: 'bestiary' }, hash: '#/dm/bestiary' },
 	]
 
 	for (const { route, hash } of cases) {
@@ -44,6 +46,9 @@ describe('route parse — invalid and trailing-slash hashes fall back to the lis
 		'#/nope',
 		'#/new/',
 		'#/markup-demo/',
+		'#/dm/',
+		'#/dm/bestiary/',
+		'#/dm/nope',
 		'#character/abc',
 	]
 

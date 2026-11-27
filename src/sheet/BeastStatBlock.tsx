@@ -21,7 +21,7 @@ import { Entries } from '../markup'
  * empty one.
  */
 
-const SIZE_LABELS: Record<string, string> = {
+export const SIZE_LABELS: Record<string, string> = {
 	T: 'Tiny',
 	S: 'Small',
 	M: 'Medium',
@@ -40,7 +40,7 @@ const SAVE_LABELS: Record<string, string> = {
 }
 
 /** The six scores in the order a printed stat block lists them. */
-const ABILITY_COLUMNS: ReadonlyArray<readonly [key: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha', label: string]> = [
+export const ABILITY_COLUMNS: ReadonlyArray<readonly [key: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha', label: string]> = [
 	['str', 'STR'],
 	['dex', 'DEX'],
 	['con', 'CON'],
@@ -49,15 +49,15 @@ const ABILITY_COLUMNS: ReadonlyArray<readonly [key: 'str' | 'dex' | 'con' | 'int
 	['cha', 'CHA'],
 ]
 
-function formatModifier(modifier: number): string {
+export function formatModifier(modifier: number): string {
 	return modifier >= 0 ? `+${modifier}` : `${modifier}`
 }
 
-function titleCase(value: string): string {
+export function titleCase(value: string): string {
 	return value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
 }
 
-function formatSize(size: string[]): string {
+export function formatSize(size: string[]): string {
 	return size.map((code) => SIZE_LABELS[code] ?? code).join('/')
 }
 
