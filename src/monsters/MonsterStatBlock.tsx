@@ -21,16 +21,29 @@ function Blocks({ title, blocks, intro }: { title: string; blocks: MonsterEntryB
 			<h4>{title}</h4>
 			{intro && <p className="beast__line">{intro}</p>}
 			<ul>
-				{blocks.map((block, index) => (
-					<li key={index}>
-						{block.name && (
-							<strong className="beast__block-name">
-								<Markup text={block.name} />.{' '}
-							</strong>
-						)}
-						<Entries entries={block.entries ?? []} />
-					</li>
-				))}
+				{blocks.map((block, index) => {
+					const entries = block.entries ?? []
+					// A printed stat block runs the name into the first paragraph; every MON-1 block starts with a string (DATA.md MON-3).
+					const lead = typeof entries[0] === 'string' ? entries[0] : null
+					const name = block.name && (
+						<strong className="beast__block-name">
+							<Markup text={block.name} />.{' '}
+						</strong>
+					)
+					return (
+						<li key={index} className="monster-card__block">
+							{lead !== null ? (
+								<p className="mk-p">
+									{name}
+									<Markup text={lead} />
+								</p>
+							) : (
+								name
+							)}
+							<Entries entries={lead !== null ? entries.slice(1) : entries} />
+						</li>
+					)
+				})}
 			</ul>
 		</section>
 	)

@@ -5970,3 +5970,17 @@ záchrana ze dat (`save`) je zdatná a zvýrazněná, jinak je to modifikátor. 
 PB podle CR. Kouzlení se řadí do sekce podle `displayAs` (výchozí Actions). Legendary Action Uses = `legendaryActions`
 nebo 3, plus „(N in Lair)“ z `legendaryActionsLair`. Sekce Lair bere `lairActions` a `regionalEffects` z legendární
 skupiny. Chyba načtení dat = chybová karta (D43). Karty Wild Shape a familiárů zůstávají beze změny. Zadání MON-2, 27. 11. 2026.
+
+## D433 — Uložená střetnutí a obrazovka přípravy (MON-3)
+
+Střetnutí se ukládají v localStorage pod klíčem `familliar:encounters` jako `{schemaVersion: 1, encounters: [...]}`,
+odděleně od postav. Encounter `{id, name, createdAt, updatedAt, party: {size, level} | null, players: string[], groups}`,
+skupina `{id, monster: {name, source}, oneInitiative, members: [{id, name}]}`; id členů jsou stabilní (MON-4 na ně
+pověsí HP a stavy). Vadný záznam se přeskočí, nahlásí a při zápisu zachová; nečitelný klíč (ne JSON, jiný tvar, novější
+schéma) ukáže hlášku, zápisy se odmítnou a jde jen smazat přes „Clear encounter data“ s potvrzením (D43). Routy
+`#/dm` (seznam), `#/dm/encounter/new` a `#/dm/encounter/<id>` (příprava). Obtížnost: součet `xp` všech členů (ne
+`xpLair`, neznámé monstrum 0) proti XDMG rozpočtu na postavu × počet hráčů; štítek podle prahu, který součet dosáhl
+(≥ Low = Low, ≥ Moderate = Moderate, = High = High, > High = Above High, jinak Below Low); bez úplné party (počet i
+úroveň 1–20) se lišta skryje a party se uloží jako null. Výchozí jména členů „Wolf“ / „Wolf 1..N“; změna počtu
+přečísluje jen jména, která jsou stále výchozí, a z 1 na víc zapne „One initiative roll“. Přidání monstra, které už ve
+střetnutí je, zvýší počet. Save uloží a vrátí na seznam; prázdné jméno = „Untitled encounter“. Zadání MON-3, 27. 11. 2026.

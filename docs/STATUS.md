@@ -1435,6 +1435,16 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Lair from the legendary group). `src/dm/Bestiary.tsx`: list + card side by side; ≤ 760px the card replaces the list
   with "← Back to list". The DM header button is hidden on the phone sheet (header would exceed 390px). Load failure = error card. BeastStatBlock only gained `export` on helpers. No encounters, HP
   tracking or rolling yet. `e2e/dmBestiary.spec.ts` a–f.
+- MON-3 (D433): saved encounters. `src/encounters/encounterStore.ts` (key `familliar:encounters`, `{schemaVersion: 1,
+  encounters}`; bad entries skipped and kept on write, unreadable key = notice, writes refused, "Clear encounter data"),
+  `encounterDifficulty.ts` (XDMG budget × party size, label Below Low/Low/Moderate/High/Above High, `xp` only),
+  `encounterEdit.ts` (count, default member names, add-or-raise). Routes `#/dm/encounter/new`, `#/dm/encounter/<id>`.
+  `src/dm/EncounterList.tsx` (list, Edit, Delete via ConfirmDialog, "No encounters yet."), `EncounterSetup.tsx` (name,
+  Players/Level, difficulty bar, monster groups with −/+ 44px, "One initiative roll", member names, players chips,
+  Bestiary picker with "+ Add", Save → list, Back with unsaved-changes confirm, "Unknown monster" for a missing one).
+  `BestiaryBrowser` is the Bestiary list reusable with `onPick`. Monster card: block name inline with first paragraph,
+  6px between blocks; count "1 monster"; phone filters as a 2-column grid. No initiative/HP/turns yet (MON-4).
+  `e2e/dmEncounters.spec.ts` a–f.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

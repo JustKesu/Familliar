@@ -2258,4 +2258,9 @@ Counted over data/monsters.json (648):
 - Spellcasting `hidden` (95 blocks) names the lists already written out in `headerEntries`; all other blocks need their
   `will`/`daily`/`restLong`/`recharge`/`legendary` lists printed. All list and header values are strings.
 - Trait/action/... blocks are `{name, entries}` with string or `list` entries only.
+- MON-3 survey: all 2740 trait/action/bonus/reaction/legendary blocks have a `name` and their first entry is a string,
+  so the stat block can run the bold name into the first paragraph.
+- MON-3 survey: monster names are unique across the 648 (name alone identifies one); every monster has a numeric `xp`.
+  Wolf XMM CR 1/4 = 50 XP, Dire Wolf XMM CR 1 = 200 XP. `xpBudgetPerCharacter` level 1 = 50/75/100, level 2 = 100/150/200,
+  level 3 = 150/225/400 (Low/Moderate/High).
 - legendary-groups.json: only Murgaxor (SCC) has `lairActions`; 39 groups have `regionalEffects` (strings + `list`).

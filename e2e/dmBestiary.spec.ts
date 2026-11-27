@@ -22,7 +22,7 @@ test('MON-2 a–d: header DM button, search, Wolf card, CR filter', async ({ pag
   await openBestiary(page)
 
   await page.getByRole('tab', { name: 'Encounters' }).click()
-  await expect(page.getByText('Encounters come in the next update.')).toBeVisible()
+  await expect(page.getByText('No encounters yet.')).toBeVisible()
   await expect(page).toHaveURL(/#\/dm$/)
   await page.getByRole('tab', { name: 'Bestiary' }).click()
 

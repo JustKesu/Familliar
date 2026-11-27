@@ -1,38 +1,48 @@
-# REPORT — MON-2: DM oblast, bestiář a stat block monstra
+# REPORT — MON-3: uložená střetnutí, obrazovka přípravy, opravy bestiáře
 
 ## Co se změnilo
-- Nové: `src/monsters/monsterData.ts` (loader monsters.json + legendary-groups.json přes `loadDataFile`, typy, `monsterProficiencyBonus`, `monsterInitiative`, `monsterSave`, `monsterTypes`, `findLegendaryGroup`), `bestiaryFilter.ts`, `monsterFormat.ts`, `MonsterStatBlock.tsx`, `src/dm/DmPage.tsx`, `src/dm/Bestiary.tsx`.
-- `route.ts`: `{ view: 'dm', tab: 'encounters' | 'bestiary' }` ↔ `#/dm`, `#/dm/bestiary`. `App.tsx` vykreslí `DmPage` místo CharacterManager. `AppHeader.tsx`: tlačítko „DM“ (`tabs__button tabs__theme`) → `#/dm/bestiary`.
-- `BeastStatBlock.tsx`: jen `export` u `SIZE_LABELS`, `ABILITY_COLUMNS`, `formatModifier`, `titleCase`, `formatSize` (chování beze změny; +5 lint warningů only-export-components).
-- `index.css`: sekce „DM area (MON-2, D432)“. `CharacterManager.test.tsx`: harness vylučuje route `dm` (typová nutnost).
-- Docs: D432 (DECISIONS), STATUS, DATA.md „Monster stat-block field shapes (MON-2 survey)“. MARKUP-INVENTORY beze změny (žádné nové tagy; recharge/atk/hom/actSave* renderer už zná).
+- `src/encounters/encounterStore.ts` (nový): klíč `familliar:encounters`, `{schemaVersion: 1, encounters}`; validace po
+  záznamech, vadné se přeskočí a při zápisu zachovají; nečitelný klíč → `read().error`, zápisy hází `EncounterStorageError`,
+  `clearAll()`. `familliar:characters` nedotčen.
+- `src/encounters/encounterDifficulty.ts` (načtení `encounter-rules.json`, prahy × party, štítek, součet `xp`),
+  `encounterEdit.ts` (počet, výchozí jména, přidat-nebo-zvýšit).
+- `src/navigation/route.ts`: `DmRoute` s `encounter?: 'new' | {id}`; `#/dm/encounter/new`, `#/dm/encounter/<id>`.
+- `src/dm/DmPage.tsx` (bere celou route), `EncounterList.tsx`, `EncounterSetup.tsx` (nové), `src/App.tsx` (prop).
+- `src/dm/Bestiary.tsx`: `useLoaded`, `BestiaryBrowser` s `onPick` (řádek + „+ Add“, bez karty), „1 monster“.
+- `src/monsters/MonsterStatBlock.tsx`: jméno bloku v jednom `<p>` s prvním odstavcem; CSS 6px mezi bloky (jen `.monster-card`).
+- `src/index.css`: styly střetnutí, mobilní mřížka filtrů 2 sloupce. `BeastStatBlock` (Wild Shape, familiár) beze změny.
+- Změněné obrazovky: DM › Encounters (seznam), nová obrazovka přípravy, Bestiary (počet, karta monstra, mobilní filtry).
+- Docs: D433, STATUS.md, DATA.md (průzkum bloků a XP čísel).
 
 ## Ověření
-- `npm run typecheck` OK, `npm test` 3630/3630, `npm run lint` 0 chyb, `npm run validate-data` 191/191.
-- `npm run e2e` 852/852 (10.5 min — nad limitem ~3 min). První běh: 3 mobilní testy listu (mobileRowsM2 a, mobileSheetM1 a, g) — scrollWidth 398 > 390 kvůli DM tlačítku v hlavičce listu; opraveno skrytím (viz níže), druhý běh zelený.
-- Nové testy: `src/monsters/monsterData.test.ts` (loader, PB/initiative/save — Adult Green Dragon +11, Lich +17 a save INT +12, filtry, formáty), `src/dm/Bestiary.test.tsx` (chybová karta při 404 a ne-poli), `route.test.ts` (+2 round-trip, +3 neplatné).
-- `e2e/dmBestiary.spec.ts`: a–d (DM tlačítko, „wolf“ → Wolf + Dire Wolf, karta Wolf AC 12 / HP 11 / Bite, CR filtr 5–10 = 175), e (Adult Green Dragon: Legendary Resistance, Legendary Action Uses 3 (4 in Lair), Lair/Regional Effects, Initiative +11, zvýrazněné save +6/+7), f (390×844: karta místo seznamu, zpět, bez přetečení).
+- typecheck OK; `npm test` 197 souborů / 3645 testů OK (nové `src/encounters/encounters.test.ts`, rozšířený
+  `route.test.ts`); validate-data 191/191; lint jen varování stejného typu jako existující.
+- e2e celé: 856 passed, 9,4 min (nad limitem ~3 min). `e2e/dmEncounters.spec.ts`: a–c vytvoření Wolves (Wolf ×6 + Dire
+  Wolf „Alpha“, 4 hráči úr. 2 → 500 XP, Low, prahy 400/600/800), reload, úprava na ×5 (450 XP), potvrzení Back, smazání;
+  d poškozený klíč + vadný záznam + „Unknown monster“; e „Amphibious.“ v jednom odstavci, mezera ≤ 8px, „1 monster“;
+  f 390×844 bez přetečení (dokument i vnitřní prvky v `main`), filtry CR vedle sebe, krokovací tlačítka ≥ 44px.
+  `e2e/dmBestiary.spec.ts` upraven na „No encounters yet.“.
+- Čísla ověřena skriptem nad daty: Wolf 50 XP, Dire Wolf 200 XP, úroveň 2 = 100/150/200 na postavu.
 
 ## Rozhodnutí v kódu
-- Soubory: `src/monsters/*` (data, filtr, formát, karta), `src/dm/*` (stránka, bestiář). Vybrané monstrum jen ve stavu komponenty, ne v URL.
-- Hledání: podřetězec v názvu. CR od/do: selecty hodnot přítomných v datech, včetně hranic. Type: základní typ; Empyrean (`choose`) spadá pod celestial i fiend. Environment: hodnoty dat jak jsou („planar, abyss“ = jedna položka); monstra bez environment jen při „All“. Book: kód → celý název knihy.
-- Řazení `compareText` (F-18 guard), sekundárně podle zdroje.
-- Prázdné stavy: „No monsters match these filters.“, „Select a monster to see its stat block.“, „Loading bestiary…“; chyba = `role="alert"` karta s textem chyby.
-- Stat block: CR řádek „15 (XP 13,000, or 15,000 in lair; PB +5)“ (PB přidán navíc). `initiative.advantageMode` → „+X (advantage)“. Zarovnání z kódů (L/N/C/G/E/U/A). Rychlost: `{number, condition}` → „30 ft. (hover)“, `canHover` se nezobrazuje, `alternate` jako další položky.
-- Kouzlení: header + neskryté seznamy („At will:“, „N/day (each):“, „N/long rest:“, `{@recharge N}:`, „Costs N:“), připojeno na konec sekce dle `displayAs`. Legendary sekce se ukáže jen s legendary akcemi.
-- Damage/condition seznamy: řetězce s velkými písmeny, `{special}` text, podmíněné skupiny „Charmed (with Mind Blank)“, vše přes Markup. Názvy bloků přes Markup (rendruje `{@recharge 5}`).
-- Mobil: skóre vlastností 3×2, řádek seznamu `1fr 40px 96px`. Tlačítko DM skryto na telefonu při otevřeném listu postavy (`#root:has(.sheet-view)`), aby se list nezměnil; na seznamu postav je.
-
-## K rozhodnutí uživatele
-- Na telefonu z listu postavy není přímý vstup do DM (jen přes FAMILLIAR → DM). Jinak by bylo třeba upravit hlavičku listu (zalamování/menší tlačítka).
-- Data: jen Murgaxor (SCC) má `lairActions`; XMM skupiny nesou jen Regional Effects, takže sekce Lair u XMM draků ukazuje jen ty.
-
-## Manual browser check for the user
-none - the planning chat checks the looks from screenshots.
-
-Nové obrazovky: `#/dm` (Encounters, jeden řádek), `#/dm/bestiary` desktop (filtry + seznam vlevo, karta vpravo), `#/dm/bestiary` telefon (seznam; po kliknutí karta s „← Back to list“), tlačítko DM v hlavičce.
+- Štítek obtížnosti podle dosaženého prahu (500 při 400/600/800 = Low); rozpočet jako strop by dal „Moderate“ — potvrdit.
+- Party se uloží jen při vyplněném počtu i úrovni (1–20), jinak null.
+- Nečitelný klíč: zápisy odmítnuty, únik jen tlačítkem „Clear encounter data“ (ConfirmDialog); novější schéma totéž.
+- Save uloží a vrátí na seznam; prázdné jméno → „Untitled encounter“.
+- Checkbox „One initiative roll“ se zobrazí jen při počtu > 1; přechod 1 → víc ho zapne, návrat na 1 vypne.
+- Přečíslování při změně počtu jen u jmen, která jsou stále výchozí; max. 99 v skupině.
+- Hráči: prázdné a duplicitní jméno se nepřidá; Enter v poli přidá.
+- Picker v přípravě neotevírá stat block; řádek je div s tlačítkem „+ Add“ (`aria-label "Add <jméno>"`).
+- Lišta obtížnosti: stupnice do 125 % High, značky prahů; bez party se ukáže jen „N XP“.
+- Monstrum se páruje podle name+source; neznámé = 0 XP, zůstává upravitelné.
 
 ## Subagent use
 Žádný.
 
-Untracked helper skripty ponechány mimo commit: `scripts/investigate-mon2-shapes{,2,3}.js`, `scripts/probe-mon1.js`, `scripts/investigate-lh2-sorcery-points.js`.
+## Pro uživatele
+- Neověřené historické skripty v `scripts/` (investigate-lh2…, investigate-mon2-shapes*, probe-mon1.js) nejsou součástí
+  commitu a neodstranil jsem je (git clean zakázán zadáním); `scripts/probe-mon3.js` je můj vyšetřovací skript, také
+  necommitnutý.
+
+## Manual browser check for the user
+none - the planning chat checks the looks from screenshots.

@@ -5571,6 +5571,313 @@ details.beast > .beast__body {
   color: var(--text);
 }
 
+/* MON-3: name runs into the first paragraph, 6px between blocks. */
+.monster-card .monster-card__block {
+  margin: 0 0 6px;
+}
+
+.monster-card .monster-card__block .mk-p {
+  margin: 0;
+}
+
+.monster-card .monster-card__block > * + * {
+  margin-top: 4px;
+}
+
+.bestiary__filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bestiary__filters select {
+  min-width: 0;
+}
+
+.bestiary__row--pick {
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr) 64px 120px auto;
+  align-items: center;
+}
+
+.bestiary__add {
+  padding: 4px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ---- Encounters (MON-3, D433) ---- */
+
+.encounters__toolbar {
+  margin-bottom: 12px;
+}
+
+.encounters__clear {
+  margin-left: 8px;
+}
+
+.encounters__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.encounters__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.encounters__main {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.encounters__name {
+  overflow-wrap: anywhere;
+}
+
+.encounters__summary,
+.encounters__xp {
+  font-size: 13px;
+  color: var(--text-sub);
+  overflow-wrap: anywhere;
+}
+
+.encounters__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.encounter-setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.encounter-setup__main {
+  flex: 1 1 520px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.encounter-setup__picker {
+  flex: 1 1 560px;
+  min-width: 0;
+}
+
+.encounter-setup__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.encounter-setup__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font: 600 18px/1.2 var(--font-heading);
+  color: var(--accent);
+}
+
+.encounter-setup__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.encounter-setup__fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.encounter-setup__fields input[type='number'] {
+  width: 80px;
+}
+
+.encounter-setup__name {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.encounter-setup__heading {
+  margin: 16px 0 6px;
+  font: 600 13px/1.2 var(--font-heading);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.encounter-setup__total {
+  margin: 12px 0 0;
+  font-weight: 600;
+}
+
+.encounter-difficulty {
+  margin-top: 12px;
+}
+
+.encounter-difficulty__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+}
+
+.encounter-difficulty__track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.encounter-difficulty__fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.encounter-difficulty__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text);
+}
+
+.encounter-difficulty__thresholds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.encounter-group {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.encounter-group__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.encounter-group__title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.encounter-group__meta {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.encounter-group__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+
+.encounter-group__count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.encounter-group__step {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.encounter-group__count-value {
+  min-width: 2ch;
+  text-align: center;
+  font-weight: 600;
+}
+
+.encounter-group__initiative {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.encounter-group__members {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.encounter-group__members input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.encounter-setup__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.encounter-setup__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.encounter-setup__chip button {
+  min-width: 28px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+}
+
+.encounter-setup__add-player {
+  display: flex;
+  gap: 8px;
+}
+
+.encounter-setup__add-player input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 @media (max-width: 760px) {
   /* The phone sheet header has no room for it (390px); the list view still offers it. */
   #root:has(.sheet-view) .app-header__dm {
@@ -5580,6 +5887,40 @@ details.beast > .beast__body {
   .bestiary__row {
     grid-template-columns: minmax(0, 1fr) 40px 96px;
     padding: 8px;
+  }
+
+  .bestiary__row--pick {
+    grid-template-columns: minmax(0, 1fr) 40px minmax(0, 80px) auto;
+  }
+
+  .bestiary__filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bestiary__search,
+  .bestiary__filters .bestiary__filter--wide {
+    grid-column: 1 / -1;
+  }
+
+  .bestiary__filters label {
+    display: flex;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .bestiary__filters select {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .encounter-setup__main,
+  .encounter-setup__picker {
+    flex-basis: 100%;
+  }
+
+  .encounter-setup__main {
+    padding: 12px;
   }
 
   .monster-card__abilities {

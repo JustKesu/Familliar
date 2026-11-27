@@ -15,7 +15,10 @@ export type CharacterRoute =
 
 export type DmTab = 'encounters' | 'bestiary'
 
-export type Route = CharacterRoute | { view: 'markup-demo' } | { view: 'dm'; tab: DmTab }
+/** D433: `encounter` opens the setup screen inside the Encounters tab — 'new' or a saved encounter's id. */
+export type DmRoute = { view: 'dm'; tab: DmTab; encounter?: 'new' | { id: string } }
+
+export type Route = CharacterRoute | { view: 'markup-demo' } | DmRoute
 
 const LIST_ROUTE: CharacterRoute = { view: 'list' }
 
@@ -27,6 +30,10 @@ export function parseRoute(hash: string): Route {
 	if (path === '/markup-demo') return { view: 'markup-demo' }
 	if (path === '/dm') return { view: 'dm', tab: 'encounters' }
 	if (path === '/dm/bestiary') return { view: 'dm', tab: 'bestiary' }
+	if (path === '/dm/encounter/new') return { view: 'dm', tab: 'encounters', encounter: 'new' }
+
+	const encounterMatch = /^\/dm\/encounter\/([^/]+)$/.exec(path)
+	if (encounterMatch) return { view: 'dm', tab: 'encounters', encounter: { id: decodeURIComponent(encounterMatch[1]) } }
 
 	const sheetMatch = /^\/character\/([^/]+)$/.exec(path)
 	if (sheetMatch) return { view: 'sheet', id: decodeURIComponent(sheetMatch[1]) }
@@ -58,7 +65,10 @@ export function formatRoute(route: Route): string {
 		case 'markup-demo':
 			return '#/markup-demo'
 		case 'dm':
-			return route.tab === 'bestiary' ? '#/dm/bestiary' : '#/dm'
+			if (route.tab === 'bestiary') return '#/dm/bestiary'
+			if (route.encounter === 'new') return '#/dm/encounter/new'
+			if (route.encounter) return `#/dm/encounter/${encodeURIComponent(route.encounter.id)}`
+			return '#/dm'
 		case 'sheet':
 			return `#/character/${encodeURIComponent(route.id)}`
 		case 'edit':

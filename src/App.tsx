@@ -24,7 +24,7 @@ function App() {
 				{route.view === 'markup-demo' ? (
 					<MarkupDemo />
 				) : route.view === 'dm' ? (
-					<DmPage tab={route.tab} navigate={navigate} />
+					<DmPage route={route} navigate={navigate} />
 				) : (
 					<CharacterManager route={characterRoute} navigate={navigate} />
 				)}

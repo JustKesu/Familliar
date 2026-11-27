@@ -1,0 +1,121 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { extractMonsters } from '../monsters/monsterData'
+import { difficultyLabel, encounterXp, extractEncounterRules, monsterIndex, partyThresholds } from './encounterDifficulty'
+import { addMonster, newGroup, setGroupCount } from './encounterEdit'
+import { ENCOUNTER_STORAGE_KEY, EncounterStorageError, EncounterStore, type EncounterInput } from './encounterStore'
+import type { KeyValueStorage } from '../storage/characterStore'
+
+function memoryStorage(initial?: string): KeyValueStorage & { value: () => string | null } {
+	let stored: string | null = initial ?? null
+	return {
+		getItem: (key) => (key === ENCOUNTER_STORAGE_KEY ? stored : null),
+		setItem: (key, value) => {
+			if (key === ENCOUNTER_STORAGE_KEY) stored = value
+		},
+		removeItem: (key) => {
+			if (key === ENCOUNTER_STORAGE_KEY) stored = null
+		},
+		value: () => stored,
+	}
+}
+
+const WOLF = { name: 'Wolf', source: 'XMM' }
+const DIRE_WOLF = { name: 'Dire Wolf', source: 'XMM' }
+
+function input(): EncounterInput {
+	return { name: 'Wolves', party: { size: 4, level: 2 }, players: ['Ana'], groups: [setGroupCount(newGroup(WOLF), 6), newGroup(DIRE_WOLF)] }
+}
+
+describe('EncounterStore', () => {
+	it('round-trips a saved encounter and keeps ids and createdAt on update', () => {
+		const storage = memoryStorage()
+		const store = new EncounterStore(storage)
+		const created = store.save(null, input(), new Date('2026-11-27T10:00:00Z'))
+		expect(JSON.parse(storage.value()!).schemaVersion).toBe(1)
+		expect(new EncounterStore(storage).list()).toEqual([created])
+
+		const updated = store.save(created.id, { ...input(), name: 'Pack', groups: created.groups }, new Date('2026-11-27T11:00:00Z'))
+		expect(updated.id).toBe(created.id)
+		expect(updated.createdAt).toBe('2026-11-27T10:00:00.000Z')
+		expect(updated.updatedAt).toBe('2026-11-27T11:00:00.000Z')
+		expect(store.get(created.id)?.groups[0].members.map((m) => m.id)).toEqual(created.groups[0].members.map((m) => m.id))
+		expect(store.list()).toHaveLength(1)
+
+		store.delete(created.id)
+		expect(store.list()).toEqual([])
+	})
+
+	it('reports a corrupt key without throwing and refuses to overwrite it', () => {
+		const storage = memoryStorage('{not json')
+		const store = new EncounterStore(storage)
+		expect(store.read()).toEqual({ encounters: [], skipped: 0, error: 'The saved data is not valid JSON.' })
+		expect(() => store.save(null, input())).toThrow(EncounterStorageError)
+		expect(storage.value()).toBe('{not json')
+		store.clearAll()
+		expect(store.read().error).toBeNull()
+	})
+
+	it('treats a newer schema version as unreadable', () => {
+		const store = new EncounterStore(memoryStorage(JSON.stringify({ schemaVersion: 2, encounters: [] })))
+		expect(store.read().error).toMatch(/schema version 2/)
+	})
+
+	it('skips a bad entry, loads the rest and keeps the bad one on write', () => {
+		const storage = memoryStorage()
+		const store = new EncounterStore(storage)
+		const good = store.save(null, input())
+		const bad = { id: 'x', name: 42 }
+		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 1, encounters: [bad, good] }))
+		expect(store.read()).toEqual({ encounters: [good], skipped: 1, error: null })
+		store.save(null, { ...input(), name: 'Second' })
+		expect(JSON.parse(storage.value()!).encounters).toContainEqual(bad)
+		expect(store.read().skipped).toBe(1)
+	})
+})
+
+describe('group editing', () => {
+	it('numbers default names, keeps renamed members and their ids', () => {
+		const one = newGroup(WOLF)
+		expect(one.members.map((m) => m.name)).toEqual(['Wolf'])
+		const three = setGroupCount(one, 3)
+		expect(three.members.map((m) => m.name)).toEqual(['Wolf 1', 'Wolf 2', 'Wolf 3'])
+		expect(three.members[0].id).toBe(one.members[0].id)
+		expect(three.oneInitiative).toBe(true)
+		const renamed = { ...three, members: three.members.map((m, i) => (i === 1 ? { ...m, name: 'Alpha' } : m)) }
+		expect(setGroupCount(renamed, 2).members.map((m) => m.name)).toEqual(['Wolf 1', 'Alpha'])
+		expect(setGroupCount(three, 1).members.map((m) => m.name)).toEqual(['Wolf'])
+		expect(setGroupCount(three, 0).members).toHaveLength(1)
+	})
+
+	it('adding a monster already present raises its count', () => {
+		const groups = addMonster(addMonster([], WOLF), WOLF)
+		expect(groups).toHaveLength(1)
+		expect(groups[0].members).toHaveLength(2)
+		expect(addMonster(groups, DIRE_WOLF)).toHaveLength(2)
+	})
+})
+
+describe('difficulty against data/encounter-rules.json and data/monsters.json', () => {
+	const read = (file: string): unknown => JSON.parse(readFileSync(join(process.cwd(), 'data', file), 'utf8'))
+	const rules = extractEncounterRules(read('encounter-rules.json'))
+	const monsters = monsterIndex(extractMonsters(read('monsters.json')))
+
+	it('six Wolves and a Dire Wolf are 500 XP, Low for four level 2 characters', () => {
+		const total = encounterXp(input().groups, monsters)
+		expect(total).toBe(500)
+		// XDMG level 2 per character: Low 100, Moderate 150, High 200.
+		const thresholds = partyThresholds(rules, { size: 4, level: 2 })
+		expect(thresholds).toEqual({ low: 400, moderate: 600, high: 800 })
+		expect(difficultyLabel(total, thresholds!)).toBe('Low')
+	})
+
+	it('labels each band, an unknown monster counts 0 XP, no party gives no thresholds', () => {
+		const t = { low: 400, moderate: 600, high: 800 }
+		expect([399, 400, 600, 800, 801].map((xp) => difficultyLabel(xp, t))).toEqual(['Below Low', 'Low', 'Moderate', 'High', 'Above High'])
+		expect(encounterXp([newGroup({ name: 'Renamed Thing', source: 'XMM' })], monsters)).toBe(0)
+		expect(partyThresholds(rules, null)).toBeNull()
+		expect(partyThresholds(rules, { size: 1, level: 20 })?.high).toBeGreaterThan(0)
+	})
+})

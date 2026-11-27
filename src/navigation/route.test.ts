@@ -13,6 +13,9 @@ describe('route parse/format round trip', () => {
 		{ route: { view: 'markup-demo' }, hash: '#/markup-demo' },
 		{ route: { view: 'dm', tab: 'encounters' }, hash: '#/dm' },
 		{ route: { view: 'dm', tab: 'bestiary' }, hash: '#/dm/bestiary' },
+		{ route: { view: 'dm', tab: 'encounters', encounter: 'new' }, hash: '#/dm/encounter/new' },
+		{ route: { view: 'dm', tab: 'encounters', encounter: { id: 'enc-1' } }, hash: '#/dm/encounter/enc-1' },
+		{ route: { view: 'dm', tab: 'encounters', encounter: { id: 'a/b c' } }, hash: '#/dm/encounter/a%2Fb%20c' },
 	]
 
 	for (const { route, hash } of cases) {
@@ -49,6 +52,10 @@ describe('route parse — invalid and trailing-slash hashes fall back to the lis
 		'#/dm/',
 		'#/dm/bestiary/',
 		'#/dm/nope',
+		'#/dm/encounter',
+		'#/dm/encounter/',
+		'#/dm/encounter/new/',
+		'#/dm/encounter/abc/edit',
 		'#character/abc',
 	]
 
