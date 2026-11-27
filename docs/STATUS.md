@@ -1422,6 +1422,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   list plus Cancel as a dropdown (step tap, outside tap or Escape closes). The "Step navigation" group is fixed to the
   bottom (Back + Next/save, ≥ 44px, its Cancel hidden); `.wizard` gets 96px bottom padding. Also at ≤ 760px: Extras
   table head hidden (specificity fix), drawer close 44×44, drawer search inputs full width. `e2e/mobileWizardM3.spec.ts` a–g.
+- MON-1 (D431): data only, no UI. `data/monsters.json` (648; XMM, XDMG, EFA, SCC, RHW; summons without CR dropped),
+  `data/legendary-groups.json` (40), `data/encounter-rules.json` (`xpBudgetPerCharacter` 20 levels, `xpByCr` 34 rows);
+  checked by `validateMonsters()` in validate-data.js. Markup renderer handles `{@atk}`, `{@hom}`, `{@actSaveFailBy}`,
+  `{@actSaveSuccessOrFail}`; `attackTagToFull` no longer doubles the space in combined attack labels. Nothing reads the
+  monster files yet.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`
