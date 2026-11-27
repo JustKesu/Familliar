@@ -25,7 +25,8 @@ import { currentHpAfterMaxHpChange, currentHpFollowingMaxHp } from './calculatio
 import { loadCharacterMaxHp, maxHpShift } from './hitPoints/hpDefault'
 import { isMulticlass } from './calculation/characterLevel'
 import { editCharacterBlockedReason } from './levelUp/levelUpSteps'
-import type { CharacterRoute } from './navigation/route'
+import type { CharacterRoute, DmRoute } from './navigation/route'
+import { NpcList } from './dm/NpcList'
 import type { Navigate } from './navigation/useRoute'
 
 /*
@@ -52,7 +53,8 @@ function download(filename: string, contents: string): void {
 	URL.revokeObjectURL(url)
 }
 
-function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate: Navigate }) {
+/** D437: the DM's NPCs tab and its creation wizard are the same characters, so they share this store and its handlers. */
+function CharacterManager({ route, navigate }: { route: CharacterRoute | DmRoute; navigate: Navigate }) {
 	const [store] = useState(() => {
 		try {
 			return { store: new CharacterStore(), error: null as string | null }
@@ -317,10 +319,43 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	}
 	const characterStore = store.store
 
+	if (route.view === 'dm' && route.newNpc) {
+		return (
+			<main>
+				{actionError && <p className="error">{actionError}</p>}
+				<div className="char-create">
+					<CharacterWizard
+						store={characterStore}
+						onSaved={(character) => {
+							withErrorHandling(() => characterStore.markNpc(character.id))
+							handleWizardSaved(character)
+						}}
+						onCancel={() => navigate({ view: 'dm', tab: 'npcs' }, { replace: true })}
+					/>
+				</div>
+			</main>
+		)
+	}
+
+	if (route.view === 'dm') {
+		return (
+			<NpcList
+				npcs={characters.filter((character) => character.npc)}
+				error={loadError ?? actionError}
+				onNew={() => navigate({ view: 'dm', tab: 'npcs', newNpc: true })}
+				onOpen={(id) => navigate({ view: 'sheet', id })}
+				onRename={handleRename}
+				onExport={handleExport}
+				onDuplicate={(id, name) => withErrorHandling(() => characterStore.duplicateAsNpc(id, name))}
+				onDelete={handleDelete}
+			/>
+		)
+	}
+
 	if (route.view === 'list') {
 		return (
 			<CharacterList
-				characters={characters}
+				characters={characters.filter((character) => !character.npc)}
 				unreadable={unreadable}
 				loadError={loadError}
 				actionError={actionError ?? redirectNotice}

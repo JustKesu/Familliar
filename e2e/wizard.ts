@@ -151,11 +151,13 @@ export interface FighterOptions {
   stopAtEquipment?: boolean
   /** W-9: finishFromBackground returns on the Review step without saving. */
   stopAtReview?: boolean
+  /** NPC-1: the wizard is already open (e.g. from New NPC), so no navigation to #/new. */
+  alreadyOpen?: boolean
 }
 
 /** Fighter with background Acolyte unless `background` says otherwise; stops on the Background step so the caller can inspect it. */
 export async function fillUpToBackground(page: Page, options: FighterOptions): Promise<void> {
-  await page.goto('/#/new')
+  if (!options.alreadyOpen) await page.goto('/#/new')
   await expectStep(page, 'Class and level')
   await page.getByLabel('Character name').fill(options.name)
   await select(page, 'Class').selectOption(options.classStep?.className ?? 'Fighter|XPHB')

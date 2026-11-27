@@ -6029,3 +6029,13 @@ jméno monstra; mimo pojmenovaný blok „<tvor> · Lair“. Tlačítka vznikaj�
 (list, kouzla, předměty, Wild Shape) se markup nemění. Výsledek: toast a historie (nejnovější první, neukládá se,
 sdílená Bestiářem a střetnutími, dokud je DM stránka otevřená), přepínač a „Rolls“ v řádku záložek DM. Mobil ≤ 760 px:
 toast nahoře, aby ho nezakryla spodní lišta. Zadání MON-6, 27. 11. 2026.
+
+## D437 — NPC jako plnohodnotné postavy v DM části (NPC-1)
+
+NPC je běžná postava s plným listem a příznakem `npc: true` (schema 73; starší záznam bez příznaku = hráčská postava,
+migrace jen označí verzi). Domovský seznam ukazuje jen hráčské postavy; NPC jsou jen ve třetí DM záložce „NPCs“
+(`#/dm/npcs`): New NPC (`#/dm/npcs/new`, stejný průvodce, uložení přidá příznak a otevře list), otevření, Rename, Export,
+Duplicate a Delete s potvrzením. Edit a level up NPC jdou stejnými cestami jako u hráčské postavy a příznak zachovávají.
+Duplicate se ptá na jméno (předvyplněno „<jméno> copy“, prázdné nejde) a uloží úplnou nezávislou kopii s novým id
+a příznakem NPC, včetně aktuálních HP, použitých zdrojů a inventáře. Export příznak nese, import takového souboru
+uloží NPC. Zadání NPC-1, 27. 11. 2026.

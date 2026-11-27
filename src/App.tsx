@@ -23,8 +23,10 @@ function App() {
 			<RollsNavSlot.Provider value={rollsSlot}>
 				{route.view === 'markup-demo' ? (
 					<MarkupDemo />
+				) : route.view === 'dm' && route.newNpc ? (
+					<CharacterManager route={route} navigate={navigate} />
 				) : route.view === 'dm' ? (
-					<DmPage route={route} navigate={navigate} />
+					<DmPage route={route} navigate={navigate} npcs={<CharacterManager route={route} navigate={navigate} />} />
 				) : (
 					<CharacterManager route={characterRoute} navigate={navigate} />
 				)}

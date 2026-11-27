@@ -8,12 +8,14 @@ export function CharacterCard({
 	onRename,
 	onExport,
 	onRequestDelete,
+	onRequestDuplicate,
 }: {
 	character: Character
 	onOpen: (id: string) => void
 	onRename: (id: string, name: string) => void
 	onExport: (id: string) => void
 	onRequestDelete: (id: string) => void
+	onRequestDuplicate?: (id: string) => void
 }): ReactNode {
 	const { id, name, portrait } = character
 	const [menuOpen, setMenuOpen] = useState(false)
@@ -122,6 +124,11 @@ export function CharacterCard({
 					<button type="button" onClick={() => choose(() => onExport(id))}>
 						Export
 					</button>
+					{onRequestDuplicate && (
+						<button type="button" onClick={() => choose(() => onRequestDuplicate(id))}>
+							Duplicate
+						</button>
+					)}
 					<button type="button" onClick={() => choose(() => onRequestDelete(id))}>
 						Delete
 					</button>

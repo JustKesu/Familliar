@@ -13,10 +13,10 @@ export type CharacterRoute =
 	/** D329: the class gaining the level rides in the URL for a multiclass character, so F5 keeps it. */
 	| { view: 'level-up'; id: string; levelClass?: { className: string; classSource: string } }
 
-export type DmTab = 'encounters' | 'bestiary'
+export type DmTab = 'encounters' | 'bestiary' | 'npcs'
 
-/** D433: `encounter` opens the setup screen inside the Encounters tab — 'new' or a saved encounter's id. */
-export type DmRoute = { view: 'dm'; tab: DmTab; encounter?: 'new' | { id: string; run?: boolean } }
+/** D433: `encounter` opens the setup screen inside the Encounters tab — 'new' or a saved encounter's id. D437: `newNpc` is the creation wizard for an NPC. */
+export type DmRoute = { view: 'dm'; tab: DmTab; encounter?: 'new' | { id: string; run?: boolean }; newNpc?: true }
 
 export type Route = CharacterRoute | { view: 'markup-demo' } | DmRoute
 
@@ -30,6 +30,8 @@ export function parseRoute(hash: string): Route {
 	if (path === '/markup-demo') return { view: 'markup-demo' }
 	if (path === '/dm') return { view: 'dm', tab: 'encounters' }
 	if (path === '/dm/bestiary') return { view: 'dm', tab: 'bestiary' }
+	if (path === '/dm/npcs') return { view: 'dm', tab: 'npcs' }
+	if (path === '/dm/npcs/new') return { view: 'dm', tab: 'npcs', newNpc: true }
 	if (path === '/dm/encounter/new') return { view: 'dm', tab: 'encounters', encounter: 'new' }
 
 	const encounterMatch = /^\/dm\/encounter\/([^/]+)$/.exec(path)
@@ -69,6 +71,7 @@ export function formatRoute(route: Route): string {
 			return '#/markup-demo'
 		case 'dm':
 			if (route.tab === 'bestiary') return '#/dm/bestiary'
+			if (route.tab === 'npcs') return route.newNpc ? '#/dm/npcs/new' : '#/dm/npcs'
 			if (route.encounter === 'new') return '#/dm/encounter/new'
 			if (route.encounter) return `#/dm/encounter/${encodeURIComponent(route.encounter.id)}${route.encounter.run ? '/run' : ''}`
 			return '#/dm'

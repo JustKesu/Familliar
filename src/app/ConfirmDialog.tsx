@@ -60,6 +60,7 @@ export function ConfirmDialog({
 	destructiveLabel,
 	onSafe,
 	onDestructive,
+	destructiveDisabled = false,
 }: {
 	title: string
 	body: string
@@ -68,6 +69,7 @@ export function ConfirmDialog({
 	destructiveLabel: string
 	onSafe: () => void
 	onDestructive: () => void
+	destructiveDisabled?: boolean
 }): ReactNode {
 	const id = useId()
 	const backdropRef = useRef<HTMLDivElement>(null)
@@ -95,7 +97,7 @@ export function ConfirmDialog({
 				</p>
 				{children}
 				<div className="confirm-dialog__actions">
-					<button type="button" className="btn--accent-outline" onClick={onDestructive}>
+					<button type="button" className="btn--accent-outline" disabled={destructiveDisabled} onClick={onDestructive}>
 						{destructiveLabel}
 					</button>
 					<button ref={safeRef} type="button" className="btn--accent" onClick={onSafe}>

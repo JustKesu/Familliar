@@ -1474,6 +1474,7 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	}
 	const portraitError = describePortraitError(value['portrait'])
 	if (portraitError) return `[${index}].${portraitError}`
+	if (value['npc'] !== undefined && value['npc'] !== true) return `[${index}].npc must be true when present`
 	if (!isValidLevelOrder(value['levelOrder'], classes)) return `[${index}].levelOrder must list one class per character level, matching classes`
 	return null
 }
@@ -1716,6 +1717,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof backstory === 'string' && backstory.length > 0 ? { backstory } : {}),
 		...(typeof notes === 'string' && notes.length > 0 ? { notes } : {}),
 		...(isValidPortrait(value['portrait']) ? { portrait: value['portrait'] } : {}),
+		...(value['npc'] === true ? { npc: true as const } : {}),
 		...(Array.isArray(value['levelOrder'])
 			? { levelOrder: (value['levelOrder'] as Record<string, unknown>[]).map((entry) => ({ className: entry['className'] as string, classSource: entry['classSource'] as string })) }
 			: {}),

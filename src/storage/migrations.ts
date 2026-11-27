@@ -644,6 +644,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 72 adds CharacterSpellbook.mastery and .signature (WM-1b, D425). A version-71 book holds no picks — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 72 }),
 	},
+	{
+		from: 72,
+		to: 73,
+		/* 73 adds Character.npc (NPC-1, D437). A version-72 character is a player character — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 73 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

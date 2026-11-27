@@ -641,11 +641,37 @@ export class CharacterStore {
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
-		const character = buildCharacter(id, input)
+		// D437: the wizard never collects the NPC flag, so a rebuild keeps the stored one.
+		const character: Character = characters[index].npc ? { ...buildCharacter(id, input), npc: true } : buildCharacter(id, input)
 		const updated = [...characters]
 		updated[index] = character
 		this.writeChanged(updated, index)
 		return character
+	}
+
+	markNpc(id: string): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const updated = [...characters]
+		updated[index] = { ...characters[index], npc: true }
+		this.writeChanged(updated, index)
+	}
+
+	/** D437: a full independent copy under a new id — play state included — always an NPC. */
+	duplicateAsNpc(id: string, name: string): Character {
+		const trimmed = name.trim()
+		if (!trimmed) throw new ImportValidationError('A character needs a name.')
+
+		const characters = this.list()
+		const source = characters.find((character) => character.id === id)
+		if (!source) throw new CharacterNotFoundError(id)
+
+		const copy: Character = { ...structuredClone(source), id: newId(), name: trimmed, npc: true }
+		const updated = [...characters, copy]
+		this.writeChanged(updated, updated.length - 1)
+		return copy
 	}
 
 	rename(id: string, name: string): void {

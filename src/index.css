@@ -3584,6 +3584,19 @@ label.wizard__field {
   font-weight: 600;
 }
 
+.npcs__name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.npcs__name input {
+  box-sizing: border-box;
+  width: 100%;
+}
+
 .level-up-class {
   max-width: 360px;
 }

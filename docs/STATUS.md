@@ -1469,6 +1469,12 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Labels "<creature> · <block> to hit|damage", dice "<creature> · <block>", lair "<creature> · Lair…"; creature = member
   name in encounters. DmPage: toast, in-memory history drawer (Rolls) and roll mode switch in the tabs row; mobile toast at
   the top. `e2e/dmRolls.spec.ts` a–h.
+- NPC-1 (D437): schema 73, `Character.npc?: true` (migration 72→73 only tags; validate accepts only `true`).
+  `CharacterStore.update` keeps a stored flag (Edit, level up, level removal); `markNpc`, `duplicateAsNpc` (structuredClone,
+  new id, trimmed name, flag). Third DM tab "NPCs": `#/dm/npcs` renders `src/dm/NpcList.tsx` inside DmPage through
+  CharacterManager (route `DmRoute` with `tab: 'npcs'`); `#/dm/npcs/new` = the creation wizard, save → `markNpc` → sheet,
+  Cancel → `#/dm/npcs`. Home list filters `!npc`. CharacterCard has an optional Duplicate menu item; ConfirmDialog
+  `destructiveDisabled`. Import stays on the home list (an NPC file lands in the NPCs tab). `e2e/dmNpcs.spec.ts` a–h.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

@@ -13,6 +13,8 @@ describe('route parse/format round trip', () => {
 		{ route: { view: 'markup-demo' }, hash: '#/markup-demo' },
 		{ route: { view: 'dm', tab: 'encounters' }, hash: '#/dm' },
 		{ route: { view: 'dm', tab: 'bestiary' }, hash: '#/dm/bestiary' },
+		{ route: { view: 'dm', tab: 'npcs' }, hash: '#/dm/npcs' },
+		{ route: { view: 'dm', tab: 'npcs', newNpc: true }, hash: '#/dm/npcs/new' },
 		{ route: { view: 'dm', tab: 'encounters', encounter: 'new' }, hash: '#/dm/encounter/new' },
 		{ route: { view: 'dm', tab: 'encounters', encounter: { id: 'enc-1' } }, hash: '#/dm/encounter/enc-1' },
 		{ route: { view: 'dm', tab: 'encounters', encounter: { id: 'a/b c' } }, hash: '#/dm/encounter/a%2Fb%20c' },

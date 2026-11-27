@@ -815,7 +815,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
 				background: { name: 'Acolyte', source: 'XPHB', skillProficiencies: ['insight', 'religion'], toolProficiency: "Calligrapher's Supplies" },
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		})
 	})
 
@@ -829,7 +829,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 2 }],
 				subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		})
 	})
 
@@ -843,7 +843,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 3 }],
 				subclassSkills: [{ grantedBy: 'primalKnowledge', name: 'survival' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		})
 	})
 
@@ -857,7 +857,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
 				inventory: [{ name: 'Mace', source: 'XPHB', quantity: 1 }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		})
 	})
 
@@ -871,7 +871,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'The Genie', level: 3 }],
 			}
 			const migrated = migrateToCurrent(structuredClone(before)) as Record<string, unknown>
-			expect(migrated).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 			expect('genieKind' in migrated).toBe(false)
 		})
 	})
@@ -886,7 +886,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
 				inventory: [{ name: 'Rapier', source: 'XPHB', quantity: 1, attackAbility: 'dexterity', pactWeapon: true }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		})
 
 	})
@@ -901,7 +901,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Paladin', classSource: 'XPHB', subclass: null, level: 2 }],
 				fightingStyles: [{ className: 'Paladin', classSource: 'XPHB', name: 'Defense', source: 'XPHB' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		})
 	})
 
@@ -916,7 +916,7 @@ describe('the migration chain (D69)', () => {
 				spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Fire Bolt', source: 'XPHB' }, { name: 'Shield', source: 'XPHB' }] }],
 			}
 			const migrated = migrateToCurrent(structuredClone(before)) as Record<string, unknown>
-			expect(migrated).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 			expect('spellbooks' in migrated).toBe(false)
 		})
 	})
@@ -931,11 +931,27 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 18 }],
 				spellbooks: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Sleep', source: 'XPHB', origin: { kind: 'copied' } }] }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 72 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		})
+
+	})
+
+	/* NPC-1 (D437): a version-72 character is a player character — no npc flag is added. */
+	describe('version 72 to 73', () => {
+		it('only tags and adds no npc flag', () => {
+			const before = {
+				schemaVersion: 72,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			}
+			const migrated = migrateToCurrent(structuredClone(before)) as Record<string, unknown>
+			expect(migrated).toEqual({ ...before, schemaVersion: 73 })
+			expect('npc' in migrated).toBe(false)
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(72)
+			expect(CURRENT_SCHEMA_VERSION).toBe(73)
 		})
 	})
 
