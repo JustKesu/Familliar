@@ -2229,6 +2229,12 @@ Limited uses — no structured field; the markers are:
 - Legendary: 77 monsters; `legendaryActions` only on 2 (= 2), absent means the default 3. `legendaryActionsLair` 36
   (all 4). legendaryGroup 54.
 - Stat-block markup new to data/: `{@atk}`, `{@hom}`, `{@actSaveFailBy N}`, `{@actSaveSuccessOrFail}`.
+- MON-5 survey of "/Day" name parentheticals (135 blocks): "(N/Day)" 81, "(N/Day, or M/Day in Lair)" 35 (+1 lowercase
+  "lair"), "(N/Day, or M/Day in Domain)" 17 (Ravenloft lords, Cthulhu …; none have `legendaryActionsLair`), "(Individual
+  Form Only; N/Day)" 1. No "/Day" outside parentheses. Adult Green Dragon XMM: Legendary Resistance (3/Day, or 4/Day in
+  Lair), Poison Breath {@recharge 5}, legendary Mind Invasion/Noxious Miasma/Pounce, `legendaryActionsLair` 4, spellcasting
+  daily "1" = [Geas]. Shared-pool `daily` keys ("1".."3", no "e") on 70 monsters; `restLong` only on the four hags
+  (Green Hag key "1", six spells). Spell names in lists carry suffixes such as "(self only)" after the tag.
 
 data/legendary-groups.json — 40 groups (all referenced ones found; 16 via `_copy`), fields name, source, lairActions,
 regionalEffects, mythicEncounter. The `_templates` warnings on MM/FTD/BAM dragon groups are not on kept groups.

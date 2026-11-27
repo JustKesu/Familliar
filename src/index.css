@@ -6313,9 +6313,165 @@ details.beast > .beast__body {
   margin-bottom: 8px;
 }
 
+.combat__cards {
+  display: flex;
+  flex: 1 1 420px;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.combat__cards--two {
+  flex-basis: 840px;
+}
+
+.combat__cards .combat__stats {
+  flex: 1 1 0;
+}
+
+.combat__use-counts {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.tracked-uses {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.tracked-uses__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tracked-uses__title {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tracked-uses__lair {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 13px;
+}
+
+.tracked-uses__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tracked-uses__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.tracked-uses__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tracked-uses__note {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-sub);
+}
+
+.tracked-uses__boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.use-box {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.use-box[aria-pressed='true'] {
+  background: var(--accent);
+}
+
+.tracked-uses__ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--heal);
+}
+
+.tracked-uses__use,
+.tracked-uses__spent,
+.recharge-reminder__roll {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.tracked-uses__spent {
+  border-color: var(--damage);
+  color: var(--damage);
+}
+
+.recharge-reminders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.recharge-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.recharge-reminder__text {
+  flex: 1 1 220px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.recharge-reminder__result {
+  font-weight: 700;
+}
+
 @media (max-width: 760px) {
   .combat--mobile {
-    padding-bottom: 150px;
+    padding-bottom: 160px;
   }
 
   .combat__topbar {
@@ -6349,12 +6505,25 @@ details.beast > .beast__body {
   }
 
   .combat-row {
-    grid-template-columns: 24px minmax(0, 1fr) auto auto 44px;
+    display: flex;
+    gap: 8px;
     padding: 4px 8px;
   }
 
-  .combat-row--player {
-    grid-template-columns: 32px minmax(0, 1fr);
+  .combat-row > input[type='checkbox'] {
+    flex: 0 0 24px;
+  }
+
+  .combat-row .combat__who {
+    flex: 1 1 auto;
+  }
+
+  .combat-row--player .combat__init {
+    flex: 0 0 32px;
+  }
+
+  .combat-row .combat__stat-button {
+    flex: 0 0 44px;
   }
 
   .combat-group__head {
@@ -6363,7 +6532,9 @@ details.beast > .beast__body {
   }
 
   .combat__hp {
+    flex: 0 0 auto;
     min-width: 56px;
+    text-align: right;
   }
 
   .combat__end--mobile {
@@ -6377,16 +6548,37 @@ details.beast > .beast__body {
     left: 0;
     z-index: 20;
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 6px 8px;
+    flex-direction: column;
+    gap: 6px;
     padding: 8px 12px;
     border-top: 1px solid var(--line);
     background: var(--surface);
   }
 
+  .combat__bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .combat__bottom-row .combat__count {
+    margin-right: auto;
+  }
+
+  .combat__amount {
+    flex: 0 0 70px;
+    box-sizing: border-box;
+    width: 70px;
+    min-height: 44px;
+  }
+
   .combat__bottombar .combat__damage,
-  .combat__bottombar .combat__heal,
+  .combat__bottombar .combat__heal {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+
   .combat__bottombar select,
   .combat__save-toggle {
     min-height: 40px;
@@ -6395,7 +6587,7 @@ details.beast > .beast__body {
   .combat__panel {
     position: fixed;
     right: 8px;
-    bottom: 112px;
+    bottom: 120px;
     left: 8px;
     z-index: 21;
     display: flex;

@@ -6001,3 +6001,19 @@ polovina dolů nebo 0, bez zvolené záchrany plně všem; potom se výsledky sm
 Exhaustion jako štítek bez úrovně; hráči nemají HP ani stavy. End encounter (potvrzení) smaže `combat`, střetnutí
 zůstane. Mobil ≤ 760 px: horní lišta, kompaktní řádky, pevná spodní lišta s panelem záchrany, stat block přes celou
 obrazovku. Denní použití, recharge a legendární políčka až MON-5. Zadání MON-4, 27. 11. 2026.
+
+## D435 — Sledovaná použití v boji, připomínka recharge, dvě karty a mobilní úpravy (MON-5)
+
+Každý člen má vlastní použití, uložená v `combat.uses` (`{idČlena: {klíč: počet použitých}}`) a `combat.lair`
+(`{idČlena: true}`); chybějící pole = nic nepoužito, `schemaVersion` zůstává 2. Zdroje: „(N/Day)“ ve jménu traitu,
+akce, bonusu, reakce nebo legendární akce = N políček; „(N/Day, or M/Day in Lair)“ a stejně „in Domain“ = M při
+zapnutém „In lair“ (přepínač jen u monster, která takový záznam nebo `legendaryActionsLair` mají); legendární akce
+`legendaryActions` nebo 3, v doupěti `legendaryActionsLair`, doplní se na začátku tahu monstra; kouzla `daily` a
+`restLong`: klíč „Ne“ = řádek na každé kouzlo, „N“ = jeden společný řádek, at-will bez políček; `{@recharge N}` (bez
+čísla 6) = USE → „SPENT · Recharge N-6“, jinak „READY“. Seznam `recharge` u kouzlení se nesleduje. Po Next turn
+pro každého člena položky na tahu s vyčerpaným recharge pruh nad seznamem s ROLL d6 a výsledkem, úspěch nastaví
+READY; pruh lze zavřít a neukládá se. Nový boj vše vynuluje. Políčka 22×22, rádius 4, okraj accent, vyplněná
+accent; klik na vyplněné vyprázdní je i další, na prázdné vyplní až po něj. Karta stat blocku patří členovi
+(nahoře sekce „Tracked uses“), v řádku zkratky „LR 2/3 · LA 0/3 · PB spent“ (bez kouzel). Desktop: až dvě karty
+vedle sebe, nejnovější první. Mobil ≤ 760 px: spodní lišta ve dvou řádcích (počet, SAVE, + Condition / Amount 70 px,
+DAMAGE a HEAL po 44 px), řádky bez prázdného místa vpravo, podtitul „Dire Wolf · CR 1“. Zadání MON-5, 27. 11. 2026.

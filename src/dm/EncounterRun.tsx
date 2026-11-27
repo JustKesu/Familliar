@@ -11,12 +11,18 @@ import {
 	flipSave,
 	initiativeEntries,
 	isDown,
+	isInLair,
 	nextTurn,
 	removeCondition,
+	rollRecharge,
 	rollSaves,
 	SAVE_ABILITIES,
+	setUsed,
 	startCombat,
 	toggleAdv,
+	toggleLair,
+	toggleUseBox,
+	usedCount,
 	type Combat,
 	type InitiativeEntry,
 	type OnSuccess,
@@ -24,6 +30,7 @@ import {
 } from '../encounters/combat'
 import { difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds } from '../encounters/encounterDifficulty'
 import { EncounterStore, type Encounter, type EncounterGroup, type EncounterMember } from '../encounters/encounterStore'
+import { hasLairUses, trackedUses, type TrackedUse } from '../encounters/trackedUses'
 import { MonsterStatBlock } from '../monsters/MonsterStatBlock'
 import { findLegendaryGroup, loadMonsterData, monsterInitiative, monsterSave, type AbilityKey, type Monster, type MonsterData } from '../monsters/monsterData'
 import type { Navigate } from '../navigation/useRoute'
@@ -230,12 +237,107 @@ function SaveBonuses({ monster, short }: { monster: Monster | undefined; short?:
 	)
 }
 
+const usesOf = (info: MemberInfo, combat: Combat): TrackedUse[] => (info.monster ? trackedUses(info.monster, isInLair(combat, info.member.id)) : [])
+
+/** A lair toggle can lower the total below what was already used. */
+const shownUsed = (combat: Combat, memberId: string, use: TrackedUse): number => Math.min(use.total, usedCount(combat, memberId, use.key))
+
+function UseCounts({ info, combat }: { info: MemberInfo; combat: Combat }): ReactNode {
+	const counts = usesOf(info, combat)
+		.filter((use) => !use.key.startsWith('s:'))
+		.map((use) => {
+			const used = shownUsed(combat, info.member.id, use)
+			if (use.recharge !== undefined) return used > 0 ? `${use.short} spent` : null
+			return `${use.short} ${used}/${use.total}`
+		})
+		.filter((text): text is string => text !== null)
+	return counts.length > 0 ? <span className="combat__use-counts">{counts.join(' · ')}</span> : null
+}
+
+function TrackedUses({ info, combat, update }: { info: MemberInfo; combat: Combat; update: (change: (combat: Combat) => Combat) => void }): ReactNode {
+	const { member, monster } = info
+	const uses = usesOf(info, combat)
+	if (!monster || uses.length === 0) return null
+	return (
+		<section className="tracked-uses" aria-label={`Tracked uses ${member.name}`}>
+			<div className="tracked-uses__head">
+				<h3 className="tracked-uses__title">Tracked uses · {member.name}</h3>
+				{hasLairUses(monster) && (
+					<label className="tracked-uses__lair">
+						<input type="checkbox" checked={isInLair(combat, member.id)} onChange={() => update((c) => toggleLair(c, member.id))} />
+						In lair
+					</label>
+				)}
+			</div>
+			<ul className="tracked-uses__list">
+				{uses.map((use) => {
+					const used = shownUsed(combat, member.id, use)
+					return (
+						<li key={use.key} className="tracked-uses__item" aria-label={`${use.name} uses`}>
+							<span className="tracked-uses__name">
+								{use.name}
+								<span className="tracked-uses__note">{use.note}</span>
+							</span>
+							{use.recharge !== undefined ? (
+								used > 0 ? (
+									<button type="button" className="tracked-uses__spent" aria-label={`${use.name} spent, mark ready`} onClick={() => update((c) => setUsed(c, member.id, use.key, 0))}>
+										SPENT · {use.note}
+									</button>
+								) : (
+									<span className="tracked-uses__ready">
+										READY
+										<button type="button" className="tracked-uses__use" aria-label={`Use ${use.name}`} onClick={() => update((c) => setUsed(c, member.id, use.key, 1))}>
+											USE
+										</button>
+									</span>
+								)
+							) : (
+								<span className="tracked-uses__boxes">
+									{Array.from({ length: use.total }, (_, box) => (
+										<button
+											key={box}
+											type="button"
+											className="use-box"
+											aria-pressed={box < used}
+											aria-label={`${use.name} use ${box + 1}`}
+											onClick={() => update((c) => toggleUseBox(c, member.id, use.key, box))}
+										/>
+									))}
+								</span>
+							)}
+						</li>
+					)
+				})}
+			</ul>
+		</section>
+	)
+}
+
+interface Reminder {
+	memberId: string
+	memberName: string
+	use: TrackedUse
+	roll?: number
+}
+
+function rechargeReminders(combat: Combat, groups: EncounterGroup[], members: Map<string, MemberInfo>): Reminder[] {
+	const entry = combat.order[combat.turn]
+	if (!entry) return []
+	return entryMemberIds(entry, groups).flatMap((memberId) => {
+		const info = members.get(memberId)
+		if (!info || isDown(combat, memberId)) return []
+		return usesOf(info, combat)
+			.filter((use) => use.recharge !== undefined && usedCount(combat, memberId, use.key) > 0)
+			.map((use) => ({ memberId, memberName: info.member.name, use }))
+	})
+}
+
 interface Controls {
 	selected: Set<string>
 	toggle: (id: string) => void
 	combat: Combat
 	update: (change: (combat: Combat) => Combat) => void
-	openStats: (group: EncounterGroup) => void
+	openStats: (memberId: string) => void
 	mobile: boolean
 }
 
@@ -261,7 +363,7 @@ function MemberRow({ info, initiative, current, showSubtitle, controls }: { info
 	const checkbox = <input type="checkbox" aria-label={`Select ${member.name}`} checked={selected.has(member.id)} onChange={() => toggle(member.id)} />
 	const saveChip = <SaveChip result={combat.saveResults[member.id]} name={member.name} onFlip={() => update((c) => flipSave(c, member.id))} />
 	const statButton = (
-		<button type="button" className="combat__stat-button" aria-label={`Stat block for ${member.name}`} disabled={!monster} onClick={() => openStats(group)}>
+		<button type="button" className="combat__stat-button" aria-label={`Stat block for ${member.name}`} disabled={!monster} onClick={() => openStats(member.id)}>
 			≡
 		</button>
 	)
@@ -271,6 +373,8 @@ function MemberRow({ info, initiative, current, showSubtitle, controls }: { info
 			{down && <span className="combat__down">down</span>}
 		</span>
 	)
+	const subtitle = showSubtitle && <span className="combat__sub">{monster ? `${group.monster.name} · CR ${monster.cr}` : group.monster.name}</span>
+	const useCounts = <UseCounts info={info} combat={combat} />
 
 	if (mobile) {
 		return (
@@ -278,11 +382,9 @@ function MemberRow({ info, initiative, current, showSubtitle, controls }: { info
 				{checkbox}
 				<span className="combat__who">
 					{name}
-					{showSubtitle && (
-						<span className="combat__sub">
-							{group.monster.name} · <SaveBonuses monster={monster} short />
-						</span>
-					)}
+					{subtitle}
+					{showSubtitle && <SaveBonuses monster={monster} short />}
+					{useCounts}
 					{chips}
 				</span>
 				{saveChip}
@@ -301,7 +403,8 @@ function MemberRow({ info, initiative, current, showSubtitle, controls }: { info
 			</span>
 			<span className="combat__who">
 				{name}
-				{showSubtitle && <span className="combat__sub">{monster ? `${group.monster.name} · CR ${monster.cr}` : group.monster.name}</span>}
+				{subtitle}
+				{useCounts}
 				{chips}
 			</span>
 			<span className="combat__ac">{monster ? (typeof monster.ac[0] === 'number' ? monster.ac[0] : monster.ac[0]?.ac) : '—'}</span>
@@ -338,7 +441,7 @@ function CombatScreen({
 	onEnded: () => void
 }): ReactNode {
 	const groups = encounter.groups
-	const { index, monsterOf, members } = useMonsterLookup(data, groups)
+	const { index, members } = useMonsterLookup(data, groups)
 	const rules = useLoaded(loadEncounterRules)
 	const mobile = useMobileLayout()
 	const [selected, setSelected] = useState<Set<string>>(() => new Set())
@@ -346,7 +449,8 @@ function CombatScreen({
 	const [ability, setAbility] = useState<AbilityKey | ''>('')
 	const [dc, setDc] = useState('')
 	const [onSuccess, setOnSuccess] = useState<OnSuccess>('half')
-	const [stats, setStats] = useState<EncounterGroup | null>(null)
+	const [stats, setStats] = useState<string[]>([])
+	const [reminders, setReminders] = useState<Reminder[]>([])
 	const [confirmEnd, setConfirmEnd] = useState(false)
 	const [panelOpen, setPanelOpen] = useState(false)
 
@@ -362,7 +466,9 @@ function CombatScreen({
 	const selectedIds = [...selected].filter((memberId) => members.has(memberId))
 	const amountValue = parsePositive(amount)
 	const dcValue = parsePositive(dc)
-	const controls: Controls = { selected, toggle, combat, update, openStats: setStats, mobile }
+	// Newest card first, at most two side by side.
+	const openStats = (memberId: string) => setStats((current) => [memberId, ...current.filter((id) => id !== memberId)].slice(0, 2))
+	const controls: Controls = { selected, toggle, combat, update, openStats, mobile }
 
 	const total = encounterXp(groups, index)
 	const thresholds = rules.status === 'ready' ? partyThresholds(rules.data, encounter.party) : null
@@ -380,17 +486,56 @@ function CombatScreen({
 	const selectAlive = (group: EncounterGroup) =>
 		setSelected((currentSet) => new Set([...currentSet, ...group.members.filter((member) => !isDown(combat, member.id)).map((member) => member.id)]))
 
-	const statMonster = stats ? monsterOf(stats) : undefined
-	const statCard = statMonster && (
-		<section className={mobile ? 'combat__stats combat__stats--full' : 'combat__stats'} aria-label="Stat block">
-			<button type="button" className="combat__stats-close" onClick={() => setStats(null)}>
-				{mobile ? '← Back' : 'Close'}
-			</button>
-			<MonsterStatBlock monster={statMonster} group={findLegendaryGroup(statMonster, data.legendaryGroups)} />
-		</section>
-	)
+	const statCard = (memberId: string) => {
+		const info = members.get(memberId)
+		if (!info?.monster) return null
+		return (
+			<section key={memberId} className={mobile ? 'combat__stats combat__stats--full' : 'combat__stats'} aria-label={`Stat block ${info.member.name}`}>
+				<button type="button" className="combat__stats-close" onClick={() => setStats((current) => current.filter((id) => id !== memberId))}>
+					{mobile ? '← Back' : 'Close'}
+				</button>
+				<TrackedUses info={info} combat={combat} update={update} />
+				<MonsterStatBlock monster={info.monster} group={findLegendaryGroup(info.monster, data.legendaryGroups)} />
+			</section>
+		)
+	}
+	const cards = stats.map(statCard).filter((card) => card !== null)
 
-	if (mobile && statCard) return statCard
+	if (mobile && cards.length > 0) return cards[0]
+
+	const goNext = () => {
+		const after = nextTurn(combat, groups)
+		commit(after)
+		setReminders(rechargeReminders(after, groups, members))
+	}
+	const rollReminder = (reminder: Reminder) => {
+		const result = rollRecharge(combat, reminder.memberId, reminder.use.key, reminder.use.recharge ?? 6)
+		commit(result.combat)
+		setReminders((current) => current.map((item) => (item === reminder ? { ...item, roll: result.roll } : item)))
+	}
+	const reminderStrip = reminders.length > 0 && (
+		<ul className="recharge-reminders" aria-label="Recharge reminders">
+			{reminders.map((reminder) => {
+				const ready = usedCount(combat, reminder.memberId, reminder.use.key) === 0
+				return (
+					<li key={`${reminder.memberId}:${reminder.use.key}`} className="recharge-reminder">
+						<span className="recharge-reminder__text">
+							{reminder.memberName}: {reminder.use.name} is spent - roll d6, recharges on {reminder.use.recharge === 6 ? '6' : `${reminder.use.recharge}-6`}
+						</span>
+						{reminder.roll !== undefined && <span className="recharge-reminder__result">Rolled {reminder.roll}{ready ? ' - READY' : ' - still spent'}</span>}
+						{!ready && (
+							<button type="button" className="recharge-reminder__roll" onClick={() => rollReminder(reminder)}>
+								ROLL d6
+							</button>
+						)}
+						<button type="button" aria-label="Dismiss reminder" onClick={() => setReminders((current) => current.filter((item) => item !== reminder))}>
+							×
+						</button>
+					</li>
+				)
+			})}
+		</ul>
+	)
 
 	const conditionSelect = (
 		<select aria-label="Add condition" value="" disabled={selectedIds.length === 0} onChange={(event) => condition(event.target.value)}>
@@ -525,7 +670,7 @@ function CombatScreen({
 		/>
 	)
 	const next = (
-		<button type="button" className="btn--accent combat__next" onClick={() => update((c) => nextTurn(c, groups))}>
+		<button type="button" className="btn--accent combat__next" onClick={goNext}>
 			Next turn
 		</button>
 	)
@@ -547,6 +692,7 @@ function CombatScreen({
 					{next}
 				</div>
 				{error}
+				{reminderStrip}
 				{list}
 				<button type="button" className="combat__end combat__end--mobile" onClick={() => setConfirmEnd(true)}>
 					End encounter
@@ -561,13 +707,17 @@ function CombatScreen({
 					</section>
 				)}
 				<div className="combat__bottombar" role="toolbar" aria-label="Selected creatures">
-					<span className="combat__count">{selectedIds.length} selected</span>
-					<button type="button" className="combat__save-toggle" aria-expanded={panelOpen} onClick={() => setPanelOpen((open) => !open)}>
-						{saveSummary}
-					</button>
-					{conditionSelect}
-					{amountField}
-					{damageButtons}
+					<div className="combat__bottom-row">
+						<span className="combat__count">{selectedIds.length} selected</span>
+						<button type="button" className="combat__save-toggle" aria-expanded={panelOpen} onClick={() => setPanelOpen((open) => !open)}>
+							{saveSummary}
+						</button>
+						{conditionSelect}
+					</div>
+					<div className="combat__bottom-row">
+						<input type="number" inputMode="numeric" min={1} aria-label="Amount" className="combat__amount" value={amount} onChange={(event) => setAmount(event.target.value)} />
+						{damageButtons}
+					</div>
 				</div>
 				{endDialog}
 			</div>
@@ -594,6 +744,7 @@ function CombatScreen({
 				</button>
 			</div>
 			{error}
+			{reminderStrip}
 			<div className="combat__body">
 				<div className="combat__main">
 					<div className="combat__toolbar" role="toolbar" aria-label="Selected creatures">
@@ -617,7 +768,7 @@ function CombatScreen({
 						{list}
 					</div>
 				</div>
-				{statCard}
+				{cards.length > 0 && <div className={cards.length > 1 ? 'combat__cards combat__cards--two' : 'combat__cards'}>{cards}</div>}
 			</div>
 			{endDialog}
 		</div>

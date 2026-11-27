@@ -1453,7 +1453,15 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   initiative step (rolled d20 + `monsterInitiative`, editable, players blank = last, Begin) and combat screen (header,
   toolbar, 7-column list, group header with "Select all alive", stat block card, End encounter via ConfirmDialog);
   ≤ 760px top bar, compact rows, fixed bottom bar + save panel, full-screen stat block. Theme token `--warning`.
-  Not yet: daily uses, recharge, legendary boxes (MON-5); player HP. `e2e/dmCombat.spec.ts` a–g.
+  Not yet: player HP. `e2e/dmCombat.spec.ts` a–g.
+- MON-5 (D435): tracked uses per member. `src/encounters/trackedUses.ts` parses "(N/Day[, or M/Day in Lair|Domain])",
+  `{@recharge N}`, legendary actions (default 3, lair count) and spellcasting `daily`/`restLong` ("Ne" one row per spell,
+  "N" one shared row; at-will none). `Combat.uses`/`Combat.lair` optional (old fights load, schema stays 2); legendary
+  actions refill in `nextTurn`; `startCombat` resets. Card: "Tracked uses" section (In lair toggle, 22px boxes, USE /
+  SPENT / READY), row count "LR 2/3 · LA 0/3 · PB spent". Recharge reminder strip after Next turn (ROLL d6, dismiss; not
+  saved). Up to two stat block cards side by side on desktop. Mobile: two-row bottom bar (Amount 70px, DAMAGE/HEAL 44px),
+  flex rows, subtitle "Dire Wolf · CR 1" with saves on their own line. Spellcasting `recharge` lists (12 blocks) are not
+  tracked. `e2e/dmTrackedUses.spec.ts` a–f.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`
