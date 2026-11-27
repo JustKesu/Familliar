@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { extractMonsters } from '../monsters/monsterData'
-import { difficultyLabel, encounterXp, extractEncounterRules, monsterIndex, partyThresholds } from './encounterDifficulty'
+import { crXpTable, difficultyLabel, encounterXp, extractEncounterRules, monsterIndex, partyThresholds, uncountedNpcs } from './encounterDifficulty'
 import { addMonster, newGroup, setGroupCount } from './encounterEdit'
 import { ENCOUNTER_STORAGE_KEY, EncounterStorageError, EncounterStore, type EncounterInput } from './encounterStore'
 import type { KeyValueStorage } from '../storage/characterStore'
@@ -25,7 +25,7 @@ const WOLF = { name: 'Wolf', source: 'XMM' }
 const DIRE_WOLF = { name: 'Dire Wolf', source: 'XMM' }
 
 function input(): EncounterInput {
-	return { name: 'Wolves', party: { size: 4, level: 2 }, players: ['Ana'], groups: [setGroupCount(newGroup(WOLF), 6), newGroup(DIRE_WOLF)] }
+	return { name: 'Wolves', party: { size: 4, level: 2 }, players: ['Ana'], groups: [setGroupCount(newGroup(WOLF), 6), newGroup(DIRE_WOLF)], npcs: [] }
 }
 
 describe('EncounterStore', () => {
@@ -33,7 +33,7 @@ describe('EncounterStore', () => {
 		const storage = memoryStorage()
 		const store = new EncounterStore(storage)
 		const created = store.save(null, input(), new Date('2026-11-27T10:00:00Z'))
-		expect(JSON.parse(storage.value()!).schemaVersion).toBe(2)
+		expect(JSON.parse(storage.value()!).schemaVersion).toBe(3)
 		expect(created.combat).toBeNull()
 		expect(new EncounterStore(storage).list()).toEqual([created])
 
@@ -59,19 +59,36 @@ describe('EncounterStore', () => {
 	})
 
 	it('treats a newer schema version as unreadable', () => {
-		const store = new EncounterStore(memoryStorage(JSON.stringify({ schemaVersion: 3, encounters: [] })))
-		expect(store.read().error).toMatch(/schema version 3/)
+		const store = new EncounterStore(memoryStorage(JSON.stringify({ schemaVersion: 4, encounters: [] })))
+		expect(store.read().error).toMatch(/schema version 4/)
 	})
 
-	it('migrates a v1 entry to combat: null and writes v2', () => {
+	it('migrates a v1 entry to combat: null and no NPCs, and writes v3', () => {
 		const v1 = { id: 'e1', name: 'Old', createdAt: 'x', updatedAt: 'x', party: null, players: [], groups: [] }
 		const storage = memoryStorage(JSON.stringify({ schemaVersion: 1, encounters: [v1] }))
 		const store = new EncounterStore(storage)
-		expect(store.list()).toEqual([{ ...v1, combat: null }])
+		expect(store.list()).toEqual([{ ...v1, combat: null, npcs: [] }])
 		store.save(null, { ...input(), name: 'New' })
 		const written = JSON.parse(storage.value()!)
-		expect(written.schemaVersion).toBe(2)
-		expect(written.encounters[0]).toEqual({ ...v1, combat: null })
+		expect(written.schemaVersion).toBe(3)
+		expect(written.encounters[0]).toEqual({ ...v1, combat: null, npcs: [] })
+	})
+
+	it('migrates a v2 entry to no NPCs, keeping its fight', () => {
+		const combat = { round: 3, turn: 0, order: [], hp: { m1: 4 }, conditions: {}, adv: {}, saveResults: {} }
+		const v2 = { id: 'e2', name: 'Two', createdAt: 'x', updatedAt: 'x', party: { size: 4, level: 2 }, players: ['Ana'], groups: [], combat }
+		const storage = memoryStorage(JSON.stringify({ schemaVersion: 2, encounters: [v2] }))
+		const store = new EncounterStore(storage)
+		expect(store.list()).toEqual([{ ...v2, npcs: [] }])
+		store.setCombat('e2', combat)
+		expect(JSON.parse(storage.value()!)).toEqual({ schemaVersion: 3, encounters: [{ ...v2, npcs: [] }] })
+	})
+
+	it('refuses the same NPC twice in one encounter', () => {
+		const store = new EncounterStore(memoryStorage())
+		const npc = { id: 'n1', characterId: 'c1', name: 'Mira', cr: null }
+		expect(store.save(null, { ...input(), npcs: [npc] }).npcs).toEqual([npc])
+		expect(() => store.save(null, { ...input(), npcs: [npc, { ...npc, id: 'n2' }] })).toThrow(EncounterStorageError)
 	})
 
 	it('keeps the fight when the setup is saved, stores and clears it with setCombat', () => {
@@ -88,7 +105,7 @@ describe('EncounterStore', () => {
 		const storage = memoryStorage()
 		const store = new EncounterStore(storage)
 		const good = store.save(null, input())
-		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 2, encounters: [good, { ...good, id: 'b', combat: { round: 0 } }] }))
+		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 3, encounters: [good, { ...good, id: 'b', combat: { round: 0 } }] }))
 		expect(store.read().skipped).toBe(1)
 	})
 
@@ -97,7 +114,7 @@ describe('EncounterStore', () => {
 		const store = new EncounterStore(storage)
 		const good = store.save(null, input())
 		const bad = { id: 'x', name: 42 }
-		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 2, encounters: [bad, good] }))
+		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 3, encounters: [bad, good] }))
 		expect(store.read()).toEqual({ encounters: [good], skipped: 1, error: null })
 		store.save(null, { ...input(), name: 'Second' })
 		expect(JSON.parse(storage.value()!).encounters).toContainEqual(bad)
@@ -147,5 +164,19 @@ describe('difficulty against data/encounter-rules.json and data/monsters.json', 
 		expect(encounterXp([newGroup({ name: 'Renamed Thing', source: 'XMM' })], monsters)).toBe(0)
 		expect(partyThresholds(rules, null)).toBeNull()
 		expect(partyThresholds(rules, { size: 1, level: 20 })?.high).toBeGreaterThan(0)
+	})
+
+	it('an NPC with CR 1 counts 200 XP like a CR 1 monster; without CR it is not counted', () => {
+		const crs = crXpTable(extractMonsters(read('monsters.json')))
+		expect(crs.find((row) => row.cr === '1')?.xp).toBe(200)
+		expect(crs.find((row) => row.cr === '1/2')?.xp).toBe(100)
+		expect(crs[0]).toEqual({ cr: '0', xp: 10 })
+		const npcs = [
+			{ id: 'n1', characterId: 'c1', name: 'Mira', cr: '1' },
+			{ id: 'n2', characterId: 'c2', name: 'Oswin', cr: null },
+		]
+		expect(encounterXp(input().groups, monsters, npcs, crs)).toBe(700)
+		expect(uncountedNpcs(npcs)).toBe(1)
+		expect(encounterXp([], monsters, [npcs[1]], crs)).toBe(0)
 	})
 })

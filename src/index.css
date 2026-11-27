@@ -5802,6 +5802,51 @@ details.beast > .beast__body {
   color: var(--text-sub);
 }
 
+/* D438: NPCs in an encounter. */
+.encounter-difficulty__note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.encounter-npc__cr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.encounter-npc__cr select,
+.encounter-setup__add-npc select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.encounter-setup__add-npc {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.combat__npc-remove {
+  justify-self: end;
+}
+
+.npc-overlay {
+  position: fixed;
+  inset: 0;
+  /* Under the DM roll toast (20), so a roll made on the sheet still shows. */
+  z-index: 15;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.npc-overlay__back {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 8px 16px;
+}
+
 .encounter-group {
   padding: 10px 0;
   border-top: 1px solid var(--line);

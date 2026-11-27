@@ -18,12 +18,13 @@ const ENCOUNTER = {
     { id: 'g-barl', monster: { name: 'Barlgura', source: 'XMM' }, oneInitiative: false, members: [{ id: 'b1', name: 'Barlgura' }] },
     { id: 'g-dire', monster: { name: 'Dire Wolf', source: 'XMM' }, oneInitiative: false, members: [{ id: 'w1', name: 'Alpha' }] },
   ],
+  npcs: [],
   combat: null,
 }
 
 async function begin(page: Page): Promise<void> {
   await page.goto('/')
-  await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, JSON.stringify({ schemaVersion: 2, encounters: [ENCOUNTER] })])
+  await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, JSON.stringify({ schemaVersion: 3, encounters: [ENCOUNTER] })])
   await page.goto(`/#/dm/encounter/${ID}/run`)
   await page.getByRole('spinbutton', { name: 'Initiative Verdant' }).fill('20')
   await page.getByRole('spinbutton', { name: 'Initiative Barlgura' }).fill('15')

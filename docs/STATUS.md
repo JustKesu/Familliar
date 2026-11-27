@@ -1475,6 +1475,16 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   CharacterManager (route `DmRoute` with `tab: 'npcs'`); `#/dm/npcs/new` = the creation wizard, save → `markNpc` → sheet,
   Cancel → `#/dm/npcs`. Home list filters `!npc`. CharacterCard has an optional Duplicate menu item; ConfirmDialog
   `destructiveDisabled`. Import stays on the home list (an NPC file lands in the NPCs tab). `e2e/dmNpcs.spec.ts` a–h.
+- NPC-2 (D438): NPCs in encounters. Encounter schema 3 (`npcs: {id, characterId, name, cr}[]`, unique characterId; v1/v2
+  migrate with `npcs: []`). `crXpTable` (CR label → XP from monsters.json, CR 0 = 10), `encounterXp(..., npcs, crXp)`,
+  `uncountedNpcs`. `combat.ts`: entry kind `npc`, `damageTaken`, `removeEntry`, `isEntryDown`/`nextTurn` take `npcDown`.
+  `src/sheet/combinedSpells.ts` (`loadClassAndSubclassSpellInfo`, `wizardBookGrants`, `loadCombinedSpells`) is the sheet's
+  spell-list assembly moved out of CharacterSheet. `src/encounters/npcStats.ts` (`loadNpcStats`: AC, initiative, saves,
+  max HP via the sheet's calculations), `npcCharacter.ts` (damage/heal through the sheet's `damageHitPoints`/new
+  `healHitPoints`, conditions/Exhaustion to `play`). EncounterSetup: NPCs section, "Add NPC", CR select, deleted card,
+  difficulty note. EncounterRun: NPC initiative, `NpcRow` (desktop/mobile), deleted row with Remove, full-screen sheet
+  (`DmPage.sheet` → CharacterManager) with "← Back to encounter". `e2e/dmNpcCombat.spec.ts` a–j; unit
+  `src/encounters/npcCombat.test.ts`.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

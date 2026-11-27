@@ -11,6 +11,8 @@ export const SAVE_ABILITIES: readonly AbilityKey[] = ['str', 'dex', 'con', 'int'
 export type InitiativeEntry =
 	| { kind: 'group'; groupId: string; initiative: number; bonus: number }
 	| { kind: 'member'; groupId: string; memberId: string; initiative: number; bonus: number }
+	/** D438: HP and conditions live on the NPC's character, not in the combat. */
+	| { kind: 'npc'; npcId: string; initiative: number; bonus: number }
 	/** null = no number entered; such a player acts last. */
 	| { kind: 'player'; name: string; initiative: number | null }
 
@@ -46,6 +48,7 @@ const isNonEmpty = (value: unknown): value is string => typeof value === 'string
 function isEntry(value: unknown): value is InitiativeEntry {
 	if (!isRecord(value)) return false
 	if (value.kind === 'player') return isNonEmpty(value.name) && (value.initiative === null || isInt(value.initiative))
+	if (value.kind === 'npc') return isNonEmpty(value.npcId) && isInt(value.initiative) && isInt(value.bonus)
 	if (!isNonEmpty(value.groupId) || !isInt(value.initiative) || !isInt(value.bonus)) return false
 	return value.kind === 'group' || (value.kind === 'member' && isNonEmpty(value.memberId))
 }
@@ -76,17 +79,25 @@ export function isCombat(value: unknown): value is Combat {
 
 export function entryKey(entry: InitiativeEntry): string {
 	if (entry.kind === 'player') return `p:${entry.name}`
+	if (entry.kind === 'npc') return `n:${entry.npcId}`
 	return entry.kind === 'group' ? `g:${entry.groupId}` : `m:${entry.memberId}`
 }
 
-/** A group with one roll is one entry; otherwise one per member; players one each, number left blank. */
-export function initiativeEntries(groups: EncounterGroup[], players: string[], bonusOf: (group: EncounterGroup) => number, roll: () => number = rollD20): InitiativeEntry[] {
+/** A group with one roll is one entry; otherwise one per member; an NPC is rolled like a monster (D438); players one each, number left blank. */
+export function initiativeEntries(
+	groups: EncounterGroup[],
+	players: string[],
+	bonusOf: (group: EncounterGroup) => number,
+	roll: () => number = rollD20,
+	npcs: { id: string; bonus: number }[] = [],
+): InitiativeEntry[] {
 	const monsters = groups.flatMap((group): InitiativeEntry[] => {
 		const bonus = bonusOf(group)
 		if (group.oneInitiative && group.members.length > 1) return [{ kind: 'group', groupId: group.id, initiative: roll() + bonus, bonus }]
 		return group.members.map((member) => ({ kind: 'member', groupId: group.id, memberId: member.id, initiative: roll() + bonus, bonus }))
 	})
-	return [...monsters, ...players.map((name): InitiativeEntry => ({ kind: 'player', name, initiative: null }))]
+	const npcEntries = npcs.map((npc): InitiativeEntry => ({ kind: 'npc', npcId: npc.id, initiative: roll() + npc.bonus, bonus: npc.bonus }))
+	return [...monsters, ...npcEntries, ...players.map((name): InitiativeEntry => ({ kind: 'player', name, initiative: null }))]
 }
 
 /** Higher total first; on a tie the higher bonus among monsters, a player before a monster (D434); a blank player goes last. */
@@ -114,7 +125,7 @@ export function startCombat(order: InitiativeEntry[], groups: EncounterGroup[], 
 
 /** Member ids an entry stands for; members removed in the setup since the start drop out. */
 export function entryMemberIds(entry: InitiativeEntry, groups: EncounterGroup[]): string[] {
-	if (entry.kind === 'player') return []
+	if (entry.kind === 'player' || entry.kind === 'npc') return []
 	const group = groups.find((g) => g.id === entry.groupId)
 	if (!group) return []
 	if (entry.kind === 'group') return group.members.map((member) => member.id)
@@ -125,23 +136,33 @@ export const currentHp = (combat: Combat, memberId: string, max: number): number
 
 export const isDown = (combat: Combat, memberId: string): boolean => combat.hp[memberId] === 0
 
-/** Players have no HP here, so they are never down; an entry with no members left counts as down. */
-export function isEntryDown(combat: Combat, entry: InitiativeEntry, groups: EncounterGroup[]): boolean {
+/** Players have no HP here, so they are never down; an entry with no members left counts as down; an NPC asks its sheet (`npcDown`). */
+export function isEntryDown(combat: Combat, entry: InitiativeEntry, groups: EncounterGroup[], npcDown: (npcId: string) => boolean = () => false): boolean {
 	if (entry.kind === 'player') return false
+	if (entry.kind === 'npc') return npcDown(entry.npcId)
 	return entryMemberIds(entry, groups).every((id) => isDown(combat, id))
 }
 
 /** Skips entries whose every member is down; passing the end of the order starts the next round. */
-export function nextTurn(combat: Combat, groups: EncounterGroup[]): Combat {
+export function nextTurn(combat: Combat, groups: EncounterGroup[], npcDown?: (npcId: string) => boolean): Combat {
 	const count = combat.order.length
 	if (count === 0) return combat
 	for (let step = 1; step <= count; step++) {
 		const raw = combat.turn + step
-		if (!isEntryDown(combat, combat.order[raw % count], groups)) {
+		if (!isEntryDown(combat, combat.order[raw % count], groups, npcDown)) {
 			return refillLegendary({ ...combat, turn: raw % count, round: combat.round + Math.floor(raw / count) }, groups)
 		}
 	}
 	return refillLegendary({ ...combat, turn: (combat.turn + 1) % count, round: combat.round + Math.floor((combat.turn + 1) / count) }, groups)
+}
+
+/** Drops one entry from the order; the turn stays on the same creature, or moves to the next one when the removed entry was acting. */
+export function removeEntry(combat: Combat, key: string): Combat {
+	const index = combat.order.findIndex((entry) => entryKey(entry) === key)
+	if (index === -1) return combat
+	const order = combat.order.filter((_, i) => i !== index)
+	const shifted = index < combat.turn ? combat.turn - 1 : combat.turn
+	return { ...combat, order, turn: order.length === 0 ? 0 : shifted % order.length }
 }
 
 /** Legendary actions come back at the start of the monster's own turn. */
@@ -219,12 +240,13 @@ export function flipSave(combat: Combat, memberId: string): Combat {
 /** Without a chosen save everyone takes full damage; with one, a success takes half (rounded down) or none. Results clear afterwards. */
 export function applyDamage(combat: Combat, memberIds: string[], amount: number, saveChosen: boolean, onSuccess: OnSuccess, maxOf: (memberId: string) => number): Combat {
 	const hp = { ...combat.hp }
-	for (const id of memberIds) {
-		const result = saveChosen ? combat.saveResults[id] : undefined
-		const taken = result?.success ? (onSuccess === 'half' ? Math.floor(amount / 2) : 0) : amount
-		hp[id] = Math.max(0, currentHp(combat, id, maxOf(id)) - taken)
-	}
+	for (const id of memberIds) hp[id] = Math.max(0, currentHp(combat, id, maxOf(id)) - damageTaken(combat, id, amount, saveChosen, onSuccess))
 	return { ...combat, hp, saveResults: {} }
+}
+
+export function damageTaken(combat: Combat, id: string, amount: number, saveChosen: boolean, onSuccess: OnSuccess): number {
+	const result = saveChosen ? combat.saveResults[id] : undefined
+	return result?.success ? (onSuccess === 'half' ? Math.floor(amount / 2) : 0) : amount
 }
 
 export function applyHeal(combat: Combat, memberIds: string[], amount: number, maxOf: (memberId: string) => number): Combat {

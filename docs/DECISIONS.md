@@ -6039,3 +6039,17 @@ Duplicate a Delete s potvrzením. Edit a level up NPC jdou stejnými cestami jak
 Duplicate se ptá na jméno (předvyplněno „<jméno> copy“, prázdné nejde) a uloží úplnou nezávislou kopii s novým id
 a příznakem NPC, včetně aktuálních HP, použitých zdrojů a inventáře. Export příznak nese, import takového souboru
 uloží NPC. Zadání NPC-1, 27. 11. 2026.
+
+## D438 — NPC ve střetnutí se sdílenými HP a stavy (NPC-2)
+
+Střetnutí schema 3: `npcs: {id, characterId, name, cr}[]`, každé NPC nejvýš jednou; schema 2 (i 1) se migruje
+s `npcs: []`. Setup: „Add NPC“ nabízí NPC, která ve střetnutí ještě nejsou, volitelné CR ze stejných hodnot jako
+monstra; NPC s CR se počítá XP toho CR (CR 0 = 10 XP), bez CR se nepočítá a lišta obtížnosti řekne kolik. V boji
+má NPC vlastní položku iniciativy (d20 + iniciativa z listu) a řádek jako monstrum: AC, záchrany, iniciativa a max HP
+jsou čísla listu ze stejných výpočtů (skládání seznamu kouzel kvůli Mage Armor přesunuto z CharacterSheet do
+`sheet/combinedSpells.ts`, list ho volá také). HP a stavy nejsou v boji, ale na uložené postavě: damage/heal jdou
+přes zápis HP listu (dočasné HP první, nikdy nad max, death saves jako na listu), NPC bez current HP začíná na max;
++ Condition / odebrání píše `play.conditions`, Exhaustion z boje = úroveň 1 (je-li 0), odebrání = 0. NPC na 0 HP
+Next turn přeskočí a neháže záchrany. Tlačítko listu otevře plný list přes celou obrazovku s „← Back to encounter“;
+boj zůstává pod ním beze změny. Smazané NPC se ukáže jako „<jméno> (NPC deleted)“ s Remove (v boji odebere i položku
+pořadí). Zadání NPC-2, 27. 11. 2026.

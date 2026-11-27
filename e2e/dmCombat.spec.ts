@@ -16,12 +16,13 @@ const ENCOUNTER = {
     { id: 'g-wolf', monster: { name: 'Wolf', source: 'XMM' }, oneInitiative: true, members: [1, 2, 3, 4, 5, 6].map((n) => ({ id: `w${n}`, name: `Wolf ${n}` })) },
     { id: 'g-dire', monster: { name: 'Dire Wolf', source: 'XMM' }, oneInitiative: false, members: [{ id: 'd1', name: 'Alpha' }] },
   ],
+  npcs: [],
   combat: null,
 }
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/')
-  await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, JSON.stringify({ schemaVersion: 2, encounters: [ENCOUNTER] })])
+  await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, JSON.stringify({ schemaVersion: 3, encounters: [ENCOUNTER] })])
 }
 
 const row = (page: Page, name: string) => page.getByRole('listitem', { name, exact: true })

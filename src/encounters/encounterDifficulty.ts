@@ -1,6 +1,6 @@
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Monster } from '../monsters/monsterData'
-import type { EncounterGroup, EncounterParty } from './encounterStore'
+import type { EncounterGroup, EncounterNpc, EncounterParty } from './encounterStore'
 
 export interface XpBudgetRow {
 	level: number
@@ -60,7 +60,21 @@ export function monsterIndex(monsters: Monster[]): Map<string, Monster> {
 	return new Map(monsters.map((monster) => [monsterRefKey(monster), monster]))
 }
 
-/** Every member counts its monster's `xp`; `xpLair` is ignored and an unknown monster counts 0. */
-export function encounterXp(groups: EncounterGroup[], monsters: Map<string, Monster>): number {
-	return groups.reduce((total, group) => total + (monsters.get(monsterRefKey(group.monster))?.xp ?? 0) * group.members.length, 0)
+/** D438: the CR labels the bestiary uses, lowest first, each with its XP; CR 0 is 0 or 10 in the data, the higher wins. */
+export function crXpTable(monsters: Monster[]): { cr: string; xp: number }[] {
+	const byCr = new Map<string, { order: number; xp: number }>()
+	for (const monster of monsters) {
+		if (monster.xp === undefined) continue
+		const known = byCr.get(monster.cr)
+		if (!known || monster.xp > known.xp) byCr.set(monster.cr, { order: monster.crNumber, xp: monster.xp })
+	}
+	return [...byCr.entries()].sort((a, b) => a[1].order - b[1].order).map(([cr, { xp }]) => ({ cr, xp }))
 }
+
+/** Every member counts its monster's `xp`; `xpLair` is ignored and an unknown monster counts 0. An NPC counts only with a CR (D438). */
+export function encounterXp(groups: EncounterGroup[], monsters: Map<string, Monster>, npcs: EncounterNpc[] = [], crXp: { cr: string; xp: number }[] = []): number {
+	const monsterXp = groups.reduce((total, group) => total + (monsters.get(monsterRefKey(group.monster))?.xp ?? 0) * group.members.length, 0)
+	return npcs.reduce((total, npc) => total + (crXp.find((row) => row.cr === npc.cr)?.xp ?? 0), monsterXp)
+}
+
+export const uncountedNpcs = (npcs: EncounterNpc[]): number => npcs.filter((npc) => npc.cr === null).length

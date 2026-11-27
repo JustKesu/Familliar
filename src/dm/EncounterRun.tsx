@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import {
 	addCondition,
@@ -6,7 +6,9 @@ import {
 	applyHeal,
 	COMBAT_CONDITIONS,
 	currentHp,
+	damageTaken,
 	entryKey,
+	removeEntry,
 	entryMemberIds,
 	flipSave,
 	initiativeEntries,
@@ -28,8 +30,13 @@ import {
 	type OnSuccess,
 	type SaveResult,
 } from '../encounters/combat'
-import { difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds } from '../encounters/encounterDifficulty'
-import { EncounterStore, type Encounter, type EncounterGroup, type EncounterMember } from '../encounters/encounterStore'
+import { crXpTable, difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, uncountedNpcs } from '../encounters/encounterDifficulty'
+import { EncounterStore, type Encounter, type EncounterGroup, type EncounterMember, type EncounterNpc } from '../encounters/encounterStore'
+import { addNpcCondition, damageNpc, healNpc, npcConditions, npcCurrentHp, removeNpcCondition } from '../encounters/npcCharacter'
+import { classLine, loadNpcStats, type NpcSave, type NpcStats } from '../encounters/npcStats'
+import type { Character } from '../storage/character'
+import { CharacterStore } from '../storage/characterStore'
+import { uncountedNote } from './EncounterSetup'
 import { hasLairUses, trackedUses, type TrackedUse } from '../encounters/trackedUses'
 import { MonsterStatBlock } from '../monsters/MonsterStatBlock'
 import { findLegendaryGroup, loadMonsterData, monsterInitiative, monsterSave, type AbilityKey, type Monster, type MonsterData } from '../monsters/monsterData'
@@ -62,19 +69,97 @@ function groupLabel(group: EncounterGroup): string {
 	return group.members.length > 1 ? `${group.monster.name} x${group.members.length}` : group.monster.name
 }
 
-function entryLabel(entry: InitiativeEntry, groups: EncounterGroup[]): string {
+/** D438: everything a row needs about one NPC; `character` undefined = deleted from the NPCs tab. */
+interface NpcInfo {
+	npc: EncounterNpc
+	character: Character | undefined
+	stats: NpcStats | undefined
+	max: number
+	hp: number
+	down: boolean
+	conditions: string[]
+	label: string
+}
+
+const deletedLabel = (npc: EncounterNpc): string => `${npc.name} (NPC deleted)`
+
+function npcInfos(npcs: EncounterNpc[], characters: Character[], stats: Record<string, NpcStats>): Map<string, NpcInfo> {
+	return new Map(
+		npcs.map((npc) => {
+			const character = characters.find((c) => c.id === npc.characterId)
+			const own = character && stats[character.id]
+			const max = Math.max(1, own?.maxHp ?? character?.currentHp ?? 1)
+			const hp = character ? npcCurrentHp(character, max) : 0
+			// A deleted NPC counts as down, like a removed monster, so Next turn passes it.
+			return [npc.id, { npc, character, stats: own, max, hp, down: !character || hp === 0, conditions: character ? npcConditions(character) : [], label: character?.name ?? deletedLabel(npc) }]
+		}),
+	)
+}
+
+function entryLabel(entry: InitiativeEntry, groups: EncounterGroup[], npcs: EncounterNpc[] = []): string {
 	if (entry.kind === 'player') return entry.name
+	if (entry.kind === 'npc') {
+		const npc = npcs.find((n) => n.id === entry.npcId)
+		return npc ? npc.name : 'Removed'
+	}
 	const group = groups.find((g) => g.id === entry.groupId)
 	if (!group) return 'Removed'
 	if (entry.kind === 'group') return groupLabel(group)
 	return group.members.find((member) => member.id === entry.memberId)?.name ?? 'Removed'
 }
 
-export function EncounterRun({ id, navigate }: { id: string; navigate: Navigate }): ReactNode {
+function useCharacterStore(): CharacterStore | null {
+	return useMemo(() => {
+		try {
+			return new CharacterStore()
+		} catch {
+			return null
+		}
+	}, [])
+}
+
+/** D438: the encounter's NPCs read fresh from the character store; `refresh` re-reads after a write here or on the sheet. */
+function useNpcs(npcs: EncounterNpc[]) {
+	const characterStore = useCharacterStore()
+	const [tick, setTick] = useState(0)
+	const characters = useMemo(() => {
+		void tick
+		try {
+			return characterStore?.list() ?? []
+		} catch {
+			return []
+		}
+	}, [characterStore, tick])
+	const [stats, setStats] = useState<Record<string, NpcStats>>({})
+	const [failed, setFailed] = useState<Record<string, true>>({})
+	const wanted = useMemo(() => characters.filter((c) => npcs.some((npc) => npc.characterId === c.id)), [characters, npcs])
+	useEffect(() => {
+		let cancelled = false
+		for (const character of wanted) {
+			loadNpcStats(character)
+				.then((loaded) => {
+					if (!cancelled) setStats((current) => ({ ...current, [character.id]: loaded }))
+				})
+				.catch(() => {
+					if (!cancelled) setFailed((current) => ({ ...current, [character.id]: true }))
+				})
+		}
+		return () => {
+			cancelled = true
+		}
+	}, [wanted])
+	const infos = useMemo(() => npcInfos(npcs, characters, stats), [npcs, characters, stats])
+	const ready = wanted.every((c) => stats[c.id] !== undefined || failed[c.id])
+	return { characterStore, infos, ready, refresh: () => setTick((t) => t + 1) }
+}
+
+export function EncounterRun({ id, navigate, renderSheet }: { id: string; navigate: Navigate; renderSheet?: (characterId: string) => ReactNode }): ReactNode {
 	const store = useMemo(() => new EncounterStore(), [])
 	const [encounter, setEncounter] = useState<Encounter | undefined>(() => store.get(id))
 	const [writeError, setWriteError] = useState<string | null>(null)
+	const [sheetFor, setSheetFor] = useState<string | null>(null)
 	const monsters = useLoaded(loadMonsterData)
+	const npcs = useNpcs(encounter?.npcs ?? NO_NPCS)
 	const toList = () => navigate({ view: 'dm', tab: 'encounters' })
 
 	if (!encounter) {
@@ -113,12 +198,72 @@ export function EncounterRun({ id, navigate }: { id: string; navigate: Navigate 
 		</div>
 	)
 
-	return encounter.combat ? (
-		<CombatScreen encounter={encounter} combat={encounter.combat} data={monsters.data} commit={commit} error={error} onBack={toList} onEnded={toList} />
+	/** Sheet writes go through the character store; a refused one shows like a refused encounter write. */
+	const writeNpcs = (write: (characterStore: CharacterStore) => void): void => {
+		try {
+			if (!npcs.characterStore) throw new Error('Saved characters could not be read, so the NPC was not changed.')
+			write(npcs.characterStore)
+			setWriteError(null)
+		} catch (failure) {
+			setWriteError(failure instanceof Error ? failure.message : String(failure))
+		}
+		npcs.refresh()
+	}
+
+	/** G: a deleted NPC leaves the setup and the turn order in one save. */
+	const removeNpc = (npcId: string): void => {
+		try {
+			const { name, party, players, groups } = encounter
+			const combat = encounter.combat && removeEntry(encounter.combat, `n:${npcId}`)
+			setEncounter(store.save(encounter.id, { name, party, players, groups, npcs: encounter.npcs.filter((npc) => npc.id !== npcId), combat }))
+			setWriteError(null)
+		} catch (failure) {
+			setWriteError(failure instanceof Error ? failure.message : String(failure))
+		}
+	}
+
+	if (!npcs.ready) return <p className="dm__status">Loading NPCs…</p>
+
+	const screen = encounter.combat ? (
+		<CombatScreen
+			encounter={encounter}
+			combat={encounter.combat}
+			data={monsters.data}
+			npcs={npcs.infos}
+			commit={commit}
+			writeNpcs={writeNpcs}
+			removeNpc={removeNpc}
+			openSheet={renderSheet ? setSheetFor : undefined}
+			error={error}
+			onBack={toList}
+			onEnded={toList}
+		/>
 	) : (
-		<InitiativeStep encounter={encounter} data={monsters.data} commit={commit} error={error} onBack={toList} />
+		<InitiativeStep encounter={encounter} data={monsters.data} npcs={npcs.infos} commit={commit} error={error} onBack={toList} />
+	)
+	if (sheetFor === null || !renderSheet) return screen
+	// F: the fight stays mounted (selection, amount, open cards) while the sheet covers the screen.
+	return (
+		<>
+			<div hidden>{screen}</div>
+			<div className="npc-overlay" role="dialog" aria-label="NPC sheet">
+				<button
+					type="button"
+					className="npc-overlay__back"
+					onClick={() => {
+						setSheetFor(null)
+						npcs.refresh()
+					}}
+				>
+					← Back to encounter
+				</button>
+				{renderSheet(sheetFor)}
+			</div>
+		</>
 	)
 }
+
+const NO_NPCS: EncounterNpc[] = []
 
 function useMonsterLookup(data: MonsterData, groups: EncounterGroup[]) {
 	const index = useMemo(() => monsterIndex(data.monsters), [data])
@@ -133,13 +278,34 @@ function useMonsterLookup(data: MonsterData, groups: EncounterGroup[]) {
 	}, [index, groups])
 }
 
-function InitiativeStep({ encounter, data, commit, error, onBack }: { encounter: Encounter; data: MonsterData; commit: (combat: Combat) => void; error: ReactNode; onBack: () => void }): ReactNode {
+function InitiativeStep({
+	encounter,
+	data,
+	npcs,
+	commit,
+	error,
+	onBack,
+}: {
+	encounter: Encounter
+	data: MonsterData
+	npcs: Map<string, NpcInfo>
+	commit: (combat: Combat) => void
+	error: ReactNode
+	onBack: () => void
+}): ReactNode {
 	const { monsterOf } = useMonsterLookup(data, encounter.groups)
 	const [entries] = useState(() =>
-		initiativeEntries(encounter.groups, encounter.players, (group) => {
-			const monster = monsterOf(group)
-			return monster ? monsterInitiative(monster) : 0
-		}),
+		initiativeEntries(
+			encounter.groups,
+			encounter.players,
+			(group) => {
+				const monster = monsterOf(group)
+				return monster ? monsterInitiative(monster) : 0
+			},
+			undefined,
+			// A deleted NPC does not join the fight.
+			[...npcs.values()].filter((info) => info.character).map((info) => ({ id: info.npc.id, bonus: info.stats?.initiative ?? 0 })),
+		),
 	)
 	const [values, setValues] = useState<Record<string, string>>(() =>
 		Object.fromEntries(entries.map((entry) => [entryKey(entry), entry.initiative === null ? '' : String(entry.initiative)])),
@@ -166,11 +332,11 @@ function InitiativeStep({ encounter, data, commit, error, onBack }: { encounter:
 				</button>
 			</div>
 			{error}
-			<p className="dm__status">Monsters are rolled as d20 + initiative; change any number. A player left blank acts last.</p>
+			<p className="dm__status">Monsters and NPCs are rolled as d20 + initiative; change any number. A player left blank acts last.</p>
 			<ul className="combat-init__list">
 				{entries.map((entry) => {
 					const key = entryKey(entry)
-					const label = entryLabel(entry, encounter.groups)
+					const label = entry.kind === 'npc' ? (npcs.get(entry.npcId)?.label ?? 'Removed') : entryLabel(entry, encounter.groups)
 					return (
 						<li key={key} className="combat-init__item">
 							<span className="combat-init__name">
@@ -221,11 +387,11 @@ function HpCell({ hp, max }: { hp: number; max: number }): ReactNode {
 	)
 }
 
-function SaveBonuses({ monster, short }: { monster: Monster | undefined; short?: boolean }): ReactNode {
+function SaveBonuses({ monster, saves, short }: { monster?: Monster; saves?: Record<AbilityKey, NpcSave>; short?: boolean }): ReactNode {
 	return (
 		<span className={short ? 'combat__saves combat__saves--short' : 'combat__saves'}>
 			{SAVE_ABILITIES.map((ability) => {
-				const save = monster ? monsterSave(monster, ability) : { bonus: 0, proficient: false }
+				const save = saves ? saves[ability] : monster ? monsterSave(monster, ability) : { bonus: 0, proficient: false }
 				return (
 					<span key={ability} className={save.proficient ? 'combat__save combat__save--proficient' : 'combat__save'}>
 						{short ? SHORT_LABEL[ability] : `${ABILITY_LABEL[ability]} `}
@@ -423,11 +589,114 @@ function MemberRow({ info, initiative, current, showSubtitle, controls }: { info
 	)
 }
 
+interface NpcControls {
+	removeCondition: (info: NpcInfo, condition: string) => void
+	openSheet: ((characterId: string) => void) | undefined
+	remove: (npcId: string) => void
+}
+
+function NpcRow({ info, initiative, current, controls, npcControls }: { info: NpcInfo; initiative: number; current: boolean; controls: Controls; npcControls: NpcControls }): ReactNode {
+	const { npc, character, stats, max, hp, down, conditions, label } = info
+	const { combat, selected, toggle, update, mobile } = controls
+	const className = ['combat-row', 'combat-row--npc', current && 'combat-row--current', down && 'combat-row--down'].filter(Boolean).join(' ')
+	const init = !mobile && (
+		<span className="combat__init">
+			{current && <span className="combat__play">▶</span>}
+			{initiative}
+		</span>
+	)
+	if (!character) {
+		return (
+			<li className={className} aria-label={label} aria-current={current ? 'true' : undefined}>
+				{!mobile && <span />}
+				{init}
+				<span className="combat__who">
+					<span className="combat__name">{label}</span>
+				</span>
+				<button type="button" className="combat__npc-remove" aria-label={`Remove ${label}`} onClick={() => npcControls.remove(npc.id)}>
+					Remove
+				</button>
+			</li>
+		)
+	}
+	const chips = conditions.length > 0 && (
+		<span className="combat__conditions">
+			{conditions.map((condition) => (
+				<span key={condition} className="combat__condition">
+					{condition}
+					<button type="button" aria-label={`Remove ${condition} from ${label}`} onClick={() => npcControls.removeCondition(info, condition)}>
+						×
+					</button>
+				</span>
+			))}
+		</span>
+	)
+	const checkbox = <input type="checkbox" aria-label={`Select ${label}`} checked={selected.has(npc.id)} onChange={() => toggle(npc.id)} />
+	const saveChip = <SaveChip result={combat.saveResults[npc.id]} name={label} onFlip={() => update((c) => flipSave(c, npc.id))} />
+	const sheetButton = (
+		<button type="button" className="combat__stat-button" aria-label={`Sheet for ${label}`} disabled={!npcControls.openSheet} onClick={() => npcControls.openSheet?.(character.id)}>
+			≡
+		</button>
+	)
+	const name = (
+		<span className="combat__name">
+			{label}
+			{down && <span className="combat__down">down</span>}
+		</span>
+	)
+	const subtitle = <span className="combat__sub">{npc.cr !== null ? `NPC · CR ${npc.cr}` : `NPC · ${classLine(character)}`}</span>
+
+	if (mobile) {
+		return (
+			<li className={className} aria-label={label} aria-current={current ? 'true' : undefined}>
+				{checkbox}
+				<span className="combat__who">
+					{name}
+					{subtitle}
+					{stats && <SaveBonuses saves={stats.saves} short />}
+					{chips}
+				</span>
+				{saveChip}
+				<HpCell hp={hp} max={max} />
+				{sheetButton}
+			</li>
+		)
+	}
+
+	return (
+		<li className={className} aria-label={label} aria-current={current ? 'true' : undefined}>
+			{checkbox}
+			{init}
+			<span className="combat__who">
+				{name}
+				{subtitle}
+				{chips}
+			</span>
+			<span className="combat__ac">{stats?.ac ?? '—'}</span>
+			<HpCell hp={hp} max={max} />
+			<span className="combat__save-cell">
+				<SaveBonuses saves={stats?.saves} />
+				<span className="combat__save-actions">
+					{saveChip}
+					<button type="button" className="combat__adv" aria-pressed={combat.adv[npc.id] === true} aria-label={`Advantage for ${label}`} onClick={() => update((c) => toggleAdv(c, npc.id))}>
+						ADV
+					</button>
+				</span>
+			</span>
+			{sheetButton}
+		</li>
+	)
+}
+
 function CombatScreen({
 	encounter,
 	combat,
 	data,
+	npcs,
 	commit,
+	writeNpcs,
+	removeNpc,
+	openSheet,
 	error,
 	onBack,
 	onEnded,
@@ -435,7 +704,11 @@ function CombatScreen({
 	encounter: Encounter
 	combat: Combat
 	data: MonsterData
+	npcs: Map<string, NpcInfo>
 	commit: (combat: Combat | null) => void
+	writeNpcs: (write: (characterStore: CharacterStore) => void) => void
+	removeNpc: (npcId: string) => void
+	openSheet: ((characterId: string) => void) | undefined
 	error: ReactNode
 	onBack: () => void
 	onEnded: () => void
@@ -463,26 +736,56 @@ function CombatScreen({
 			else next.add(memberId)
 			return next
 		})
-	const selectedIds = [...selected].filter((memberId) => members.has(memberId))
+	const monsterIds = [...selected].filter((memberId) => members.has(memberId))
+	const selectedNpcs = [...selected].map((npcId) => npcs.get(npcId)).filter((info): info is NpcInfo & { character: Character } => info?.character !== undefined)
+	const selectedIds = [...monsterIds, ...selectedNpcs.map((info) => info.npc.id)]
 	const amountValue = parsePositive(amount)
 	const dcValue = parsePositive(dc)
 	// Newest card first, at most two side by side.
 	const openStats = (memberId: string) => setStats((current) => [memberId, ...current.filter((id) => id !== memberId)].slice(0, 2))
 	const controls: Controls = { selected, toggle, combat, update, openStats, mobile }
+	const npcDown = (npcId: string) => npcs.get(npcId)?.down ?? true
+	const npcControls: NpcControls = {
+		removeCondition: (info, name) => info.character && writeNpcs((store) => removeNpcCondition(store, info.character!, name)),
+		openSheet,
+		remove: removeNpc,
+	}
 
-	const total = encounterXp(groups, index)
+	const crs = useMemo(() => crXpTable(data.monsters), [data])
+	const total = encounterXp(groups, index, encounter.npcs, crs)
 	const thresholds = rules.status === 'ready' ? partyThresholds(rules.data, encounter.party) : null
-	const difficulty = thresholds ? `${total} XP · ${difficultyLabel(total, thresholds)}` : `${total} XP`
+	const uncounted = uncountedNote(uncountedNpcs(encounter.npcs))
+	const difficulty = [thresholds ? `${total} XP · ${difficultyLabel(total, thresholds)}` : `${total} XP`, uncounted].filter(Boolean).join(' · ')
 	const current = combat.order[combat.turn]
-	const currentName = current ? entryLabel(current, groups) : ''
+	const currentName = current ? (current.kind === 'npc' ? (npcs.get(current.npcId)?.label ?? 'Removed') : entryLabel(current, groups)) : ''
 
 	const rollSelected = () => {
 		if (ability === '' || dcValue === null) return
-		update((c) => rollSaves(c, selectedIds, ability, dcValue, (memberId) => saveBonus(members.get(memberId)?.monster, ability)))
+		// An NPC at 0 HP is not rolled for, like a down monster.
+		const rolled = [...monsterIds, ...selectedNpcs.filter((info) => !info.down).map((info) => info.npc.id)]
+		update((c) => rollSaves(c, rolled, ability, dcValue, (id) => npcs.get(id)?.stats?.saves[ability].bonus ?? saveBonus(members.get(id)?.monster, ability)))
 	}
-	const damage = () => amountValue !== null && update((c) => applyDamage(c, selectedIds, amountValue, ability !== '', onSuccess, maxOf))
-	const heal = () => amountValue !== null && update((c) => applyHeal(c, selectedIds, amountValue, maxOf))
-	const condition = (name: string) => name !== '' && update((c) => addCondition(c, selectedIds, name))
+	const damage = () => {
+		if (amountValue === null) return
+		const saveChosen = ability !== ''
+		// NPC damage is read off the save results before applyDamage clears them.
+		writeNpcs((store) => {
+			for (const info of selectedNpcs) damageNpc(store, info.character, info.max, damageTaken(combat, info.npc.id, amountValue, saveChosen, onSuccess))
+		})
+		update((c) => applyDamage(c, monsterIds, amountValue, saveChosen, onSuccess, maxOf))
+	}
+	const heal = () => {
+		if (amountValue === null) return
+		writeNpcs((store) => {
+			for (const info of selectedNpcs) healNpc(store, info.character, info.max, amountValue)
+		})
+		update((c) => applyHeal(c, monsterIds, amountValue, maxOf))
+	}
+	const condition = (name: string) => {
+		if (name === '') return
+		if (selectedNpcs.length > 0) writeNpcs((store) => selectedNpcs.forEach((info) => addNpcCondition(store, info.character, name)))
+		if (monsterIds.length > 0) update((c) => addCondition(c, monsterIds, name))
+	}
 	const selectAlive = (group: EncounterGroup) =>
 		setSelected((currentSet) => new Set([...currentSet, ...group.members.filter((member) => !isDown(combat, member.id)).map((member) => member.id)]))
 
@@ -504,7 +807,7 @@ function CombatScreen({
 	if (mobile && cards.length > 0) return cards[0]
 
 	const goNext = () => {
-		const after = nextTurn(combat, groups)
+		const after = nextTurn(combat, groups, npcDown)
 		commit(after)
 		setReminders(rechargeReminders(after, groups, members))
 	}
@@ -619,6 +922,10 @@ function CombatScreen({
 							</span>
 						</li>
 					)
+				}
+				if (entry.kind === 'npc') {
+					const info = npcs.get(entry.npcId)
+					return info ? <NpcRow key={key} info={info} initiative={entry.initiative} current={isCurrent} controls={controls} npcControls={npcControls} /> : null
 				}
 				const ids = entryMemberIds(entry, groups)
 				const infos = ids.map((memberId) => members.get(memberId)).filter((info): info is MemberInfo => info !== undefined)

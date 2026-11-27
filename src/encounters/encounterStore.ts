@@ -2,7 +2,16 @@ import type { KeyValueStorage } from '../storage/characterStore'
 import { isCombat, type Combat } from './combat'
 
 export const ENCOUNTER_STORAGE_KEY = 'familliar:encounters'
-export const ENCOUNTER_SCHEMA_VERSION = 2
+export const ENCOUNTER_SCHEMA_VERSION = 3
+
+/** D438: a full-sheet NPC from the character store; `name` is kept so a deleted NPC can still be named. */
+export interface EncounterNpc {
+	id: string
+	characterId: string
+	name: string
+	/** A monster CR label ("1/2", "3"); null = not counted in the difficulty. */
+	cr: string | null
+}
 
 export interface EncounterMember {
 	id: string
@@ -29,6 +38,7 @@ export interface Encounter {
 	party: EncounterParty | null
 	players: string[]
 	groups: EncounterGroup[]
+	npcs: EncounterNpc[]
 	/** D434: the running fight; null when none has started. */
 	combat: Combat | null
 }
@@ -70,6 +80,10 @@ function isGroup(value: unknown): value is EncounterGroup {
 	)
 }
 
+function isNpc(value: unknown): value is EncounterNpc {
+	return isRecord(value) && isString(value.id) && value.id !== '' && isString(value.characterId) && value.characterId !== '' && isString(value.name) && (value.cr === null || isString(value.cr))
+}
+
 export function isEncounter(value: unknown): value is Encounter {
 	if (!isRecord(value)) return false
 	const party = value.party
@@ -84,6 +98,9 @@ export function isEncounter(value: unknown): value is Encounter {
 		value.players.every(isString) &&
 		Array.isArray(value.groups) &&
 		value.groups.every(isGroup) &&
+		Array.isArray(value.npcs) &&
+		value.npcs.every(isNpc) &&
+		new Set(value.npcs.map((npc) => (npc as EncounterNpc).characterId)).size === value.npcs.length &&
 		(value.combat === null || isCombat(value.combat))
 	)
 }
@@ -91,6 +108,11 @@ export function isEncounter(value: unknown): value is Encounter {
 /** v1 had no fight; every v1 entry becomes `combat: null`, anything else is left for validation to judge. */
 function migrateV1(entry: unknown): unknown {
 	return isRecord(entry) && !('combat' in entry) ? { ...entry, combat: null } : entry
+}
+
+/** v2 had no NPCs. */
+function migrateV2(entry: unknown): unknown {
+	return isRecord(entry) && !('npcs' in entry) ? { ...entry, npcs: [] } : entry
 }
 
 function browserStorage(): KeyValueStorage | null {
@@ -124,7 +146,8 @@ export class EncounterStore {
 			return { error: 'The saved data is not valid JSON.' }
 		}
 		if (!isRecord(parsed) || !Array.isArray(parsed.encounters)) return { error: 'The saved data is not a list of encounters.' }
-		if (parsed.schemaVersion === 1) return { entries: parsed.encounters.map(migrateV1) }
+		if (parsed.schemaVersion === 1) return { entries: parsed.encounters.map((entry) => migrateV2(migrateV1(entry))) }
+		if (parsed.schemaVersion === 2) return { entries: parsed.encounters.map(migrateV2) }
 		if (parsed.schemaVersion !== ENCOUNTER_SCHEMA_VERSION) {
 			return typeof parsed.schemaVersion === 'number' && parsed.schemaVersion > ENCOUNTER_SCHEMA_VERSION
 				? { error: `Saved with schema version ${parsed.schemaVersion}; this app supports up to ${ENCOUNTER_SCHEMA_VERSION}.` }

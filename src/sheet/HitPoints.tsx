@@ -69,6 +69,11 @@ export function damageHitPoints(hp: HitPointProps, amount: number): void {
 	writePools(hp, next, reachedHitPoints ? deathSavesAfterDamageAtZero(hp.deathSaves ?? NO_DEATH_SAVES) : hp.deathSaves)
 }
 
+/** Healing stops at the maximum and leaves the temporary pile alone (D110). */
+export function healHitPoints(hp: HitPointProps, amount: number, maximum: number): void {
+	writePools(hp, applyHealing(pools(hp), amount, maximum))
+}
+
 function writeDeathSaves(hp: HitPointProps, next: { currentHp: number; deathSaves: DeathSaveProgress | undefined }): void {
 	hp.onEditHitPoints?.({ currentHp: next.currentHp, maxHpOverride: hp.maxHpOverride, temporaryHitPoints: hp.temporaryHitPoints, deathSaves: next.deathSaves })
 }

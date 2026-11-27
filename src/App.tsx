@@ -26,7 +26,12 @@ function App() {
 				) : route.view === 'dm' && route.newNpc ? (
 					<CharacterManager route={route} navigate={navigate} />
 				) : route.view === 'dm' ? (
-					<DmPage route={route} navigate={navigate} npcs={<CharacterManager route={route} navigate={navigate} />} />
+					<DmPage
+						route={route}
+						navigate={navigate}
+						npcs={<CharacterManager route={route} navigate={navigate} />}
+						sheet={(id) => <CharacterManager route={{ view: 'sheet', id }} navigate={navigate} />}
+					/>
 				) : (
 					<CharacterManager route={characterRoute} navigate={navigate} />
 				)}

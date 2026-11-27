@@ -1,10 +1,13 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '../app/ConfirmDialog'
-import { difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, type Thresholds } from '../encounters/encounterDifficulty'
+import { crXpTable, difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, uncountedNpcs, type Thresholds } from '../encounters/encounterDifficulty'
 import { addMonster, MAX_GROUP_COUNT, setGroupCount } from '../encounters/encounterEdit'
-import { EncounterStore, type EncounterGroup, type EncounterInput, type EncounterParty } from '../encounters/encounterStore'
+import { EncounterStore, type EncounterGroup, type EncounterInput, type EncounterNpc, type EncounterParty } from '../encounters/encounterStore'
+import { classLine } from '../encounters/npcStats'
 import { loadMonsterData, type Monster } from '../monsters/monsterData'
 import type { Navigate } from '../navigation/useRoute'
+import type { Character } from '../storage/character'
+import { CharacterStore } from '../storage/characterStore'
 import { BestiaryBrowser, useLoaded } from './Bestiary'
 
 interface Draft {
@@ -13,6 +16,48 @@ interface Draft {
 	level: string
 	players: string[]
 	groups: EncounterGroup[]
+	npcs: EncounterNpc[]
+}
+
+/** D438: NPCs are characters with `npc: true`; an unreadable store just offers none. */
+export function storedNpcs(): Character[] {
+	try {
+		return new CharacterStore().list().filter((character) => character.npc)
+	} catch {
+		return []
+	}
+}
+
+export const uncountedNote = (count: number): string | null => (count === 0 ? null : `${count} NPC${count === 1 ? '' : 's'} without CR not counted`)
+
+function NpcCard({ npc, character, crs, onChange, onRemove }: { npc: EncounterNpc; character: Character | undefined; crs: { cr: string; xp: number }[]; onChange: (npc: EncounterNpc) => void; onRemove: () => void }): ReactNode {
+	const label = character ? character.name : `${npc.name} (NPC deleted)`
+	return (
+		<section className="encounter-group encounter-npc" aria-label={`${label} NPC`}>
+			<div className="encounter-group__head">
+				<div className="encounter-group__title">
+					<strong>{label}</strong>
+					<span className="encounter-group__meta">{character ? `NPC · ${classLine(character)}` : 'This NPC no longer exists'}</span>
+				</div>
+				<button type="button" className="encounter-group__remove" aria-label={`Remove ${label}`} onClick={onRemove}>
+					Remove
+				</button>
+			</div>
+			{character && (
+				<label className="encounter-npc__cr">
+					CR
+					<select aria-label={`${character.name} CR`} value={npc.cr ?? ''} onChange={(event) => onChange({ ...npc, cr: event.target.value === '' ? null : event.target.value })}>
+						<option value="">No CR</option>
+						{crs.map((row) => (
+							<option key={row.cr} value={row.cr}>
+								CR {row.cr} · {row.xp} XP
+							</option>
+						))}
+					</select>
+				</label>
+			)}
+		</section>
+	)
 }
 
 function partyFrom(draft: Pick<Draft, 'size' | 'level'>): EncounterParty | null {
@@ -23,13 +68,13 @@ function partyFrom(draft: Pick<Draft, 'size' | 'level'>): EncounterParty | null 
 }
 
 function toInput(draft: Draft): EncounterInput {
-	return { name: draft.name.trim() || 'Untitled encounter', party: partyFrom(draft), players: draft.players, groups: draft.groups }
+	return { name: draft.name.trim() || 'Untitled encounter', party: partyFrom(draft), players: draft.players, groups: draft.groups, npcs: draft.npcs }
 }
 
-const EMPTY_DRAFT: Draft = { name: '', size: '', level: '', players: [], groups: [] }
+const EMPTY_DRAFT: Draft = { name: '', size: '', level: '', players: [], groups: [], npcs: [] }
 
-function DifficultyBar({ total, thresholds }: { total: number; thresholds: Thresholds | null }): ReactNode {
-	if (!thresholds) return null
+function DifficultyBar({ total, thresholds, note }: { total: number; thresholds: Thresholds | null; note: string | null }): ReactNode {
+	if (!thresholds) return note && <p className="encounter-difficulty__note">{note}</p>
 	const label = difficultyLabel(total, thresholds)
 	const scale = thresholds.high * 1.25
 	const percent = (value: number) => `${Math.min(100, (value / scale) * 100)}%`
@@ -50,6 +95,7 @@ function DifficultyBar({ total, thresholds }: { total: number; thresholds: Thres
 				<span>Moderate {thresholds.moderate}</span>
 				<span>High {thresholds.high}</span>
 			</p>
+			{note && <p className="encounter-difficulty__note">{note}</p>}
 		</section>
 	)
 }
@@ -122,7 +168,14 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 	const initial = useMemo<Draft>(
 		() =>
 			stored
-				? { name: stored.name, size: stored.party ? String(stored.party.size) : '', level: stored.party ? String(stored.party.level) : '', players: stored.players, groups: stored.groups }
+				? {
+						name: stored.name,
+						size: stored.party ? String(stored.party.size) : '',
+						level: stored.party ? String(stored.party.level) : '',
+						players: stored.players,
+						groups: stored.groups,
+						npcs: stored.npcs,
+					}
 				: EMPTY_DRAFT,
 		[stored],
 	)
@@ -134,6 +187,9 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 	const monsters = useLoaded(loadMonsterData)
 	const rules = useLoaded(loadEncounterRules)
 	const index = useMemo(() => (monsters.status === 'ready' ? monsterIndex(monsters.data.monsters) : null), [monsters])
+	const crs = useMemo(() => (monsters.status === 'ready' ? crXpTable(monsters.data.monsters) : []), [monsters])
+	const npcCharacters = useMemo(storedNpcs, [])
+	const [npcPick, setNpcPick] = useState('')
 
 	const toList = () => navigate({ view: 'dm', tab: 'encounters' })
 
@@ -153,8 +209,15 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 	const dirty = JSON.stringify(toInput(draft)) !== JSON.stringify(toInput(savedDraft))
 	const update = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }))
 	const setGroups = (change: (groups: EncounterGroup[]) => EncounterGroup[]) => setDraft((current) => ({ ...current, groups: change(current.groups) }))
-	const total = index ? encounterXp(draft.groups, index) : 0
+	const total = index ? encounterXp(draft.groups, index, draft.npcs, crs) : 0
 	const thresholds = rules.status === 'ready' ? partyThresholds(rules.data, partyFrom(draft)) : null
+	const note = uncountedNote(uncountedNpcs(draft.npcs))
+	const addable = npcCharacters.filter((character) => !draft.npcs.some((npc) => npc.characterId === character.id))
+	const addNpc = (characterId: string) => {
+		const character = addable.find((c) => c.id === characterId)
+		if (character) update({ npcs: [...draft.npcs, { id: crypto.randomUUID(), characterId, name: character.name, cr: null }] })
+		setNpcPick('')
+	}
 
 	const addPlayer = () => {
 		const name = playerInput.trim()
@@ -210,8 +273,8 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 					</label>
 				</div>
 
-				<DifficultyBar total={total} thresholds={thresholds} />
-				{!thresholds && draft.groups.length > 0 && <p className="encounter-setup__total">{total} XP</p>}
+				<DifficultyBar total={total} thresholds={thresholds} note={note} />
+				{!thresholds && (draft.groups.length > 0 || draft.npcs.length > 0) && <p className="encounter-setup__total">{total} XP</p>}
 
 				<h3 className="encounter-setup__heading">Monsters</h3>
 				{draft.groups.length === 0 && <p className="dm__status">Add monsters from the list.</p>}
@@ -228,6 +291,32 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 						/>
 					)
 				})}
+
+				<h3 className="encounter-setup__heading">NPCs</h3>
+				{draft.npcs.map((npc) => (
+					<NpcCard
+						key={npc.id}
+						npc={npc}
+						character={npcCharacters.find((character) => character.id === npc.characterId)}
+						crs={crs}
+						onChange={(next) => update({ npcs: draft.npcs.map((n) => (n.id === npc.id ? next : n)) })}
+						onRemove={() => update({ npcs: draft.npcs.filter((n) => n.id !== npc.id) })}
+					/>
+				))}
+				{addable.length > 0 ? (
+					<label className="encounter-setup__add-npc">
+						<select aria-label="Add NPC" value={npcPick} onChange={(event) => addNpc(event.target.value)}>
+							<option value="">Add NPC…</option>
+							{addable.map((character) => (
+								<option key={character.id} value={character.id}>
+									{character.name} · {classLine(character)}
+								</option>
+							))}
+						</select>
+					</label>
+				) : (
+					<p className="dm__status">{npcCharacters.length === 0 ? 'No NPCs yet - create them in the NPCs tab.' : 'Every NPC is in this encounter.'}</p>
+				)}
 
 				<h3 className="encounter-setup__heading">Players</h3>
 				<ul className="encounter-setup__chips" aria-label="Players">

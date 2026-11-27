@@ -16,8 +16,8 @@ const TABS: { tab: DmTab; label: string }[] = [
 	{ tab: 'npcs', label: 'NPCs' },
 ]
 
-/** D437: `npcs` is the NPCs tab's panel, handed in because it lives on the character store. */
-export function DmPage({ route, navigate, npcs }: { route: DmRoute; navigate: Navigate; npcs?: ReactNode }): ReactNode {
+/** D437: `npcs` is the NPCs tab's panel, handed in because it lives on the character store; `sheet` is an NPC's full sheet for a running encounter (D438). */
+export function DmPage({ route, navigate, npcs, sheet }: { route: DmRoute; navigate: Navigate; npcs?: ReactNode; sheet?: (characterId: string) => ReactNode }): ReactNode {
 	const { tab, encounter } = route
 	/* D436: like the sheet (D165) — in memory only, shared by Bestiary and encounters while the DM page is open. */
 	const [rollHistory, setRollHistory] = useState<RollHistoryEntry[]>([])
@@ -37,7 +37,7 @@ export function DmPage({ route, navigate, npcs }: { route: DmRoute; navigate: Na
 		) : tab === 'npcs' ? (
 			npcs
 		) : encounter && encounter !== 'new' && encounter.run ? (
-			<EncounterRun key={`run-${encounter.id}`} id={encounter.id} navigate={navigate} />
+			<EncounterRun key={`run-${encounter.id}`} id={encounter.id} navigate={navigate} renderSheet={sheet} />
 		) : encounter ? (
 			<EncounterSetup key={encounter === 'new' ? 'new' : encounter.id} id={encounter === 'new' ? null : encounter.id} navigate={navigate} />
 		) : (

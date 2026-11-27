@@ -95,19 +95,14 @@ import { buildItemConditionGrants, buildItemProficiencyGrants, conditionAdvantag
 import { formatSpeciesName } from '../species/speciesData'
 import { speciesSaveAdvantageLines } from './speciesSaveAdvantages'
 import { classSaveAdvantageLines } from './classSaveAdvantages'
-import { GENIE_KIND_NOT_CHOSEN, genieEntryFor, hasGenie } from '../genie/genie'
+import { GENIE_KIND_NOT_CHOSEN, hasGenie } from '../genie/genie'
 import { concentrationSaveAdvantageLines } from './concentrationSaveAdvantages'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
-import {
-	dedupeAlwaysPreparedSpells,
-	loadClassAlwaysPreparedSpells,
-	loadSubclassAlwaysPreparedSpells,
-	loadSubclassSpellcastingAbility,
-	type AlwaysPreparedSpell,
-} from '../spells/subclassPreparedSpells'
-import { isSavantSubclass, loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
+import { type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { isSavantSubclass } from '../spells/subclassSpellChoiceData'
+import { loadClassAndSubclassSpellInfo, wizardBookGrants } from './combinedSpells'
 import {
 	loadFeatEffectEntries,
 	loadFeatTextEntries,
@@ -115,7 +110,6 @@ import {
 	loadSavingThrowClassData,
 	loadSpeciesTraitsData,
 	loadSpellcastingAbilityClassData,
-	loadSubclassSource,
 	type FeatTextEntry,
 } from './sheetData'
 import { preparedByOtherClass } from '../spells/heldPreparedSpells'
@@ -199,7 +193,7 @@ import { hasSpellbook, savantSpellsOf, spellbookFill, spellbookSpellsOf, unprepa
 import { dismissSavantNotice, loadSettings } from '../storage/settingsStore'
 import { collectKnownSpells } from '../spells/knownSpells'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
-import { activeBookPicks, prunedBookPicks, withBookPicks } from '../spells/wizardBookPicks'
+import { prunedBookPicks, withBookPicks } from '../spells/wizardBookPicks'
 import { DamageHealingColumn, HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
 import { loadSpeciesTraits, speciesTraitsAtLevel, type SpeciesTrait } from './speciesTraitNames'
 import { featuresTabGroups, type FeatureTabGroup, type FeatureTabGroupKind, type FeatureTabOption } from './featuresTabData'
@@ -2082,36 +2076,8 @@ function CharacterSheetBody({
 
 	useEffect(() => {
 		let cancelled = false
-		const classesWithSubclass = character.classes.filter((c): c is typeof c & { subclass: string } => c.subclass !== null)
-		// D192: the class record's own grants apply to every class, subclass or not (Druid 1, Ranger 1).
-		const classGrants = Promise.all(
-			character.classes.map(async (c) => ({ className: c.className, spells: await loadClassAlwaysPreparedSpells(c.className, c.classSource, c.level) })),
-		)
-		const subclassGrants = Promise.all(
-			classesWithSubclass.map(async (c) => {
-				const source = await loadSubclassSource(c.className, c.classSource, c.subclass)
-				// Only Warlock's own Pact Magic table applies to a rank-keyed patron grant (subclassPreparedSpells.ts) — any other class's table would be the wrong shape's numbers entirely.
-				// spellSlotsClassData loads in parallel via a separate effect — undefined here on an early run just means no rank grant yet; this effect re-runs (dep below) once it's in, same as any other race in this file.
-				const pactSlotsByLevel = spellSlotsClassData?.find((d) => d.className === c.className && d.classSource === c.classSource)?.pactSlotsByLevel ?? undefined
-				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level, pactSlotsByLevel, genieEntryFor(c, character.genieKind)) : []
-				/** The subclass filter-choice spell picker's own picks (d6b) — same "always prepared (subclass)" provenance label as the fixed grants above, merged into the same group rather than a separate one (CharacterSheet.tsx module comment, SpellList.tsx). */
-				// D424: Savant picks go into the spellbook, not into always prepared.
-				const matchingChoices = (character.subclassSpellChoices ?? []).filter(
-					(choice) =>
-						choice.className === c.className &&
-						choice.classSource === c.classSource &&
-						choice.subclassName === c.subclass &&
-						choice.subclassSource === source &&
-						!isSavantSubclass(choice.subclassName, choice.subclassSource),
-				)
-				const chosen = matchingChoices.length > 0 ? await loadSubclassChosenSpells(matchingChoices) : []
-				const ability = source ? await loadSubclassSpellcastingAbility(c.subclass, source, c.className, c.classSource) : null
-				// dedupeAlwaysPreparedSpells: a d6b picked spell could in principle coincide with the subclass's own fixed grant — same "spell reachable via two paths" reasoning as subclassPreparedSpells.ts's own dedup, applied again here since this concatenation happens outside that module.
-				return { subclassName: c.subclass, className: c.className, classSource: c.classSource, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]), ability }
-			}),
-		)
-		Promise.all([classGrants, subclassGrants])
-			.then(([classInfos, infos]) => {
+		loadClassAndSubclassSpellInfo(character, spellSlotsClassData)
+			.then(({ classInfos, subclassInfos: infos }) => {
 				if (cancelled) return
 				setClassSpellInfo(classInfos)
 				setSubclassSpellInfo(infos)
@@ -2329,32 +2295,7 @@ function CharacterSheetBody({
 	 * it: a spell reaching the character through a subclass, a feat or an
 	 * invocation counts exactly as much as a player pick.
 	 */
-	// D425: Spell Mastery and Signature Spells are the Wizard's own always-prepared grants, cast without a slot.
-	const bookWizard = character.classes.find((c) => hasSpellbook(c.className, c.classSource))
-	const wizardBookPicks = bookWizard
-		? activeBookPicks(
-				character.spellbooks?.find((book) => book.className === bookWizard.className && book.classSource === bookWizard.classSource),
-				[...spellbookSpellsOf(character.spellbooks, bookWizard.className, bookWizard.classSource), ...savantSpellsOf(character.subclassSpellChoices, bookWizard.className, bookWizard.classSource, bookWizard.subclass)],
-				bookWizard.level,
-			)
-		: { mastery: [], signature: [] }
-	const bookPickGrants: AlwaysPreparedSpell[] = (
-		[
-			...wizardBookPicks.mastery.map((spell) => ({ spell, usage: { kind: 'atWill' } as const })),
-			...wizardBookPicks.signature.map((spell) => ({ spell, usage: { kind: 'onceFreePerShortOrLongRest' } as const })),
-		] as const
-	).flatMap(({ spell, usage }) => {
-		const detail = findSpellDetail(spellDetails ?? [], spell.name, spell.source)
-		if (!detail) return []
-		return [{ name: detail.name, source: detail.source, level: detail.level, grantedAtLevel: bookWizard!.level, ritual: detail.ritual, concentration: detail.concentration, origin: 'class' as const, usage }]
-	})
-	const classGrantInfo =
-		bookWizard && bookPickGrants.length > 0
-			? [
-					...classSpellInfo.filter((info) => info.className !== bookWizard.className),
-					{ className: bookWizard.className, spells: [...(classSpellInfo.find((info) => info.className === bookWizard.className)?.spells ?? []), ...bookPickGrants] },
-				]
-			: classSpellInfo
+	const { bookWizard, wizardBookPicks, classGrantInfo } = wizardBookGrants(character, classSpellInfo, spellDetails)
 	// D426: Savant spells left unprepared by D424 are named once above the spell list.
 	const unpreparedSavant = bookWizard
 		? unpreparedSavantSpells(

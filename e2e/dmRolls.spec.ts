@@ -12,6 +12,7 @@ const ENCOUNTER = {
   party: { size: 4, level: 2 },
   players: [],
   groups: [{ id: 'g-wolf', monster: { name: 'Wolf', source: 'XMM' }, oneInitiative: true, members: [1, 2, 3].map((n) => ({ id: `w${n}`, name: `Wolf ${n}` })) }],
+  npcs: [],
   combat: null,
 }
 
@@ -22,7 +23,7 @@ const rollButton = (page: Page, label: string) => card(page).getByRole('button',
 
 async function startEncounter(page: Page): Promise<void> {
   await page.goto('/')
-  await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, JSON.stringify({ schemaVersion: 2, encounters: [ENCOUNTER] })])
+  await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, JSON.stringify({ schemaVersion: 3, encounters: [ENCOUNTER] })])
   await page.goto(`/#/dm/encounter/${ID}`)
   await page.getByRole('button', { name: 'Start' }).click()
   await page.getByRole('spinbutton', { name: 'Initiative Wolf x3' }).fill('15')

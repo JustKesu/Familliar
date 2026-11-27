@@ -1,50 +1,43 @@
-# REPORT — NPC-2: STOP před úpravami (podmínka a: AC postavy nejde spočítat mimo list)
+# REPORT — NPC-2: NPC ve střetnutích se sdílenými HP a stavy (D438)
 
-Setup: `git fetch` + `merge --ff-only origin/main` = „Already up to date“, HEAD bb02b89. Žádný kód nezměněn, commitnut jen tento report. typecheck/test/validate-data/e2e nespuštěny (beze změny kódu nemají co ověřit).
+Start z 7e7c823 (`git log --oneline -1`). Varianta 1 z minulého STOPu: skládání seznamu kouzel přesunuto z listu do sdíleného modulu.
 
-## Proč STOP
-
-Zadání: zastavit, pokud AC, záchrany, iniciativu nebo max HP uložené postavy nejde spočítat mimo list bez kopírování logiky listu. Stav:
-
-| Hodnota | Mimo list? | Cesta |
-|---|---|---|
-| Max HP | ano | `loadCharacterMaxHp` (src/hitPoints/hpDefault.ts:43), už sdílené s wizardem |
-| Iniciativa | ano | `computeInitiative(character, feats, itemFlatBonuses.initiative, itemAbilityGrants)` — vstupy z `loadFeatEffectEntries`, `loadItemRefs`, `buildItemFlatBonusGrants`/`flatBonusesByTarget`, `buildItemAbilityGrants` |
-| Záchrany | ano | `computeSavingThrows` (CharacterSheet.tsx:2508) — vstupy z `loadSavingThrowClassData`, featy, item grants (`buildItemProficiencyGrants` ap.), vše loadery + čisté funkce |
-| **AC** | **ne** | `computeArmourClass(…, acFormulaKeys, …)` (CharacterSheet.tsx:2518). `acFormulaKeys = loadAcFormulaKeys(character, knowsMageArmor)` (:2406) a `knowsMageArmor = hasMageArmor(combinedSpells)` (:2375) |
-
-`combinedSpells` se skládá jen uvnitř `CharacterSheet`:
-- CharacterSheet.tsx:2083–2132 — inline efekt: class always-prepared + subclass always-prepared (`loadSubclassSource`, `pactSlotsByLevel` ze `spellSlotsClassData`, `genieEntryFor`, d6b volby, D424 Savant filtr), `dedupeAlwaysPreparedSpells`;
-- :2134–2248 — `loadFeatGrantedSpells`, `loadOptionalFeatureGrantedSpells` (Armor of Shadows!), `loadRaceSpells`;
-- :2333–2375 — D425 Wizard book grants (`activeBookPicks`, `spellDetails`) → `classGrantInfo` → `combineSpellEntries`.
-
-Zkratka `hasMageArmor(character.spellChoices)` by dala jiné AC než list u každé postavy s Mage Armor z invokace/subclassu/featu/rasy (Warlock s Armor of Shadows) — tiché rozejití s listem, proto ji nevolím.
-
-## Otázka pro uživatele
-
-1. **Vytáhnout skládání seznamu kouzel z listu** do sdíleného modulu (např. `src/sheet/combinedSpells.ts`, `loadCombinedSpells(character)` = řádky 2083–2132 + 2333–2375, list ho pak volá taky). Čistý přesun, AC v encounteru = AC na listu. Cena: zásah do CharacterSheet.tsx (efekt se `spellGrantsSettled`, závislost na `spellSlotsClassData`), samostatný krok před NPC-2 nebo jeho součást.
-2. **AC bez Mage Armor mimo list** (`knowsMageArmor` = jen `spellChoices`), s poznámkou v D438. Rychlé, ale AC v řádku může být nižší než na listu.
-3. **AC v řádku NPC nezobrazovat** („—“, jako neznámé monstrum), plný AC jen na listu přes tlačítko statbloku.
-
-Doporučení: 1 (jediná varianta, kde řádek a list nikdy nenesouhlasí).
-
-## Plánovaný rozsah (krok 1, pro navazující session)
+## Krok 1 — soupis změn (19 souborů)
 
 | Soubor | Funkce / místo | Změna |
 |---|---|---|
-| src/encounters/encounterStore.ts | `ENCOUNTER_SCHEMA_VERSION`, `Encounter`, `isEncounter`, `readRaw`, migrace | schema 3, `npcs: {id, characterId, cr: string|null}[]`, migrace 2→3 `npcs: []` |
-| src/encounters/encounterDifficulty.ts | `encounterXp` (+ `crXp` z monster dat) | XP NPC s CR, počet nezapočtených |
-| src/encounters/combat.ts | `InitiativeEntry`, `isEntry`, `entryKey`, `initiativeEntries`, `isEntryDown`, `nextTurn`, `rollSaves`, `applyDamage`/`applyHeal` | kind `npc`, HP/podmínky NPC mimo `combat.hp` |
-| src/encounters/npcCombat.ts (nový) | načtení AC/záchran/iniciativy/max HP, zápis HP a podmínek do `CharacterStore` | |
-| src/dm/EncounterSetup.tsx | `Draft`, `toInput`, `DifficultyBar`, nová `NpcCard`, „Add NPC“ | |
-| src/dm/EncounterRun.tsx | `InitiativeStep`, `entryLabel`, `CombatScreen` (list, damage/heal/condition/saves, stat tlačítko), nový `NpcRow`, overlay listu s „← Back to encounter“ | |
-| src/styles (CSS encounteru) | řádek NPC, overlay | |
-| testy: encounterStore/encounterDifficulty/combat/npcCombat .test.ts; e2e dmCombat, dmTrackedUses, dmRolls (+ další seed) schemaVersion 3; nový e2e/dmNpcCombat.spec.ts | | |
-| docs: DECISIONS.md D438, STATUS.md | | |
+| src/sheet/combinedSpells.ts (nový) | `loadClassAndSubclassSpellInfo`, `wizardBookGrants`, `loadCombinedSpells` | přesun ř. ~2083–2132 a ~2333–2375 z listu beze změny logiky |
+| src/sheet/CharacterSheet.tsx | efekt class/subclass grants, `classGrantInfo`, importy | volá modul; chování beze změny |
+| src/sheet/HitPoints.tsx | nová `healHitPoints` | zápis healu listu pro NPC (sloupec listu beze změny) |
+| src/encounters/encounterStore.ts | `EncounterNpc`, `isNpc`, `isEncounter`, `migrateV2`, `readRaw`, schema 3 | |
+| src/encounters/encounterDifficulty.ts | `crXpTable`, `encounterXp(+npcs,crXp)`, `uncountedNpcs` | |
+| src/encounters/combat.ts | entry `npc`, `isEntry`, `entryKey`, `initiativeEntries(+npcs)`, `entryMemberIds`, `isEntryDown/nextTurn(+npcDown)`, `damageTaken`, `removeEntry` | |
+| src/encounters/npcStats.ts (nový) | `loadNpcStats`, `classLine` | AC/iniciativa/záchrany/max HP výpočty listu |
+| src/encounters/npcCharacter.ts (nový) | `damageNpc`, `healNpc`, `npcConditions`, `add/removeNpcCondition` | |
+| src/dm/EncounterSetup.tsx | `Draft`, `toInput`, `DifficultyBar` (note), `NpcCard`, `storedNpcs`, `uncountedNote`, Add NPC | |
+| src/dm/EncounterRun.tsx | `useNpcs`, `npcInfos`, `EncounterRun` (overlay, removeNpc, writeNpcs), `InitiativeStep`, `SaveBonuses(saves)`, `NpcRow`, `CombatScreen` | |
+| src/dm/DmPage.tsx, src/App.tsx | prop `sheet` → CharacterManager se sheet route | |
+| src/index.css | NPC karta, note, `.npc-overlay` | |
+| testy | encounters.test.ts, npcCombat.test.ts (nový); e2e dmCombat/dmRolls/dmTrackedUses (schema 3 + `npcs: []`), dmNpcCombat.spec.ts (nový) | |
+| docs | DECISIONS D438, STATUS, REPORT | |
+
+## Ověření
+
+- typecheck OK; `npm test` 201 souborů / 3702 testů OK (beze změny existujících testů listu); validate-data 191/191.
+- `npm run e2e`: 875 passed (2,9 min), včetně upravených dmCombat/dmRolls/dmTrackedUses.
+- Unit: migrace 1→3 a 2→3, duplicitní NPC odmítnuto, XP CR 1 = 200 / bez CR nepočítáno, `loadNpcStats` seeded Fighter 3 (AC 12, init +2, STR +4, CON +3, DEX +2, max HP 25 — z reálných data/), iniciativa a save bonus, Next turn přeskočí NPC na 0, damage (temp HP první, stop na 0) / heal (max) / stavy+Exhaustion zapisují postavu.
+- e2e `dmNpcCombat.spec.ts`: a+b (setup, CR, note, jen jednou, uložení schema 3), c–h (iniciativa d20 +2, řádek AC 12 / 20/25 / záchrany listu, damage 5 NPC+vlk → 15/25 a 6/11 i v uložené postavě, Prone → `play.conditions`, d20=1 → „STR 5“, list přes celou obrazovku ukáže 15/25 a Prone, heal 4 na listu → po „← Back to encounter“ řádek 19/25, stejné kolo a tah, NPC na 0 přeskočeno), i (smazané NPC v boji i setupu, Remove), j (390×844).
 
 ## Rozhodnutí v kódu
 
-Žádná (nic neimplementováno).
+- XP podle CR z monsters.json (`crXpTable`, CR 0 = 10 XP, vyšší hodnota). `data/encounter-rules.json` má i `xpByCr` (validate: pokrývá všechny CR) — lze přepnout, výsledek stejný.
+- NPC bez `currentHp` začíná na max; první damage/heal ho zapíše.
+- Exhaustion přidaná z boje = úroveň 1 (jen je-li 0), odebrání = 0; čip bez úrovně (D434).
+- Smazané NPC: do iniciativy nevstupuje, v běžícím boji = „down“ (Next turn ho přeskočí), Remove ho odebere ze setupu i pořadí (`removeEntry`, tah zůstane na stejném tvoru).
+- Nenačtené statistiky (chyba dat): AC „—“, bonusy +0, max HP = current HP.
+- Záložka listu: overlay `position: fixed` z-index 15 (pod DM roll toastem 20), boj zůstává namountovaný (`hidden`), takže výběr, Amount a karty přežijí. Třída `npc-overlay`, ne `*sheet*`: guard D153 (`sheetLayout.test.ts`) hlídá vlastní scroll jen u kontejnerů listu.
+- NPC řádek na mobilu bez ADV (jako monstrum na mobilu).
+- Sheet v overlay běží v DmPage, takže hody z listu jdou do DM historie hodů.
 
 ## Subagent
 
@@ -52,4 +45,6 @@ Nepoužit.
 
 ## Manual browser check for the user
 
-none - the planning chat checks the looks from screenshots. Změněné obrazovky: žádné.
+none - the planning chat checks the looks from screenshots. Změněné obrazovky: DM setup střetnutí (sekce NPCs, Add NPC, CR, poznámka u obtížnosti), DM boj (řádek NPC desktop/mobil, smazané NPC), list NPC přes celou obrazovku s „← Back to encounter“.
+
+e2e: celá sada 875 passed (2,9 min).
