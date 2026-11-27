@@ -163,11 +163,13 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 		setPlayerInput('')
 	}
 
-	const save = () => {
+	/** Start saves first, so the fight runs on what is on screen. */
+	const save = (run: boolean) => {
 		try {
-			store.save(id, toInput(draft))
+			const saved = store.save(id, toInput(draft))
 			setSavedDraft(draft)
-			toList()
+			if (run) navigate({ view: 'dm', tab: 'encounters', encounter: { id: saved.id, run: true } })
+			else toList()
 		} catch (error) {
 			setSaveError(error instanceof Error ? error.message : String(error))
 		}
@@ -181,7 +183,10 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 						Back
 					</button>
 					<h2 className="encounter-setup__title">{id === null ? 'New encounter' : 'Edit encounter'}</h2>
-					<button type="button" className="btn--accent" onClick={save}>
+					<button type="button" className="btn--accent-outline" onClick={() => save(true)}>
+						Start
+					</button>
+					<button type="button" className="btn--accent" onClick={() => save(false)}>
 						Save
 					</button>
 				</div>

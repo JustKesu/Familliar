@@ -19,7 +19,7 @@ export interface Thresholds {
 	high: number
 }
 
-export type DifficultyLabel = 'Below Low' | 'Low' | 'Moderate' | 'High' | 'Above High'
+export type DifficultyLabel = 'Low' | 'Moderate' | 'High' | 'Above High'
 
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 
@@ -46,13 +46,12 @@ export function partyThresholds(rules: EncounterRules, party: EncounterParty | n
 	return { low: row.low * party.size, moderate: row.moderate * party.size, high: row.high * party.size }
 }
 
-/** Each budget is the threshold the total must reach; only a total over High is "Above High" (D433). */
+/** DMG 2024: each budget is a cap to spend up to, so the label is the first budget the total fits under (D434). */
 export function difficultyLabel(total: number, thresholds: Thresholds): DifficultyLabel {
-	if (total > thresholds.high) return 'Above High'
-	if (total >= thresholds.high) return 'High'
-	if (total >= thresholds.moderate) return 'Moderate'
-	if (total >= thresholds.low) return 'Low'
-	return 'Below Low'
+	if (total <= thresholds.low) return 'Low'
+	if (total <= thresholds.moderate) return 'Moderate'
+	if (total <= thresholds.high) return 'High'
+	return 'Above High'
 }
 
 export const monsterRefKey = (monster: { name: string; source: string }): string => `${monster.name}|${monster.source}`

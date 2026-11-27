@@ -3,6 +3,7 @@ import type { DmRoute, DmTab } from '../navigation/route'
 import type { Navigate } from '../navigation/useRoute'
 import { Bestiary } from './Bestiary'
 import { EncounterList } from './EncounterList'
+import { EncounterRun } from './EncounterRun'
 import { EncounterSetup } from './EncounterSetup'
 
 const TABS: { tab: DmTab; label: string }[] = [
@@ -15,6 +16,8 @@ export function DmPage({ route, navigate }: { route: DmRoute; navigate: Navigate
 	const panel =
 		tab === 'bestiary' ? (
 			<Bestiary />
+		) : encounter && encounter !== 'new' && encounter.run ? (
+			<EncounterRun key={`run-${encounter.id}`} id={encounter.id} navigate={navigate} />
 		) : encounter ? (
 			<EncounterSetup key={encounter === 'new' ? 'new' : encounter.id} id={encounter === 'new' ? null : encounter.id} navigate={navigate} />
 		) : (

@@ -28,6 +28,7 @@
   --accent-soft: rgba(0, 244, 248, 0.14);
   --heal: #6cc08a;
   --damage: #f08a6c;
+  --warning: #e6b84f;
   --chip: #27272b;
   --backdrop: rgba(0, 0, 0, 0.6);
   /* Intro (D312): --spark and --spark-hot are bare r,g,b triples the canvas mixes per frame. */
@@ -54,6 +55,7 @@
   --accent-soft: rgba(0, 160, 166, 0.12);
   --heal: #2e7d3a;
   --damage: #b3432a;
+  --warning: #9a6a00;
   --chip: #ececef;
   --backdrop: rgba(28, 28, 31, 0.45);
   --hot: #003b3d;

@@ -16,6 +16,7 @@ describe('route parse/format round trip', () => {
 		{ route: { view: 'dm', tab: 'encounters', encounter: 'new' }, hash: '#/dm/encounter/new' },
 		{ route: { view: 'dm', tab: 'encounters', encounter: { id: 'enc-1' } }, hash: '#/dm/encounter/enc-1' },
 		{ route: { view: 'dm', tab: 'encounters', encounter: { id: 'a/b c' } }, hash: '#/dm/encounter/a%2Fb%20c' },
+		{ route: { view: 'dm', tab: 'encounters', encounter: { id: 'enc-1', run: true } }, hash: '#/dm/encounter/enc-1/run' },
 	]
 
 	for (const { route, hash } of cases) {
@@ -56,6 +57,8 @@ describe('route parse — invalid and trailing-slash hashes fall back to the lis
 		'#/dm/encounter/',
 		'#/dm/encounter/new/',
 		'#/dm/encounter/abc/edit',
+		'#/dm/encounter/abc/run/',
+		'#/dm/encounter/new/run',
 		'#character/abc',
 	]
 

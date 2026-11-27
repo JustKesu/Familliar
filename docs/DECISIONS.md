@@ -5984,3 +5984,20 @@ schéma) ukáže hlášku, zápisy se odmítnou a jde jen smazat přes „Clear 
 úroveň 1–20) se lišta skryje a party se uloží jako null. Výchozí jména členů „Wolf“ / „Wolf 1..N“; změna počtu
 přečísluje jen jména, která jsou stále výchozí, a z 1 na víc zapne „One initiative roll“. Přidání monstra, které už ve
 střetnutí je, zvýší počet. Save uloží a vrátí na seznam; prázdné jméno = „Untitled encounter“. Zadání MON-3, 27. 11. 2026.
+
+## D434 — Vedení střetnutí: iniciativa, tahy, HP, záchrany a stavy (MON-4)
+
+Mění štítek obtížnosti z D433: DMG 2024 bere rozpočet jako strop, takže součet ≤ Low = Low, ≤ Moderate = Moderate,
+≤ High = High, jinak Above High („Below Low“ zaniká; 500 XP proti 400/600/800 = Moderate). Úložiště má
+`schemaVersion: 2`; záznam v1 se načte s `combat: null` a při zápisu uloží jako v2. `combat: {round, turn, order, hp,
+conditions, adv, saveResults}`: `order` jsou položky iniciativy (skupina s „One initiative roll“ jedna položka, jinak
+jedna na člena, hráč jedna), `turn` je index do `order`, `hp`/`conditions`/`adv`/`saveResults` podle id člena. Ukládá
+se při každé změně; uložení přípravy boj zachová. Route `#/dm/encounter/<id>/run`; „Start“ v přípravě (nejdřív uloží)
+a „Run“ v seznamu. Krok iniciativy: monstrum d20 + iniciativa monstra (`monsterInitiative`), hodnoty upravitelné,
+hráč číslo, prázdné = poslední; shoda: vyšší bonus, pak hráč před monstrem. Max HP = `hp.average` (neznámé monstrum 1).
+Next turn přeskočí položku, jejíž všichni členové mají 0 HP; přechod přes konec = kolo +1. Záchrana: vybraní živí
+členové d20 (ADV dvě, vyšší) + záchrana monstra proti DC, klik na štítek výsledek otočí. Damage: neúspěch plně, úspěch
+polovina dolů nebo 0, bez zvolené záchrany plně všem; potom se výsledky smažou. Heal po max. Stavy 2024 včetně
+Exhaustion jako štítek bez úrovně; hráči nemají HP ani stavy. End encounter (potvrzení) smaže `combat`, střetnutí
+zůstane. Mobil ≤ 760 px: horní lišta, kompaktní řádky, pevná spodní lišta s panelem záchrany, stat block přes celou
+obrazovku. Denní použití, recharge a legendární políčka až MON-5. Zadání MON-4, 27. 11. 2026.

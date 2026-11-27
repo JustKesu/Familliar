@@ -33,7 +33,8 @@ describe('EncounterStore', () => {
 		const storage = memoryStorage()
 		const store = new EncounterStore(storage)
 		const created = store.save(null, input(), new Date('2026-11-27T10:00:00Z'))
-		expect(JSON.parse(storage.value()!).schemaVersion).toBe(1)
+		expect(JSON.parse(storage.value()!).schemaVersion).toBe(2)
+		expect(created.combat).toBeNull()
 		expect(new EncounterStore(storage).list()).toEqual([created])
 
 		const updated = store.save(created.id, { ...input(), name: 'Pack', groups: created.groups }, new Date('2026-11-27T11:00:00Z'))
@@ -58,8 +59,37 @@ describe('EncounterStore', () => {
 	})
 
 	it('treats a newer schema version as unreadable', () => {
-		const store = new EncounterStore(memoryStorage(JSON.stringify({ schemaVersion: 2, encounters: [] })))
-		expect(store.read().error).toMatch(/schema version 2/)
+		const store = new EncounterStore(memoryStorage(JSON.stringify({ schemaVersion: 3, encounters: [] })))
+		expect(store.read().error).toMatch(/schema version 3/)
+	})
+
+	it('migrates a v1 entry to combat: null and writes v2', () => {
+		const v1 = { id: 'e1', name: 'Old', createdAt: 'x', updatedAt: 'x', party: null, players: [], groups: [] }
+		const storage = memoryStorage(JSON.stringify({ schemaVersion: 1, encounters: [v1] }))
+		const store = new EncounterStore(storage)
+		expect(store.list()).toEqual([{ ...v1, combat: null }])
+		store.save(null, { ...input(), name: 'New' })
+		const written = JSON.parse(storage.value()!)
+		expect(written.schemaVersion).toBe(2)
+		expect(written.encounters[0]).toEqual({ ...v1, combat: null })
+	})
+
+	it('keeps the fight when the setup is saved, stores and clears it with setCombat', () => {
+		const store = new EncounterStore(memoryStorage())
+		const created = store.save(null, input())
+		const combat = { round: 2, turn: 0, order: [{ kind: 'player' as const, name: 'Ana', initiative: 12 }], hp: {}, conditions: {}, adv: {}, saveResults: {} }
+		store.setCombat(created.id, combat)
+		expect(store.save(created.id, { ...input(), name: 'Renamed' }).combat).toEqual(combat)
+		expect(store.setCombat(created.id, null).combat).toBeNull()
+		expect(store.get(created.id)?.name).toBe('Renamed')
+	})
+
+	it('skips an entry whose combat is malformed', () => {
+		const storage = memoryStorage()
+		const store = new EncounterStore(storage)
+		const good = store.save(null, input())
+		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 2, encounters: [good, { ...good, id: 'b', combat: { round: 0 } }] }))
+		expect(store.read().skipped).toBe(1)
 	})
 
 	it('skips a bad entry, loads the rest and keeps the bad one on write', () => {
@@ -67,7 +97,7 @@ describe('EncounterStore', () => {
 		const store = new EncounterStore(storage)
 		const good = store.save(null, input())
 		const bad = { id: 'x', name: 42 }
-		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 1, encounters: [bad, good] }))
+		storage.setItem(ENCOUNTER_STORAGE_KEY, JSON.stringify({ schemaVersion: 2, encounters: [bad, good] }))
 		expect(store.read()).toEqual({ encounters: [good], skipped: 1, error: null })
 		store.save(null, { ...input(), name: 'Second' })
 		expect(JSON.parse(storage.value()!).encounters).toContainEqual(bad)
@@ -102,18 +132,18 @@ describe('difficulty against data/encounter-rules.json and data/monsters.json', 
 	const rules = extractEncounterRules(read('encounter-rules.json'))
 	const monsters = monsterIndex(extractMonsters(read('monsters.json')))
 
-	it('six Wolves and a Dire Wolf are 500 XP, Low for four level 2 characters', () => {
+	it('six Wolves and a Dire Wolf are 500 XP, Moderate for four level 2 characters', () => {
 		const total = encounterXp(input().groups, monsters)
 		expect(total).toBe(500)
 		// XDMG level 2 per character: Low 100, Moderate 150, High 200.
 		const thresholds = partyThresholds(rules, { size: 4, level: 2 })
 		expect(thresholds).toEqual({ low: 400, moderate: 600, high: 800 })
-		expect(difficultyLabel(total, thresholds!)).toBe('Low')
+		expect(difficultyLabel(total, thresholds!)).toBe('Moderate')
 	})
 
-	it('labels each band, an unknown monster counts 0 XP, no party gives no thresholds', () => {
+	it('labels each band as a cap, an unknown monster counts 0 XP, no party gives no thresholds', () => {
 		const t = { low: 400, moderate: 600, high: 800 }
-		expect([399, 400, 600, 800, 801].map((xp) => difficultyLabel(xp, t))).toEqual(['Below Low', 'Low', 'Moderate', 'High', 'Above High'])
+		expect([0, 400, 401, 600, 601, 800, 801].map((xp) => difficultyLabel(xp, t))).toEqual(['Low', 'Low', 'Moderate', 'Moderate', 'High', 'High', 'Above High'])
 		expect(encounterXp([newGroup({ name: 'Renamed Thing', source: 'XMM' })], monsters)).toBe(0)
 		expect(partyThresholds(rules, null)).toBeNull()
 		expect(partyThresholds(rules, { size: 1, level: 20 })?.high).toBeGreaterThan(0)

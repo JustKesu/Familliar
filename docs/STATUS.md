@@ -1437,7 +1437,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   tracking or rolling yet. `e2e/dmBestiary.spec.ts` a–f.
 - MON-3 (D433): saved encounters. `src/encounters/encounterStore.ts` (key `familliar:encounters`, `{schemaVersion: 1,
   encounters}`; bad entries skipped and kept on write, unreadable key = notice, writes refused, "Clear encounter data"),
-  `encounterDifficulty.ts` (XDMG budget × party size, label Below Low/Low/Moderate/High/Above High, `xp` only),
+  `encounterDifficulty.ts` (XDMG budget × party size, label Low/Moderate/High/Above High since MON-4, `xp` only),
   `encounterEdit.ts` (count, default member names, add-or-raise). Routes `#/dm/encounter/new`, `#/dm/encounter/<id>`.
   `src/dm/EncounterList.tsx` (list, Edit, Delete via ConfirmDialog, "No encounters yet."), `EncounterSetup.tsx` (name,
   Players/Level, difficulty bar, monster groups with −/+ 44px, "One initiative roll", member names, players chips,
@@ -1445,6 +1445,15 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `BestiaryBrowser` is the Bestiary list reusable with `onPick`. Monster card: block name inline with first paragraph,
   6px between blocks; count "1 monster"; phone filters as a 2-column grid. No initiative/HP/turns yet (MON-4).
   `e2e/dmEncounters.spec.ts` a–f.
+- MON-4 (D434): running an encounter. Difficulty label is now a cap (≤ Low = Low … > High = Above High, no "Below Low").
+  Store schemaVersion 2 (v1 read and migrated to `combat: null`), `Encounter.combat`, `setCombat`; a setup save keeps the
+  fight. `src/encounters/combat.ts` (initiative entries, sort with ties, start, next turn skipping down entries + round
+  wrap, saves with ADV, flip, damage half/none, heal clamp, conditions incl. Exhaustion chip, validation). Route
+  `#/dm/encounter/<id>/run`; "Start" on setup (saves first), "Run"/"Resume · Round N" in the list. `src/dm/EncounterRun.tsx`:
+  initiative step (rolled d20 + `monsterInitiative`, editable, players blank = last, Begin) and combat screen (header,
+  toolbar, 7-column list, group header with "Select all alive", stat block card, End encounter via ConfirmDialog);
+  ≤ 760px top bar, compact rows, fixed bottom bar + save panel, full-screen stat block. Theme token `--warning`.
+  Not yet: daily uses, recharge, legendary boxes (MON-5); player HP. `e2e/dmCombat.spec.ts` a–g.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

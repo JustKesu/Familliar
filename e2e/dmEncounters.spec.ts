@@ -28,7 +28,7 @@ async function buildWolves(page: Page): Promise<void> {
   await page.getByRole('spinbutton', { name: 'Level' }).fill('2')
   const difficulty = page.getByRole('region', { name: 'Difficulty' })
   await expect(difficulty.locator('.encounter-difficulty__total')).toHaveText('500 XP')
-  await expect(difficulty.locator('.encounter-difficulty__label')).toHaveText('Low')
+  await expect(difficulty.locator('.encounter-difficulty__label')).toHaveText('Moderate')
   await expect(difficulty.locator('.encounter-difficulty__thresholds')).toHaveText('Low 400Moderate 600High 800')
 
   await page.getByRole('textbox', { name: 'Player name' }).fill('Ana')
@@ -41,7 +41,7 @@ test('MON-3 a–c: create, reload and edit, delete', async ({ page }) => {
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/#\/dm$/)
   await expect(item(page, 'Wolves').locator('.encounters__summary')).toHaveText('Wolf x6, Dire Wolf')
-  await expect(item(page, 'Wolves').locator('.encounters__xp')).toHaveText('500 XP · Low')
+  await expect(item(page, 'Wolves').locator('.encounters__xp')).toHaveText('500 XP · Moderate')
 
   await page.reload()
   await item(page, 'Wolves').getByRole('button', { name: 'Edit Wolves' }).click()
@@ -54,7 +54,7 @@ test('MON-3 a–c: create, reload and edit, delete', async ({ page }) => {
   await page.getByRole('button', { name: 'Keep editing' }).click()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(item(page, 'Wolves').locator('.encounters__summary')).toHaveText('Wolf x5, Dire Wolf')
-  await expect(item(page, 'Wolves').locator('.encounters__xp')).toHaveText('450 XP · Low')
+  await expect(item(page, 'Wolves').locator('.encounters__xp')).toHaveText('450 XP · Moderate')
 
   await page.getByRole('button', { name: 'Delete Wolves' }).click()
   const dialog = page.getByRole('alertdialog', { name: 'Delete Wolves?' })

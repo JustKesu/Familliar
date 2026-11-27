@@ -72,6 +72,9 @@ export function EncounterList({ navigate }: { navigate: Navigate }): ReactNode {
 							<span className="encounters__xp">{xpText(encounter)}</span>
 						</div>
 						<div className="encounters__actions">
+							<button type="button" className="btn--accent" aria-label={`Run ${encounter.name}`} onClick={() => navigate({ view: 'dm', tab: 'encounters', encounter: { id: encounter.id, run: true } })}>
+								{encounter.combat ? `Resume · Round ${encounter.combat.round}` : 'Run'}
+							</button>
 							<button type="button" aria-label={`Edit ${encounter.name}`} onClick={() => navigate({ view: 'dm', tab: 'encounters', encounter: { id: encounter.id } })}>
 								Edit
 							</button>

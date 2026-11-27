@@ -1,7 +1,8 @@
 import type { KeyValueStorage } from '../storage/characterStore'
+import { isCombat, type Combat } from './combat'
 
 export const ENCOUNTER_STORAGE_KEY = 'familliar:encounters'
-export const ENCOUNTER_SCHEMA_VERSION = 1
+export const ENCOUNTER_SCHEMA_VERSION = 2
 
 export interface EncounterMember {
 	id: string
@@ -28,9 +29,12 @@ export interface Encounter {
 	party: EncounterParty | null
 	players: string[]
 	groups: EncounterGroup[]
+	/** D434: the running fight; null when none has started. */
+	combat: Combat | null
 }
 
-export type EncounterInput = Omit<Encounter, 'id' | 'createdAt' | 'updatedAt'>
+/** Without `combat` a save keeps the stored fight, so editing the setup never ends it. */
+export type EncounterInput = Omit<Encounter, 'id' | 'createdAt' | 'updatedAt' | 'combat'> & { combat?: Combat | null }
 
 /** The whole key cannot be read: not JSON, not the expected wrapper, or saved by a newer app version. Writes are refused so nothing is overwritten. */
 export class EncounterStorageError extends Error {}
@@ -79,8 +83,14 @@ export function isEncounter(value: unknown): value is Encounter {
 		Array.isArray(value.players) &&
 		value.players.every(isString) &&
 		Array.isArray(value.groups) &&
-		value.groups.every(isGroup)
+		value.groups.every(isGroup) &&
+		(value.combat === null || isCombat(value.combat))
 	)
+}
+
+/** v1 had no fight; every v1 entry becomes `combat: null`, anything else is left for validation to judge. */
+function migrateV1(entry: unknown): unknown {
+	return isRecord(entry) && !('combat' in entry) ? { ...entry, combat: null } : entry
 }
 
 function browserStorage(): KeyValueStorage | null {
@@ -114,6 +124,7 @@ export class EncounterStore {
 			return { error: 'The saved data is not valid JSON.' }
 		}
 		if (!isRecord(parsed) || !Array.isArray(parsed.encounters)) return { error: 'The saved data is not a list of encounters.' }
+		if (parsed.schemaVersion === 1) return { entries: parsed.encounters.map(migrateV1) }
 		if (parsed.schemaVersion !== ENCOUNTER_SCHEMA_VERSION) {
 			return typeof parsed.schemaVersion === 'number' && parsed.schemaVersion > ENCOUNTER_SCHEMA_VERSION
 				? { error: `Saved with schema version ${parsed.schemaVersion}; this app supports up to ${ENCOUNTER_SCHEMA_VERSION}.` }
@@ -155,9 +166,28 @@ export class EncounterStore {
 		let saved: Encounter | undefined
 		this.rewrite((encounters) => {
 			const existing = id === null ? undefined : encounters.find((encounter) => encounter.id === id)
-			saved = { ...input, id: existing?.id ?? crypto.randomUUID(), createdAt: existing?.createdAt ?? stamp, updatedAt: stamp }
+			saved = {
+				...input,
+				combat: input.combat !== undefined ? input.combat : (existing?.combat ?? null),
+				id: existing?.id ?? crypto.randomUUID(),
+				createdAt: existing?.createdAt ?? stamp,
+				updatedAt: stamp,
+			}
 			if (!isEncounter(saved)) throw new EncounterStorageError('The encounter could not be saved: it is not valid.')
 			return existing ? encounters.map((encounter) => (encounter.id === existing.id ? saved! : encounter)) : [...encounters, saved]
+		})
+		return saved!
+	}
+
+	/** Saves only the fight; updatedAt stays, it records edits to the setup. */
+	setCombat(id: string, combat: Combat | null): Encounter {
+		let saved: Encounter | undefined
+		this.rewrite((encounters) => {
+			const existing = encounters.find((encounter) => encounter.id === id)
+			if (!existing) throw new EncounterStorageError('The encounter could not be saved: it no longer exists.')
+			saved = { ...existing, combat }
+			if (!isEncounter(saved)) throw new EncounterStorageError('The encounter could not be saved: it is not valid.')
+			return encounters.map((encounter) => (encounter.id === id ? saved! : encounter))
 		})
 		return saved!
 	}
