@@ -61,6 +61,7 @@ export function ConfirmDialog({
 	onSafe,
 	onDestructive,
 	destructiveDisabled = false,
+	actionIsPrimary = false,
 }: {
 	title: string
 	body: string
@@ -70,12 +71,15 @@ export function ConfirmDialog({
 	onSafe: () => void
 	onDestructive: () => void
 	destructiveDisabled?: boolean
+	/** For a harmless action (Duplicate): it becomes the filled, focused button and the safe choice the outlined one. */
+	actionIsPrimary?: boolean
 }): ReactNode {
 	const id = useId()
 	const backdropRef = useRef<HTMLDivElement>(null)
 	const dialogRef = useRef<HTMLDivElement>(null)
 	const safeRef = useRef<HTMLButtonElement>(null)
-	useModal(backdropRef, dialogRef, safeRef, onSafe)
+	const actionRef = useRef<HTMLButtonElement>(null)
+	useModal(backdropRef, dialogRef, actionIsPrimary ? actionRef : safeRef, onSafe)
 
 	return createPortal(
 		<div ref={backdropRef} className="confirm-dialog__backdrop" onClick={(event) => event.target === event.currentTarget && onSafe()}>
@@ -97,10 +101,10 @@ export function ConfirmDialog({
 				</p>
 				{children}
 				<div className="confirm-dialog__actions">
-					<button type="button" className="btn--accent-outline" disabled={destructiveDisabled} onClick={onDestructive}>
+					<button ref={actionRef} type="button" className={actionIsPrimary ? 'btn--accent' : 'btn--accent-outline'} disabled={destructiveDisabled} onClick={onDestructive}>
 						{destructiveLabel}
 					</button>
-					<button ref={safeRef} type="button" className="btn--accent" onClick={onSafe}>
+					<button ref={safeRef} type="button" className={actionIsPrimary ? 'btn--accent-outline' : 'btn--accent'} onClick={onSafe}>
 						{safeLabel}
 					</button>
 				</div>

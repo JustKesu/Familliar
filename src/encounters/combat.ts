@@ -156,13 +156,15 @@ export function nextTurn(combat: Combat, groups: EncounterGroup[], npcDown?: (np
 	return refillLegendary({ ...combat, turn: (combat.turn + 1) % count, round: combat.round + Math.floor((combat.turn + 1) / count) }, groups)
 }
 
-/** Drops one entry from the order; the turn stays on the same creature, or moves to the next one when the removed entry was acting. */
-export function removeEntry(combat: Combat, key: string): Combat {
+/** Drops one entry from the order; the turn stays on the same creature, or, when the removed entry was acting, moves on exactly like Next turn. */
+export function removeEntry(combat: Combat, key: string, groups: EncounterGroup[], npcDown?: (npcId: string) => boolean): Combat {
 	const index = combat.order.findIndex((entry) => entryKey(entry) === key)
 	if (index === -1) return combat
 	const order = combat.order.filter((_, i) => i !== index)
-	const shifted = index < combat.turn ? combat.turn - 1 : combat.turn
-	return { ...combat, order, turn: order.length === 0 ? 0 : shifted % order.length }
+	if (order.length === 0) return { ...combat, order, turn: 0 }
+	if (index !== combat.turn) return { ...combat, order, turn: index < combat.turn ? combat.turn - 1 : combat.turn }
+	// Turn -1 lets nextTurn land on the old index, or wrap into the next round when the last entry left.
+	return nextTurn({ ...combat, order, turn: index - 1 }, groups, npcDown)
 }
 
 /** Legendary actions come back at the start of the monster's own turn. */
@@ -180,6 +182,9 @@ function refillLegendary(combat: Combat, groups: EncounterGroup[]): Combat {
 }
 
 export const usedCount = (combat: Combat, memberId: string, key: string): number => combat.uses?.[memberId]?.[key] ?? 0
+
+/** A lair toggle can lower the total below what was already used. */
+export const shownUsed = (combat: Combat, memberId: string, key: string, total: number): number => Math.min(total, usedCount(combat, memberId, key))
 
 export function setUsed(combat: Combat, memberId: string, key: string, used: number): Combat {
 	const member = { ...combat.uses?.[memberId] }
@@ -237,11 +242,21 @@ export function flipSave(combat: Combat, memberId: string): Combat {
 	return { ...combat, saveResults: { ...combat.saveResults, [memberId]: { ...result, success: !result.success } } }
 }
 
-/** Without a chosen save everyone takes full damage; with one, a success takes half (rounded down) or none. Results clear afterwards. */
-export function applyDamage(combat: Combat, memberIds: string[], amount: number, saveChosen: boolean, onSuccess: OnSuccess, maxOf: (memberId: string) => number): Combat {
+/** Without a chosen save everyone takes full damage; with one, a success takes half (rounded down) or none. The damaged targets' results clear afterwards; `npcIds` only clear theirs. */
+export function applyDamage(
+	combat: Combat,
+	memberIds: string[],
+	amount: number,
+	saveChosen: boolean,
+	onSuccess: OnSuccess,
+	maxOf: (memberId: string) => number,
+	npcIds: string[] = [],
+): Combat {
 	const hp = { ...combat.hp }
+	const saveResults = { ...combat.saveResults }
 	for (const id of memberIds) hp[id] = Math.max(0, currentHp(combat, id, maxOf(id)) - damageTaken(combat, id, amount, saveChosen, onSuccess))
-	return { ...combat, hp, saveResults: {} }
+	for (const id of [...memberIds, ...npcIds]) delete saveResults[id]
+	return { ...combat, hp, saveResults }
 }
 
 export function damageTaken(combat: Combat, id: string, amount: number, saveChosen: boolean, onSuccess: OnSuccess): number {

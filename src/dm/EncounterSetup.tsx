@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '../app/ConfirmDialog'
-import { crXpTable, difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, uncountedNpcs, type Thresholds } from '../encounters/encounterDifficulty'
+import { difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, uncountedNpcs, type CrXpRow, type Thresholds } from '../encounters/encounterDifficulty'
 import { addMonster, MAX_GROUP_COUNT, setGroupCount } from '../encounters/encounterEdit'
 import { EncounterStore, type EncounterGroup, type EncounterInput, type EncounterNpc, type EncounterParty } from '../encounters/encounterStore'
 import { loadNpcCr } from '../encounters/npcCr'
@@ -31,7 +31,9 @@ export function storedNpcs(): Character[] {
 
 export const uncountedNote = (count: number): string | null => (count === 0 ? null : `${count} NPC${count === 1 ? '' : 's'} without CR not counted`)
 
-function NpcCard({ npc, character, crs, onChange, onRemove }: { npc: EncounterNpc; character: Character | undefined; crs: { cr: string; xp: number }[]; onChange: (npc: EncounterNpc) => void; onRemove: () => void }): ReactNode {
+const NO_CRS: CrXpRow[] = []
+
+function NpcCard({ npc, character, crs, onChange, onRemove }: { npc: EncounterNpc; character: Character | undefined; crs: CrXpRow[]; onChange: (npc: EncounterNpc) => void; onRemove: () => void }): ReactNode {
 	const label = character ? character.name : `${npc.name} (NPC deleted)`
 	return (
 		<section className="encounter-group encounter-npc" aria-label={`${label} NPC`}>
@@ -188,8 +190,9 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 	const monsters = useLoaded(loadMonsterData)
 	const rules = useLoaded(loadEncounterRules)
 	const index = useMemo(() => (monsters.status === 'ready' ? monsterIndex(monsters.data.monsters) : null), [monsters])
-	const crs = useMemo(() => (monsters.status === 'ready' ? crXpTable(monsters.data.monsters) : []), [monsters])
+	const crs = rules.status === 'ready' ? rules.data.xpByCr : NO_CRS
 	const npcCharacters = useMemo(storedNpcs, [])
+	const exists = (characterId: string) => npcCharacters.some((character) => character.id === characterId)
 	const [npcPick, setNpcPick] = useState('')
 
 	const toList = () => navigate({ view: 'dm', tab: 'encounters' })
@@ -210,9 +213,9 @@ export function EncounterSetup({ id, navigate }: { id: string | null; navigate: 
 	const dirty = JSON.stringify(toInput(draft)) !== JSON.stringify(toInput(savedDraft))
 	const update = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }))
 	const setGroups = (change: (groups: EncounterGroup[]) => EncounterGroup[]) => setDraft((current) => ({ ...current, groups: change(current.groups) }))
-	const total = index ? encounterXp(draft.groups, index, draft.npcs, crs) : 0
+	const total = index ? encounterXp(draft.groups, index, draft.npcs, crs, exists) : 0
 	const thresholds = rules.status === 'ready' ? partyThresholds(rules.data, partyFrom(draft)) : null
-	const note = uncountedNote(uncountedNpcs(draft.npcs))
+	const note = rules.status === 'ready' ? uncountedNote(uncountedNpcs(draft.npcs, crs, exists)) : null
 	const addable = npcCharacters.filter((character) => !draft.npcs.some((npc) => npc.characterId === character.id))
 	const addNpc = (characterId: string) => {
 		setNpcPick('')

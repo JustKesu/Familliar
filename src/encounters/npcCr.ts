@@ -116,12 +116,16 @@ export async function loadNpcOffence(character: Character): Promise<NpcOffence |
 	const bonuses = flatBonusesByTarget(buildItemFlatBonusGrants(inventory, itemRefs), level)
 	const options: NpcOffence[] = []
 
-	const attacks = computeWeaponAttacks(character, buildHeldWeapons(inventory, itemRefs), weaponData.grants, feats, weaponData.martialArtsDie, { attack: bonuses.weaponAttack, damage: bonuses.weaponDamage }, itemAbilityGrants, pactWeaponInvocations(character), buildBracersOfArcheryBonus(inventory, itemRefs))
-	const perAction = computeAttacksPerAction(weaponData.featureNames, heldInvocations(character).map((pick) => pick.name))
-	const count = perAction.status === 'known' ? perAction.value : 1
+	const held = buildHeldWeapons(inventory, itemRefs)
+	const attacks = computeWeaponAttacks(character, held, weaponData.grants, feats, weaponData.martialArtsDie, { attack: bonuses.weaponAttack, damage: bonuses.weaponDamage }, itemAbilityGrants, pactWeaponInvocations(character), buildBracersOfArcheryBonus(inventory, itemRefs))
+	const countOf = (result: ReturnType<typeof computeAttacksPerAction>): number => (result.status === 'known' ? result.value : 1)
+	// D363: Thirsting/Devouring Blade cover the pact weapon only, so other weapons count without the invocations.
+	const pactCount = countOf(computeAttacksPerAction(weaponData.featureNames, heldInvocations(character).map((pick) => pick.name)))
+	const count = countOf(computeAttacksPerAction(weaponData.featureNames))
+	const pactKeys = new Set(held.filter((row) => row.pactWeapon).map((row) => row.key))
 	for (const attack of attacks) {
 		if (attack.toHit.status !== 'known' || attack.damage.status !== 'known') continue
-		options.push({ dpr: weaponAverage(attack.damage.value) * count, bonus: attack.toHit.value, kind: 'attack' })
+		options.push({ dpr: weaponAverage(attack.damage.value) * (pactKeys.has(attack.key) ? pactCount : count), bonus: attack.toHit.value, kind: 'attack' })
 	}
 
 	const known = <T>(result: { status: 'known'; value: T[] } | { status: 'unknown' }): T[] => (result.status === 'known' ? result.value : [])

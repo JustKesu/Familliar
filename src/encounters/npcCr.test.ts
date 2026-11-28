@@ -87,6 +87,19 @@ describe('NPC numbers for the estimate from the sheet calculations (D439)', () =
 		expect(await loadNpcCr(fighter)).toEqual({ cr: '2', defence: '1/4', offence: '3' })
 	}, 30000)
 
+	it('H: Thirsting Blade doubles only the weapon marked as the pact weapon', async () => {
+		const scores = { strength: 15, dexterity: 14, constitution: 13, intelligence: 8, wisdom: 12, charisma: 10 }
+		const invocations = { optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Pact of the Blade', source: 'XPHB' }, { name: 'Thirsting Blade', source: 'XPHB' }] }] }
+		const warlock = (pactWeapon: boolean) =>
+			seed([{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }], scores, {
+				...invocations,
+				inventory: [{ name: 'Greatsword', source: 'XPHB', quantity: 1, equipped: 'held', ...(pactWeapon ? { pactWeapon: true } : {}) }],
+			})
+		// Greatsword 2d6 + 2 (STR) = 9; marked: proficient (+2 STR +3 PB) and two attacks; unmarked: not proficient, one attack.
+		expect(await loadNpcOffence(warlock(true))).toEqual({ dpr: 18, bonus: 5, kind: 'attack' })
+		expect(await loadNpcOffence(warlock(false))).toEqual({ dpr: 9, bonus: 2, kind: 'attack' })
+	}, 30000)
+
 	it('Wizard 5 with Fire Bolt: 2d10 = 11, spell attack +5 beats the 0-damage Unarmed Strike; HP 27, AC 12 → CR 1', async () => {
 		const wizard = seed([{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 5 }], { strength: 8, dexterity: 14, constitution: 13, intelligence: 15, wisdom: 12, charisma: 10 }, {
 			spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Fire Bolt', source: 'XPHB' }] }],

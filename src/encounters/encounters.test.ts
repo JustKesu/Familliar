@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { extractMonsters } from '../monsters/monsterData'
-import { crXpTable, difficultyLabel, encounterXp, extractEncounterRules, monsterIndex, partyThresholds, uncountedNpcs } from './encounterDifficulty'
+import { difficultyLabel, encounterXp, extractEncounterRules, monsterIndex, partyThresholds, uncountedNpcs } from './encounterDifficulty'
 import { addMonster, newGroup, setGroupCount } from './encounterEdit'
 import { ENCOUNTER_STORAGE_KEY, EncounterStorageError, EncounterStore, type EncounterInput } from './encounterStore'
 import type { KeyValueStorage } from '../storage/characterStore'
@@ -167,7 +167,7 @@ describe('difficulty against data/encounter-rules.json and data/monsters.json', 
 	})
 
 	it('an NPC with CR 1 counts 200 XP like a CR 1 monster; without CR it is not counted', () => {
-		const crs = crXpTable(extractMonsters(read('monsters.json')))
+		const crs = rules.xpByCr
 		expect(crs.find((row) => row.cr === '1')?.xp).toBe(200)
 		expect(crs.find((row) => row.cr === '1/2')?.xp).toBe(100)
 		expect(crs[0]).toEqual({ cr: '0', xp: 10 })
@@ -176,7 +176,28 @@ describe('difficulty against data/encounter-rules.json and data/monsters.json', 
 			{ id: 'n2', characterId: 'c2', name: 'Oswin', cr: null },
 		]
 		expect(encounterXp(input().groups, monsters, npcs, crs)).toBe(700)
-		expect(uncountedNpcs(npcs)).toBe(1)
+		expect(uncountedNpcs(npcs, crs)).toBe(1)
 		expect(encounterXp([], monsters, [npcs[1]], crs)).toBe(0)
+	})
+
+	it('B: all 34 CRs 0-30 are offered, CR 27 included, and a CR 27 NPC counts 105,000 XP', () => {
+		const crs = rules.xpByCr
+		expect(crs).toHaveLength(34)
+		expect(crs.map((row) => row.cr).slice(-6)).toEqual(['25', '26', '27', '28', '29', '30'])
+		const npc = { id: 'n1', characterId: 'c1', name: 'Archmage', cr: '27' }
+		expect(encounterXp([], monsters, [npc], crs)).toBe(105000)
+		expect(uncountedNpcs([npc], crs)).toBe(0)
+	})
+
+	it('H: a deleted NPC and a CR outside the table are not counted and count as uncounted', () => {
+		const crs = rules.xpByCr
+		const npcs = [
+			{ id: 'n1', characterId: 'gone', name: 'Mira', cr: '1' },
+			{ id: 'n2', characterId: 'c2', name: 'Oswin', cr: '31' },
+			{ id: 'n3', characterId: 'c3', name: 'Ida', cr: '1/2' },
+		]
+		const exists = (characterId: string) => characterId !== 'gone'
+		expect(encounterXp([], monsters, npcs, crs, exists)).toBe(100)
+		expect(uncountedNpcs(npcs, crs, exists)).toBe(2)
 	})
 })

@@ -87,6 +87,36 @@ test('MON-6 f: the third wolf in a running encounter rolls as "Wolf 3"', async (
   await expect(toast(page).locator('.roll-toast__label')).toHaveText('Wolf 3 · Bite to hit')
 })
 
+test('F-MON L3: the roll toast closes when the DM tab changes', async ({ page }) => {
+  await page.goto('/#/dm/bestiary')
+  await page.getByRole('searchbox', { name: 'Search monsters' }).fill('wolf')
+  await page.locator('.bestiary__row', { has: page.locator('.bestiary__name', { hasText: /^Wolf$/ }) }).click()
+  await rollButton(page, 'Wolf · Bite to hit').click()
+  await expect(toast(page)).toBeVisible()
+  await page.getByRole('tab', { name: 'NPCs' }).click()
+  await expect(toast(page)).toHaveCount(0)
+})
+
+test('F-MON L2: in the Duplicate NPC dialog Duplicate is the filled, focused button and Cancel the outlined one', async ({ page }) => {
+  const bandit = {
+    schemaVersion: 73,
+    id: 'n-bandit',
+    name: 'Bandit',
+    classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }],
+    abilityScores: { method: 'standardArray', scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } },
+    npc: true,
+  }
+  await page.addInitScript((payload) => localStorage.setItem('familliar:characters', payload), JSON.stringify([bandit]))
+  await page.goto('/#/dm/npcs')
+  await page.getByRole('button', { name: 'More actions for Bandit', exact: true }).click()
+  await page.getByRole('button', { name: 'Duplicate', exact: true }).click()
+  const dialog = page.getByRole('alertdialog', { name: 'Duplicate Bandit' })
+  const duplicate = dialog.getByRole('button', { name: 'Duplicate' })
+  await expect(duplicate).toHaveClass('btn--accent')
+  await expect(duplicate).toBeFocused()
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveClass('btn--accent-outline')
+})
+
 test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 

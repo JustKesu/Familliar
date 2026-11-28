@@ -127,6 +127,46 @@ test('NPC-1 f: Delete removes only that NPC', async ({ page }) => {
   expect((await stored(page)).map((c) => c.name)).toEqual(['Aria', 'Thug'])
 })
 
+test('F-MON C: Delete says how many encounters use the NPC and leaves the encounter as it is', async ({ page }) => {
+  await seed(page)
+  const encounter = {
+    id: 'enc-1',
+    name: 'Ambush',
+    createdAt: '2026-11-27T10:00:00.000Z',
+    updatedAt: '2026-11-27T10:00:00.000Z',
+    party: null,
+    players: [],
+    groups: [],
+    npcs: [{ id: 'npc-1', characterId: 'n-bandit', name: 'Bandit', cr: null }],
+    combat: null,
+  }
+  const saved = JSON.stringify({ schemaVersion: 3, encounters: [encounter] })
+  await page.addInitScript((payload) => {
+    if (localStorage.getItem('familliar:encounters') === null) localStorage.setItem('familliar:encounters', payload)
+  }, saved)
+  await page.goto('/#/dm/npcs')
+  await more(page, 'Bandit').click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  const dialog = page.getByRole('alertdialog', { name: 'Delete Bandit?' })
+  await expect(dialog.locator('.confirm-dialog__body')).toHaveText('This removes the NPC from this browser. It cannot be undone. Used in 1 encounter. It will show it as deleted.')
+  await dialog.getByRole('button', { name: 'Delete' }).click()
+  await expect(cardNames(page)).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('familliar:encounters'))).toBe(saved)
+})
+
+test('F-MON G: importing an NPC file from the home list says where it went', async ({ page }) => {
+  await seed(page)
+  await page.goto('/#/dm/npcs')
+  await more(page, 'Bandit').click()
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  const file = await download
+  await page.goto('/#/')
+  await page.locator('input[type="file"]').setInputFiles((await file.path()) as string)
+  await expect(page.locator('.error')).toHaveText('Bandit was saved as an NPC - see DM > NPCs.')
+  await expect(cardNames(page)).toHaveText(['Aria'])
+})
+
 test('NPC-1 g: an exported NPC imports as an NPC', async ({ page }) => {
   await seed(page)
   await page.goto('/#/dm/npcs')

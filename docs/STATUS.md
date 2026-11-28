@@ -1491,6 +1491,15 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `spellActionRows`), `loadNpcCr`, `crTitle`. `combinedSpells.ts` gained `loadCombinedSpellParts`; `averageOf` exported.
   CharacterCard optional `badge`; NpcList shows "≈ CR x" with tooltip (`useNpcCrs`); EncounterSetup Add NPC prefills the
   CR (only a CR the select offers, never over a DM pick). `e2e/dmNpcCr.spec.ts` a–e; unit `src/encounters/npcCr.test.ts`.
+- F-MON (D440): review R-MON fixes. NPC with unknown max HP: HP "—" + "Max HP unknown - set HP on the sheet", Damage/Heal
+  write nothing (`damageNpc`/`healNpc` take `max: number | null`). CR select = `EncounterRules.xpByCr` (34 rows; `crXpTable`
+  removed). `encounterXp`/`uncountedNpcs` count a deleted NPC or a CR outside the table as uncounted. `removeEntry(combat,
+  key, groups, npcDown)` advances like `nextTurn` when the acting entry goes (+ recharge reminders in CombatScreen).
+  `shownUsed` in combat.ts. `applyDamage` clears only the damaged targets' save results (`npcIds` param). Thirsting Blade
+  counts only for the pact-marked weapon in `loadNpcOffence`. Delete NPC dialog names the encounter count; home import of
+  an NPC file shows "… was saved as an NPC - see DM > NPCs.". `ConfirmDialog` prop `actionIsPrimary` (Duplicate NPC only).
+  Roll toast remounts per DM tab/encounter route. `.monster-card .roll-value` wears the sheet frame (padding 0 6px).
+  extract-data sorts with `localeCompare(…, "en")`. E2E `dmNpcs` C, G; `dmRolls` L2, L3.
 - SP-1 (D410): the Actions row of a pool-granting feature carries the pool's use boxes: hand table `POOL_GRANTING_FEATURES`
   (Font of Magic, Monk's Focus, Combat Superiority; not a text match, which would also hit Elder Champion and Flurry of Healing
   and Harm). Battle Master's Superiority Die count (4 / 5 / 6 at Fighter 3 / 7 / 15) is a hand entry in `LEVEL_SCALED_USES`

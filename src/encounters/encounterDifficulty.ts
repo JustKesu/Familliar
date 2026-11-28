@@ -9,8 +9,15 @@ export interface XpBudgetRow {
 	high: number
 }
 
+export interface CrXpRow {
+	cr: string
+	xp: number
+}
+
 export interface EncounterRules {
 	xpBudgetPerCharacter: XpBudgetRow[]
+	/** XMM table, all 34 CRs 0-30 lowest first; CR 0 is 10 XP. */
+	xpByCr: CrXpRow[]
 }
 
 export interface Thresholds {
@@ -31,7 +38,12 @@ export function extractEncounterRules(parsed: unknown): EncounterRules {
 		const entry = row as Record<string, unknown>
 		return isNumber(entry.level) && isNumber(entry.low) && isNumber(entry.moderate) && isNumber(entry.high)
 	})
-	return { xpBudgetPerCharacter }
+	const crRows = (parsed as Record<string, unknown>).xpByCr
+	const xpByCr = (Array.isArray(crRows) ? crRows : []).flatMap((row): CrXpRow[] => {
+		const entry = row as Record<string, unknown> | null
+		return entry && typeof entry.cr === 'string' && isNumber(entry.xp) ? [{ cr: entry.cr, xp: entry.xp }] : []
+	})
+	return { xpBudgetPerCharacter, xpByCr }
 }
 
 export async function loadEncounterRules(): Promise<EncounterRules> {
@@ -60,21 +72,22 @@ export function monsterIndex(monsters: Monster[]): Map<string, Monster> {
 	return new Map(monsters.map((monster) => [monsterRefKey(monster), monster]))
 }
 
-/** D438: the CR labels the bestiary uses, lowest first, each with its XP; CR 0 is 0 or 10 in the data, the higher wins. */
-export function crXpTable(monsters: Monster[]): { cr: string; xp: number }[] {
-	const byCr = new Map<string, { order: number; xp: number }>()
-	for (const monster of monsters) {
-		if (monster.xp === undefined) continue
-		const known = byCr.get(monster.cr)
-		if (!known || monster.xp > known.xp) byCr.set(monster.cr, { order: monster.crNumber, xp: monster.xp })
-	}
-	return [...byCr.entries()].sort((a, b) => a[1].order - b[1].order).map(([cr, { xp }]) => ({ cr, xp }))
+/** XP of a counted NPC; undefined = not counted: no CR, a CR outside the table, or deleted from the NPCs tab (D438). */
+function npcXp(npc: EncounterNpc, crXp: CrXpRow[], exists: (characterId: string) => boolean): number | undefined {
+	return exists(npc.characterId) ? crXp.find((row) => row.cr === npc.cr)?.xp : undefined
 }
 
-/** Every member counts its monster's `xp`; `xpLair` is ignored and an unknown monster counts 0. An NPC counts only with a CR (D438). */
-export function encounterXp(groups: EncounterGroup[], monsters: Map<string, Monster>, npcs: EncounterNpc[] = [], crXp: { cr: string; xp: number }[] = []): number {
+/** Every member counts its monster's `xp`; `xpLair` is ignored and an unknown monster counts 0. */
+export function encounterXp(
+	groups: EncounterGroup[],
+	monsters: Map<string, Monster>,
+	npcs: EncounterNpc[] = [],
+	crXp: CrXpRow[] = [],
+	exists: (characterId: string) => boolean = () => true,
+): number {
 	const monsterXp = groups.reduce((total, group) => total + (monsters.get(monsterRefKey(group.monster))?.xp ?? 0) * group.members.length, 0)
-	return npcs.reduce((total, npc) => total + (crXp.find((row) => row.cr === npc.cr)?.xp ?? 0), monsterXp)
+	return npcs.reduce((total, npc) => total + (npcXp(npc, crXp, exists) ?? 0), monsterXp)
 }
 
-export const uncountedNpcs = (npcs: EncounterNpc[]): number => npcs.filter((npc) => npc.cr === null).length
+export const uncountedNpcs = (npcs: EncounterNpc[], crXp: CrXpRow[], exists: (characterId: string) => boolean = () => true): number =>
+	npcs.filter((npc) => npcXp(npc, crXp, exists) === undefined).length

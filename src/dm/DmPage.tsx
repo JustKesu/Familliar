@@ -75,7 +75,8 @@ export function DmPage({ route, navigate, npcs, sheet }: { route: DmRoute; navig
 							<RollHistory entries={rollHistory} />
 						</Drawer>
 					)}
-					<RollToast showRef={toastRef} />
+					{/* Remounting on a tab or encounter change closes the toast, so it never covers the next view's controls. */}
+					<RollToast key={`${tab}:${encounter === undefined ? '' : encounter === 'new' ? 'new' : `${encounter.id}:${encounter.run ? 'run' : 'setup'}`}`} showRef={toastRef} />
 				</main>
 			</RollReportContext.Provider>
 		</RollModeContext.Provider>

@@ -303,7 +303,12 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute | DmRoute
 		file
 			.text()
 			.then((text) => {
-				withErrorHandling(() => store.store?.import(text))
+				withErrorHandling(() => {
+					const imported = store.store?.import(text) ?? []
+					// D437: an NPC file lands under DM, so the home list would show nothing new.
+					const npcs = imported.filter((character) => character.npc)
+					setRedirectNotice(npcs.length > 0 ? `${npcs.map((character) => character.name).join(', ')} was saved as an NPC - see DM > NPCs.` : null)
+				})
 			})
 			.catch((error: unknown) => {
 				setActionError(describeError(error))

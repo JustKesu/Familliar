@@ -20,6 +20,7 @@ import {
 	rollSaves,
 	SAVE_ABILITIES,
 	setUsed,
+	shownUsed,
 	startCombat,
 	toggleAdv,
 	toggleLair,
@@ -30,7 +31,7 @@ import {
 	type OnSuccess,
 	type SaveResult,
 } from '../encounters/combat'
-import { crXpTable, difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, uncountedNpcs } from '../encounters/encounterDifficulty'
+import { difficultyLabel, encounterXp, loadEncounterRules, monsterIndex, monsterRefKey, partyThresholds, uncountedNpcs } from '../encounters/encounterDifficulty'
 import { EncounterStore, type Encounter, type EncounterGroup, type EncounterMember, type EncounterNpc } from '../encounters/encounterStore'
 import { addNpcCondition, damageNpc, healNpc, npcConditions, npcCurrentHp, removeNpcCondition } from '../encounters/npcCharacter'
 import { classLine, loadNpcStats, type NpcSave, type NpcStats } from '../encounters/npcStats'
@@ -74,8 +75,9 @@ interface NpcInfo {
 	npc: EncounterNpc
 	character: Character | undefined
 	stats: NpcStats | undefined
-	max: number
-	hp: number
+	/** null = the sheet's max HP could not be worked out (D440). */
+	max: number | null
+	hp: number | null
 	down: boolean
 	conditions: string[]
 	label: string
@@ -88,7 +90,7 @@ function npcInfos(npcs: EncounterNpc[], characters: Character[], stats: Record<s
 		npcs.map((npc) => {
 			const character = characters.find((c) => c.id === npc.characterId)
 			const own = character && stats[character.id]
-			const max = Math.max(1, own?.maxHp ?? character?.currentHp ?? 1)
+			const max = own?.maxHp ?? null
 			const hp = character ? npcCurrentHp(character, max) : 0
 			// A deleted NPC counts as down, like a removed monster, so Next turn passes it.
 			return [npc.id, { npc, character, stats: own, max, hp, down: !character || hp === 0, conditions: character ? npcConditions(character) : [], label: character?.name ?? deletedLabel(npc) }]
@@ -211,14 +213,16 @@ export function EncounterRun({ id, navigate, renderSheet }: { id: string; naviga
 	}
 
 	/** G: a deleted NPC leaves the setup and the turn order in one save. */
-	const removeNpc = (npcId: string): void => {
+	const removeNpc = (npcId: string): Combat | null => {
 		try {
 			const { name, party, players, groups } = encounter
-			const combat = encounter.combat && removeEntry(encounter.combat, `n:${npcId}`)
+			const combat = encounter.combat && removeEntry(encounter.combat, `n:${npcId}`, groups, (id) => npcs.infos.get(id)?.down ?? true)
 			setEncounter(store.save(encounter.id, { name, party, players, groups, npcs: encounter.npcs.filter((npc) => npc.id !== npcId), combat }))
 			setWriteError(null)
+			return combat ?? null
 		} catch (failure) {
 			setWriteError(failure instanceof Error ? failure.message : String(failure))
+			return null
 		}
 	}
 
@@ -405,14 +409,13 @@ function SaveBonuses({ monster, saves, short }: { monster?: Monster; saves?: Rec
 
 const usesOf = (info: MemberInfo, combat: Combat): TrackedUse[] => (info.monster ? trackedUses(info.monster, isInLair(combat, info.member.id)) : [])
 
-/** A lair toggle can lower the total below what was already used. */
-const shownUsed = (combat: Combat, memberId: string, use: TrackedUse): number => Math.min(use.total, usedCount(combat, memberId, use.key))
+const usedOf = (combat: Combat, memberId: string, use: TrackedUse): number => shownUsed(combat, memberId, use.key, use.total)
 
 function UseCounts({ info, combat }: { info: MemberInfo; combat: Combat }): ReactNode {
 	const counts = usesOf(info, combat)
 		.filter((use) => !use.key.startsWith('s:'))
 		.map((use) => {
-			const used = shownUsed(combat, info.member.id, use)
+			const used = usedOf(combat, info.member.id, use)
 			if (use.recharge !== undefined) return used > 0 ? `${use.short} spent` : null
 			return `${use.short} ${used}/${use.total}`
 		})
@@ -437,7 +440,7 @@ function TrackedUses({ info, combat, update }: { info: MemberInfo; combat: Comba
 			</div>
 			<ul className="tracked-uses__list">
 				{uses.map((use) => {
-					const used = shownUsed(combat, member.id, use)
+					const used = usedOf(combat, member.id, use)
 					return (
 						<li key={use.key} className="tracked-uses__item" aria-label={`${use.name} uses`}>
 							<span className="tracked-uses__name">
@@ -644,7 +647,21 @@ function NpcRow({ info, initiative, current, controls, npcControls }: { info: Np
 			{down && <span className="combat__down">down</span>}
 		</span>
 	)
-	const subtitle = <span className="combat__sub">{npc.cr !== null ? `NPC · CR ${npc.cr}` : `NPC · ${classLine(character)}`}</span>
+	const subtitle = (
+		<>
+			<span className="combat__sub">{npc.cr !== null ? `NPC · CR ${npc.cr}` : `NPC · ${classLine(character)}`}</span>
+			{max === null && <span className="combat__sub combat__hp-unknown">Max HP unknown - set HP on the sheet</span>}
+		</>
+	)
+	// D440: an unknown maximum shows "—" and the NPC takes no Damage or Heal.
+	const hpCell =
+		max === null ? (
+			<span className="combat__hp">
+				<span className="combat__hp-text">—</span>
+			</span>
+		) : (
+			<HpCell hp={hp ?? max} max={max} />
+		)
 
 	if (mobile) {
 		return (
@@ -657,7 +674,7 @@ function NpcRow({ info, initiative, current, controls, npcControls }: { info: Np
 					{chips}
 				</span>
 				{saveChip}
-				<HpCell hp={hp} max={max} />
+				{hpCell}
 				{sheetButton}
 			</li>
 		)
@@ -673,7 +690,7 @@ function NpcRow({ info, initiative, current, controls, npcControls }: { info: Np
 				{chips}
 			</span>
 			<span className="combat__ac">{stats?.ac ?? '—'}</span>
-			<HpCell hp={hp} max={max} />
+			{hpCell}
 			<span className="combat__save-cell">
 				<SaveBonuses saves={stats?.saves} />
 				<span className="combat__save-actions">
@@ -707,7 +724,7 @@ function CombatScreen({
 	npcs: Map<string, NpcInfo>
 	commit: (combat: Combat | null) => void
 	writeNpcs: (write: (characterStore: CharacterStore) => void) => void
-	removeNpc: (npcId: string) => void
+	removeNpc: (npcId: string) => Combat | null
 	openSheet: ((characterId: string) => void) | undefined
 	error: ReactNode
 	onBack: () => void
@@ -748,13 +765,19 @@ function CombatScreen({
 	const npcControls: NpcControls = {
 		removeCondition: (info, name) => info.character && writeNpcs((store) => removeNpcCondition(store, info.character!, name)),
 		openSheet,
-		remove: removeNpc,
+		remove: (npcId) => {
+			const acting = combat.order[combat.turn]
+			const after = removeNpc(npcId)
+			// Removing the acting NPC passes the turn on, so the next creature gets its recharge reminders like after Next turn.
+			if (after && acting?.kind === 'npc' && acting.npcId === npcId) setReminders(rechargeReminders(after, groups, members))
+		},
 	}
 
-	const crs = useMemo(() => crXpTable(data.monsters), [data])
-	const total = encounterXp(groups, index, encounter.npcs, crs)
+	const crs = rules.status === 'ready' ? rules.data.xpByCr : []
+	const exists = (characterId: string) => [...npcs.values()].some((info) => info.npc.characterId === characterId && info.character !== undefined)
+	const total = encounterXp(groups, index, encounter.npcs, crs, exists)
 	const thresholds = rules.status === 'ready' ? partyThresholds(rules.data, encounter.party) : null
-	const uncounted = uncountedNote(uncountedNpcs(encounter.npcs))
+	const uncounted = rules.status === 'ready' ? uncountedNote(uncountedNpcs(encounter.npcs, crs, exists)) : null
 	const difficulty = [thresholds ? `${total} XP · ${difficultyLabel(total, thresholds)}` : `${total} XP`, uncounted].filter(Boolean).join(' · ')
 	const current = combat.order[combat.turn]
 	const currentName = current ? (current.kind === 'npc' ? (npcs.get(current.npcId)?.label ?? 'Removed') : entryLabel(current, groups)) : ''
@@ -772,7 +795,7 @@ function CombatScreen({
 		writeNpcs((store) => {
 			for (const info of selectedNpcs) damageNpc(store, info.character, info.max, damageTaken(combat, info.npc.id, amountValue, saveChosen, onSuccess))
 		})
-		update((c) => applyDamage(c, monsterIds, amountValue, saveChosen, onSuccess, maxOf))
+		update((c) => applyDamage(c, monsterIds, amountValue, saveChosen, onSuccess, maxOf, selectedNpcs.filter((info) => info.max !== null).map((info) => info.npc.id)))
 	}
 	const heal = () => {
 		if (amountValue === null) return

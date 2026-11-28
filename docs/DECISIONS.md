@@ -6065,3 +6065,11 @@ CR (při shodě nahoru); mimo tabulku se ořízne na krajní řádky; necelé DP
 1+, rysy (Sneak Attack, Rage), odolnosti ani léčení. Čísla ze stejných volání jako list. Karta NPC ukazuje „≈ CR x“
 s tooltipem; Add NPC v setupu CR předvyplní (jen CR, které výběr nabízí), DM ho může změnit či smazat; uložená NPC si
 nechávají uložené CR včetně prázdného. Zadání NPC-3, 27. 11. 2026.
+
+## D440 — NPC s neznámým max HP, plná nabídka CR, varování při mazání NPC (F-MON)
+
+Rozhodnutí uživatele k review R-MON. (A) NPC, kterému list nespočítá max HP, má v boji HP „—“ a hlášku „Max HP unknown -
+set HP on the sheet“; Damage a Heal ho vynechají a nic nezapisuje HP s náhradním maximem. (B) Nabídka CR pro NPC jsou
+všech 34 řádků `xpByCr` z `encounter-rules.json` (CR 0–30), ne CR z bestiáře; odhad CR 26–29 se předvyplní a započítá.
+(C) Dialog Delete NPC říká, ve kolika střetnutích NPC je; střetnutí se nemění (smazané NPC v nich zůstává jako
+„(NPC deleted)“, D438). Zadání F-MON, 28. 11. 2026.

@@ -4,13 +4,13 @@ import { damageHitPoints, healHitPoints, type HitPointProps } from '../sheet/Hit
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 
-/** D438: an NPC whose current HP was never set starts the fight at its maximum. */
-export const npcCurrentHp = (character: Character, max: number): number => character.currentHp ?? max
+/** D438: an NPC whose current HP was never set starts the fight at its maximum; null = neither is known (D440). */
+export const npcCurrentHp = (character: Character, max: number | null): number | null => character.currentHp ?? max
 
 /** The sheet's own HP writer, pointed at the stored character, so damage and healing follow D110/D111/D169 exactly as on the sheet. */
 function hitPointProps(store: CharacterStore, character: Character, max: number): HitPointProps {
 	return {
-		currentHp: npcCurrentHp(character, max),
+		currentHp: character.currentHp ?? max,
 		maxHitPoints: known(max, []),
 		maxHpOverride: character.maxHpOverride,
 		temporaryHitPoints: character.play?.temporaryHitPoints,
@@ -19,12 +19,13 @@ function hitPointProps(store: CharacterStore, character: Character, max: number)
 	}
 }
 
-export function damageNpc(store: CharacterStore, character: Character, max: number, amount: number): void {
-	if (amount > 0) damageHitPoints(hitPointProps(store, character, max), amount)
+/** D440: with the maximum unknown nothing is written, rather than HP against a made-up maximum. */
+export function damageNpc(store: CharacterStore, character: Character, max: number | null, amount: number): void {
+	if (max !== null && amount > 0) damageHitPoints(hitPointProps(store, character, max), amount)
 }
 
-export function healNpc(store: CharacterStore, character: Character, max: number, amount: number): void {
-	healHitPoints(hitPointProps(store, character, max), amount, max)
+export function healNpc(store: CharacterStore, character: Character, max: number | null, amount: number): void {
+	if (max !== null) healHitPoints(hitPointProps(store, character, max), amount, max)
 }
 
 /** The sheet's conditions, Exhaustion as a plain chip at the end (D434 has no level in the encounter). */

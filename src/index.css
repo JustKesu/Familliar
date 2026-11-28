@@ -1572,6 +1572,7 @@ label.wizard__field {
 /* The to-hit and damage values are roll buttons; a DC or flat damage wears the same box without being one. */
 .sheet__actions-table .roll-value,
 .sheet__spell-table .roll-value,
+.monster-card .roll-value,
 .sheet__action-dc,
 .sheet__action-flat {
   display: inline-block;
@@ -1581,6 +1582,11 @@ label.wizard__field {
   background: var(--surface-2);
   white-space: nowrap;
   font-weight: 600;
+}
+
+/* Inside stat block prose a vertical padding would push the line apart. */
+.monster-card .roll-value {
+  padding: 0 6px;
 }
 
 .sheet__action-to-hit .roll-value {
@@ -1597,7 +1603,8 @@ label.wizard__field {
 }
 
 .sheet__actions-table .roll-value:hover:not(:disabled),
-.sheet__spell-table .roll-value:hover:not(:disabled) {
+.sheet__spell-table .roll-value:hover:not(:disabled),
+.monster-card .roll-value:hover:not(:disabled) {
   border-color: var(--accent);
 }
 

@@ -2218,6 +2218,10 @@ languages, cr, initiative, immune, resist, vulnerable, conditionImmune, trait, a
 legendaryActions, legendaryActionsLair, legendaryHeader (0 occur), legendaryGroup, spellcasting, environment (553).
 Added: `crNumber`, `xp`, `xpLair`. Source `cr` is a string or `{cr, xpLair}` (53) or `{cr: "0", xp: 0}` (3: Giant Fly,
 Seahorse, Shrieker Fungus); written as the display string, `xp` from the entry's own `cr.xp` else from `xpByCr`.
+Name sorts in extract-data (monsters, legendary groups, beasts within a CR, item entry templates) use
+`localeCompare(…, "en")` (F-MON): without a locale the order followed the machine's (a cs-CZ Windows sorts "Ch" after
+"H"). Re-extraction on Windows after the fix reproduced the committed monsters.json, legendary-groups.json and
+encounter-rules.json exactly, so the committed files were already in "en" order.
 
 Limited uses — no structured field; the markers are:
 - `{@recharge N}` in a trait/action/bonus/reaction/legendary name: 171 monsters. Forms: `{@recharge 5}` 120,

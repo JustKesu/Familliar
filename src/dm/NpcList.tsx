@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import { CharacterCard } from '../characters/CharacterCard'
+import { EncounterStore } from '../encounters/encounterStore'
 import { crTitle, loadNpcCr, type CrEstimate } from '../encounters/npcCr'
 import type { Character } from '../storage/character'
 
@@ -47,6 +48,7 @@ export function NpcList({
 	const [duplicating, setDuplicating] = useState<{ id: string; name: string } | null>(null)
 	const crOf = useNpcCrs(npcs)
 	const deleting = npcs.find((npc) => npc.id === deletingId)
+	const usedIn = deleting ? new EncounterStore().list().filter((encounter) => encounter.npcs.some((npc) => npc.characterId === deleting.id)).length : 0
 	const duplicateSource = duplicating && npcs.find((npc) => npc.id === duplicating.id)
 
 	return (
@@ -83,7 +85,12 @@ export function NpcList({
 			{deleting && (
 				<ConfirmDialog
 					title={`Delete ${deleting.name}?`}
-					body="This removes the NPC from this browser. It cannot be undone."
+					body={[
+						'This removes the NPC from this browser. It cannot be undone.',
+						usedIn > 0 && `Used in ${usedIn} encounter${usedIn === 1 ? '' : 's'}. ${usedIn === 1 ? 'It' : 'They'} will show it as deleted.`,
+					]
+						.filter(Boolean)
+						.join(' ')}
 					safeLabel="Keep"
 					destructiveLabel="Delete"
 					onSafe={() => setDeletingId(null)}
@@ -100,6 +107,7 @@ export function NpcList({
 					safeLabel="Cancel"
 					destructiveLabel="Duplicate"
 					destructiveDisabled={!duplicating.name.trim()}
+					actionIsPrimary
 					onSafe={() => setDuplicating(null)}
 					onDestructive={() => {
 						if (!duplicating.name.trim()) return

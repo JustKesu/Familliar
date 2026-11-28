@@ -3,8 +3,10 @@ import { join } from 'node:path'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Character } from '../storage/character'
 import { CharacterStore, type KeyValueStorage } from '../storage/characterStore'
-import { initiativeEntries, nextTurn, removeEntry, rollSaves, type Combat } from './combat'
-import { addNpcCondition, damageNpc, healNpc, npcConditions, removeNpcCondition } from './npcCharacter'
+import { applyDamage, initiativeEntries, nextTurn, removeEntry, rollSaves, shownUsed, usedCount, type Combat } from './combat'
+import type { EncounterGroup } from './encounterStore'
+import { addNpcCondition, damageNpc, healNpc, npcConditions, npcCurrentHp, removeNpcCondition } from './npcCharacter'
+import { LEGENDARY_ACTIONS_KEY } from './trackedUses'
 import { loadNpcStats } from './npcStats'
 
 class MemoryStorage implements KeyValueStorage {
@@ -64,7 +66,39 @@ describe('NPC numbers from the sheet calculations (D438)', () => {
 		const combat: Combat = { round: 1, turn: 0, order, hp: {}, conditions: {}, adv: {}, saveResults: {} }
 		expect(nextTurn(combat, [], (id) => id === 'n1').turn).toBe(2)
 		expect(nextTurn(combat, [], () => false).turn).toBe(1)
-		expect(removeEntry({ ...combat, turn: 2 }, 'n:n1')).toMatchObject({ turn: 1, order: [order[0], order[2]] })
+		expect(removeEntry({ ...combat, turn: 2 }, 'n:n1', [])).toMatchObject({ turn: 1, order: [order[0], order[2]] })
+	})
+
+	it('D: removing the acting last entry starts the next round and refills legendary actions', () => {
+		const dragon: EncounterGroup = { id: 'g1', monster: { name: 'Dragon', source: 'XMM' }, oneInitiative: true, members: [{ id: 'd1', name: 'Dragon' }] }
+		const order: Combat['order'] = [
+			{ kind: 'member', groupId: 'g1', memberId: 'd1', initiative: 20, bonus: 0 },
+			{ kind: 'player', name: 'Ana', initiative: 15 },
+			{ kind: 'npc', npcId: 'n1', initiative: 5, bonus: 0 },
+		]
+		const combat: Combat = { round: 3, turn: 2, order, hp: {}, conditions: {}, adv: {}, saveResults: {}, uses: { d1: { [LEGENDARY_ACTIONS_KEY]: 2 } } }
+		const after = removeEntry(combat, 'n:n1', [dragon])
+		expect(after).toMatchObject({ round: 4, turn: 0, order: [order[0], order[1]] })
+		expect(usedCount(after, 'd1', LEGENDARY_ACTIONS_KEY)).toBe(0)
+		// Acting first entry removed: the next one acts in the same round; a down NPC is skipped like Next turn does.
+		const first = removeEntry({ ...combat, turn: 0, order: [order[2], order[1], order[0]] }, 'n:n1', [dragon])
+		expect(first).toMatchObject({ round: 3, turn: 0 })
+		expect(removeEntry({ ...combat, turn: 0, order: [order[1], order[2], order[0]] }, 'p:Ana', [dragon], () => true)).toMatchObject({ round: 3, turn: 1 })
+	})
+
+	it('E: uses are shown as at most the total after In lair lowers it', () => {
+		const combat: Combat = { round: 1, turn: 0, order: [], hp: {}, conditions: {}, adv: {}, saveResults: {}, uses: { d1: { lr: 4 } } }
+		expect(shownUsed(combat, 'd1', 'lr', 3)).toBe(3)
+		expect(shownUsed(combat, 'd1', 'lr', 4)).toBe(4)
+		expect(shownUsed(combat, 'd1', 'other', 3)).toBe(0)
+	})
+
+	it('F: damage to some targets keeps the other save results', () => {
+		const result = { ability: 'dex' as const, total: 15, success: true }
+		const combat: Combat = { round: 1, turn: 0, order: [], hp: {}, conditions: {}, adv: {}, saveResults: { w1: result, w2: result, w3: result, n1: result, n2: result } }
+		const after = applyDamage(combat, ['w1', 'w2'], 10, true, 'half', () => 11, ['n1'])
+		expect(after.hp).toEqual({ w1: 6, w2: 6 })
+		expect(Object.keys(after.saveResults).sort()).toEqual(['n2', 'w3'])
 	})
 })
 
@@ -87,6 +121,20 @@ describe('NPC HP and conditions write the stored character (D438)', () => {
 		const npc = seedNpc(store)
 		damageNpc(store, { ...npc, currentHp: undefined }, 25, 5)
 		expect(fresh(store, npc.id).currentHp).toBe(20)
+	})
+
+	it('A: with max HP unknown (maxHp null) nothing is written and the HP is unknown without a current value', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const npc = seedNpc(store)
+		expect(npcCurrentHp({ ...npc, currentHp: undefined }, null)).toBeNull()
+		damageNpc(store, { ...npc, currentHp: undefined }, null, 7)
+		expect(fresh(store, npc.id).currentHp).toBeUndefined()
+		expect(fresh(store, npc.id).play?.deathSaves).toBeUndefined()
+		store.setHitPoints(npc.id, { currentHp: 12 })
+		expect(npcCurrentHp(fresh(store, npc.id), null)).toBe(12)
+		damageNpc(store, fresh(store, npc.id), null, 5)
+		healNpc(store, fresh(store, npc.id), null, 5)
+		expect(fresh(store, npc.id).currentHp).toBe(12)
 	})
 
 	it('conditions and Exhaustion go to play.conditions and play.exhaustion', () => {

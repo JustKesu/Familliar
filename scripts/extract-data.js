@@ -2145,7 +2145,7 @@ function extractBeasts() {
 		byCr[beast.cr] = (byCr[beast.cr] || 0) + 1;
 	}
 
-	kept.sort((a, b) => (a.crNumber - b.crNumber) || a.name.localeCompare(b.name));
+	kept.sort((a, b) => (a.crNumber - b.crNumber) || a.name.localeCompare(b.name, "en"));
 
 	console.log(`Passed the beast filter:      ${kept.length} (source ${BEAST_SOURCE}, type beast, CR <= ${BEAST_MAX_CR})`);
 	console.log(
@@ -2349,7 +2349,7 @@ function extractMonsters(xpByCr) {
 		kept.push(monster);
 	}
 
-	kept.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
+	kept.sort((a, b) => a.name.localeCompare(b.name, "en") || a.source.localeCompare(b.source, "en"));
 
 	const keptLabels = new Set(kept.map((monster) => `"${monster.name}" (${monster.source})`));
 	const ownWarnings = (list, labels) => list.filter((warning) => [...labels].some((label) => warning.includes(label)));
@@ -2400,7 +2400,7 @@ function extractMonsters(xpByCr) {
 		}
 		groups.push(group);
 	}
-	groups.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
+	groups.sort((a, b) => a.name.localeCompare(b.name, "en") || a.source.localeCompare(b.source, "en"));
 	console.log(`Legendary groups: ${groups.length} of ${referenced.size} referenced (_copy resolved: ${groupResult.copyStats.copiesResolved})`);
 	if (groups.length !== referenced.size) monsterWarnings.push(`legendaryGroups: ${referenced.size - groups.length} referenced group(s) not found`);
 	const groupsFile = path.join(OUTPUT_DIR, "legendary-groups.json");
@@ -2992,7 +2992,7 @@ function extractItems() {
 			source: entry.source,
 			entriesTemplate: entry.entriesTemplate || entry.entries || [],
 		}))
-		.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
+		.sort((a, b) => a.name.localeCompare(b.name, "en") || a.source.localeCompare(b.source, "en"));
 
 	const templateKeys = new Set(
 		itemEntryTemplates.map((entry) => `${entry.name.toLowerCase()}|${entry.source.toLowerCase()}`),
